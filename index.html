@@ -24,7 +24,7 @@
   --accent:#ff6b2c; --accent-ink:#1b0a03;
   --opp:#4b8dff; --opp-ink:#06122a;
   --grass:#1f6a41; --grass-2:#1a5d39; --chalk:rgba(255,255,255,.85);
-  --pick:#ffd23d; --pick-ink:#2a2000;
+  --mate:#ffd23d; --mate-ink:#2a2000; --pick:#ff6b2c; --pick-ink:#1b0a03;
   --good:#3ddc8c; --bad:#ff5f5f; --warn:#ffc53d;
   --good-bg:rgba(61,220,140,.14); --bad-bg:rgba(255,95,95,.14); --warn-bg:rgba(255,197,61,.14);
   --display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
@@ -38,7 +38,7 @@
   --accent:#e8551b; --accent-ink:#ffffff;
   --opp:#1f63e0; --opp-ink:#ffffff;
   --grass:#2b7a4b; --grass-2:#256d42; --chalk:rgba(255,255,255,.9);
-  --pick:#f2b600; --pick-ink:#2a2000;
+  --mate:#f2b600; --mate-ink:#2a2000; --pick:#e8551b; --pick-ink:#ffffff;
   --good:#178a4e; --bad:#cc2f2f; --warn:#b97a00;
   --good-bg:#e1f4e9; --bad-bg:#fde3e1; --warn-bg:#fbf0d4;
   color-scheme:light}}
@@ -48,7 +48,7 @@
   --accent:#e8551b; --accent-ink:#ffffff;
   --opp:#1f63e0; --opp-ink:#ffffff;
   --grass:#2b7a4b; --grass-2:#256d42; --chalk:rgba(255,255,255,.9);
-  --pick:#f2b600; --pick-ink:#2a2000;
+  --mate:#f2b600; --mate-ink:#2a2000; --pick:#e8551b; --pick-ink:#ffffff;
   --good:#178a4e; --bad:#cc2f2f; --warn:#b97a00;
   --good-bg:#e1f4e9; --bad-bg:#fde3e1; --warn-bg:#fbf0d4;
   color-scheme:light}
@@ -1239,7 +1239,7 @@ function pitchSVG(q, reveal){
   const sc=q.scene, me=sc.me;
   const arrowsDef = `
     <marker id="ah-pass" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="3.2" markerHeight="3.2" orient="auto"><path d="M0,0L6,3L0,6z" style="fill:var(--chalk)"/></marker>
-    <marker id="ah-run" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="3.2" markerHeight="3.2" orient="auto"><path d="M0,0L6,3L0,6z" style="fill:var(--accent)"/></marker>
+    <marker id="ah-run" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="3.2" markerHeight="3.2" orient="auto"><path d="M0,0L6,3L0,6z" style="fill:var(--mate)"/></marker>
     <marker id="ah-opp" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="3.2" markerHeight="3.2" orient="auto"><path d="M0,0L6,3L0,6z" style="fill:var(--opp)"/></marker>`;
   const L = (x1,y1,x2,y2)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
   const field = `
@@ -1254,12 +1254,12 @@ function pitchSVG(q, reveal){
     <circle cx="25" cy="34" r=".4" style="fill:var(--chalk)"/>
     <text x="1" y="-.8" text-anchor="start" font-size="1.5" style="fill:var(--chalk);opacity:.7" font-weight="700">あいてのゴール ▲</text>`;
   const arrows = (sc.arrows||[]).map(a=>{
-    const col = a.k==="opp"?"var(--opp)":a.k==="run"?"var(--accent)":"var(--chalk)";
+    const col = a.k==="opp"?"var(--opp)":a.k==="run"?"var(--mate)":"var(--chalk)";
     return `<line x1="${a.f[0]}" y1="${a.f[1]}" x2="${a.t[0]}" y2="${a.t[1]}" stroke-width=".45" ${a.k==="pass"?'stroke-dasharray="1 .8"':'stroke-dasharray="1.6 .7"'} style="stroke:${col}" marker-end="url(#ah-${a.k})"/>`;
   }).join("");
   const opps = [...BASE_OPP_DEF, ...sc.opps].filter((p,i,arr)=>arr.findIndex(o=>o[0]===p[0]&&o[1]===p[1])===i)
     .map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="1.7" style="fill:var(--opp);stroke:var(--opp-ink)" stroke-width=".25"/>`).join("");
-  const mate = (p,x,y)=>`<g><circle cx="${x}" cy="${y}" r="1.9" style="fill:var(--accent);stroke:var(--accent-ink)" stroke-width=".25"/><text x="${x}" y="${y+.55}" text-anchor="middle" font-size="1.45" font-weight="700" style="fill:var(--accent-ink);font-family:var(--num)">${p}</text></g>`;
+  const mate = (p,x,y)=>`<g><circle cx="${x}" cy="${y}" r="1.9" style="fill:var(--mate);stroke:var(--mate-ink)" stroke-width=".25"/><text x="${x}" y="${y+.55}" text-anchor="middle" font-size="1.45" font-weight="700" style="fill:var(--mate-ink);font-family:var(--num)">${p}</text></g>`;
   // movement: the tapped choice (preview) or the confirmed one. With the ball, the ball travels; without, the player runs.
   const hasBall = sc.ball[0]===me[1] && sc.ball[1]===me[2];
   const run = (sc.arrows||[]).find(a=>a.k==="run" && a.f[0]===me[1] && a.f[1]===me[2]);
@@ -1337,7 +1337,7 @@ const stepper = (n,label) => `<div class="stepper" aria-label="ステップ ${n}
 const SPOTS = {GK:[[25,64]],CB:[[25,52]],SB:[[10,50],[40,50]],CH:[[25,38]],SH:[[10,34],[40,34]],CF:[[25,22]]};
 function miniPitch(pos){
   const all = Object.values(SPOTS).flat(), on = SPOTS[pos] || (pos==="MIN"||pos==="ALL" ? all : []);
-  const dot = ([x,y],hi) => `<circle cx="${x}" cy="${y}" r="${hi?4.6:3}" fill="${hi?"var(--accent)":"var(--chalk)"}" opacity="${hi?1:.35}"/>`;
+  const dot = ([x,y],hi) => `<circle cx="${x}" cy="${y}" r="${hi?4.6:3}" fill="${hi?"var(--mate)":"var(--chalk)"}" opacity="${hi?1:.35}"/>`;
   return `<svg class="mini" viewBox="0 0 50 68" aria-hidden="true"><rect x="0" y="0" width="50" height="68" rx="4" fill="var(--grass)"/><rect x="3" y="3" width="44" height="62" fill="none" stroke="var(--chalk)" stroke-width="1" opacity=".7"/><line x1="3" y1="34" x2="47" y2="34" stroke="var(--chalk)" stroke-width="1" opacity=".7"/><circle cx="25" cy="34" r="6" fill="none" stroke="var(--chalk)" stroke-width="1" opacity=".7"/><rect x="15" y="57" width="20" height="8" fill="none" stroke="var(--chalk)" stroke-width="1" opacity=".7"/>${all.filter(p=>!on.includes(p)).map(p=>dot(p,false)).join("")}${on.map(p=>dot(p,true)).join("")}</svg>`;
 }
 function renderName(){
@@ -1398,7 +1398,7 @@ function renderQuiz(){
   }).join("");
   return `<div class="quiz">
     <div class="pitchwrap">${pitchSVG(q,reveal)}
-      <div class="legend"><span><i class="dot" style="background:var(--accent)"></i>みかた</span><span><i class="dot" style="background:var(--opp)"></i>あいて</span><span><i class="dot" style="background:#fff;border:1px solid #111"></i>ボール</span><span><i class="dot" style="background:var(--pick)"></i>こたえの場所</span></div>
+      <div class="legend"><span><i class="dot" style="background:var(--mate)"></i>みかた</span><span><i class="dot" style="background:var(--opp)"></i>あいて</span><span><i class="dot" style="background:#fff;border:1px solid #111"></i>ボール</span><span><i class="dot" style="background:var(--pick)"></i>こたえの場所</span></div>
     </div>
     <section class="card">
       <div class="qhead"><span class="tag me">${posLabel}</span><span class="tag">${q.phase}</span><div class="progress" aria-label="${S.i+1}もんめ / ${S.set.length}もん">${prog}</div></div>
