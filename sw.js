@@ -6,6 +6,7 @@ self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Pr
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   // pages: network first so updates arrive; everything else (icons, fonts): cache first
+  if (new URL(e.request.url).pathname.includes("/board/")) return;   // the tactics board has its own worker
   if (e.request.mode === "navigate") {
     const page = new URL(e.request.url).pathname.endsWith("coach.html") ? "coach.html" : "index.html";
     e.respondWith(fetch(e.request).then(r => { const cp = r.clone(); caches.open(C).then(c => c.put(page, cp)); return r; }).catch(() => caches.match(page)));

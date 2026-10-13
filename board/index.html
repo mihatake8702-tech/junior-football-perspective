@@ -1,0 +1,2215 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1310">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="作戦ボード">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="8人制サッカーの作戦ボード。フォーメーションの相性、ボールに合わせた自動スライド、練習メニュー。">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+</head><body>
+<title>8人制 作戦ボード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Oswald:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: night-match tactics board. Floodlit pitch on the left, broadcast-style coaching panel on the right; stacks on narrow screens */
+:root{
+  --bg:#0b1310; --surface:#121c18; --surface-2:#1a2620; --line:#26362e;
+  --fg:#eef5f0; --muted:#8fa498;
+  --accent:#ff6b2c; --accent-ink:#1b0a03;
+  --opp:#4b8dff; --opp-ink:#06122a;
+  --grass:#1f6a41; --grass-2:#1a5d39; --chalk:rgba(255,255,255,.88);
+  --good:#3ddc8c; --warn:#ffc53d; --bad:#ff5f5f;
+  --good-bg:rgba(61,220,140,.14); --warn-bg:rgba(255,197,61,.14); --bad-bg:rgba(255,95,95,.14);
+  --glow:rgba(255,107,44,.35); --shadow:0 10px 30px rgba(0,0,0,.35);
+  --display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+  --num:"Oswald","Dela Gothic One","Hiragino Sans",sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
+  --bg:#eef2ee; --surface:#ffffff; --surface-2:#f3f6f3; --line:#d8e0da;
+  --fg:#101a15; --muted:#56685d;
+  --accent:#e8551b; --accent-ink:#ffffff;
+  --opp:#1f63e0; --opp-ink:#ffffff;
+  --grass:#2b7a4b; --grass-2:#256d42; --chalk:rgba(255,255,255,.9);
+  --good:#178a4e; --warn:#b97a00; --bad:#cc2f2f;
+  --good-bg:#e1f4e9; --warn-bg:#fbf0d4; --bad-bg:#fde3e1;
+  --glow:rgba(232,85,27,.25); --shadow:0 8px 24px rgba(16,26,21,.10);
+  color-scheme:light}}
+:root[data-theme="light"]{
+  --bg:#eef2ee; --surface:#ffffff; --surface-2:#f3f6f3; --line:#d8e0da;
+  --fg:#101a15; --muted:#56685d;
+  --accent:#e8551b; --accent-ink:#ffffff;
+  --opp:#1f63e0; --opp-ink:#ffffff;
+  --grass:#2b7a4b; --grass-2:#256d42; --chalk:rgba(255,255,255,.9);
+  --good:#178a4e; --warn:#b97a00; --bad:#cc2f2f;
+  --good-bg:#e1f4e9; --warn-bg:#fbf0d4; --bad-bg:#fde3e1;
+  --glow:rgba(232,85,27,.25); --shadow:0 8px 24px rgba(16,26,21,.10);
+  color-scheme:light}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:14px 28px}
+.app{max-width:1280px;margin:0 auto;display:grid;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+h1{font-family:var(--display);font-weight:400;font-size:1.55rem;letter-spacing:.02em;margin:0}
+header p{margin:0;color:var(--muted);font-size:.85rem}
+.main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:18px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:1fr}}
+.board{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:10px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 10px)}
+@media (max-width:860px){.board{position:static}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem;color:var(--muted);align-items:center}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:4px}
+svg.pitch{width:100%;max-width:520px;margin:0 auto;display:block;touch-action:none;user-select:none;-webkit-user-select:none;aspect-ratio:56/74;height:auto}
+.player{cursor:grab;transition:transform 1.2s cubic-bezier(.25,.6,.3,1)}
+.player.dragging{transition:none;cursor:grabbing}
+@media (prefers-reduced-motion:reduce){.player{transition:none}}
+.player text{font-family:var(--body);font-weight:700;font-size:1.2px;pointer-events:none}
+.panel{display:grid;gap:14px;min-width:0}
+.controls{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:12px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.field{display:grid;gap:4px;flex:1 1 150px;min-width:0}
+.field label,.label{font-size:.75rem;color:var(--muted);letter-spacing:.06em;font-weight:500}
+select{font:inherit;font-weight:700;font-size:1.05rem;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);width:100%;min-height:46px}
+select#mine{border-color:var(--accent);box-shadow:inset 4px 0 0 var(--accent)}
+select#opp{border-color:var(--opp);box-shadow:inset 4px 0 0 var(--opp)}
+button{font:inherit;cursor:pointer;color:var(--fg)}
+.iconbtn{min-height:46px;min-width:46px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font-size:1.1rem}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:10px 16px;min-height:44px;font-weight:700;font-size:.92rem}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.ghost{border:1px solid var(--line);background:transparent;border-radius:10px;padding:10px 14px;min-height:44px;font-size:.88rem}
+.check{display:inline-flex;gap:8px;align-items:center;font-size:.88rem;min-height:44px}
+.check input{width:20px;height:20px;accent-color:var(--opp)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;background:none;padding:10px 14px;font-weight:700;font-size:.95rem;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;min-height:44px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:14px;min-width:0}
+.vs{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--display);font-size:1.3rem}
+.vs .m{color:var(--accent)} .vs .o{color:var(--opp)} .vs small{font-family:var(--body);font-size:.8rem;color:var(--muted)}
+.meters{display:grid;gap:8px}
+.meter{display:grid;grid-template-columns:5.6em 4.2em 1fr;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;background:var(--surface-2)}
+.meter .zone{font-weight:700;font-size:.92rem}
+.meter .zone small{display:block;font-weight:400;color:var(--muted);font-size:.72rem;line-height:1.3}
+.num{font-family:var(--display);font-size:1.35rem;text-align:center;border-radius:8px;padding:2px 0;font-variant-numeric:tabular-nums}
+.good .num{background:var(--good-bg);color:var(--good)}
+.warn .num{background:var(--warn-bg);color:var(--warn)}
+.bad .num{background:var(--bad-bg);color:var(--bad)}
+.meter .desc{font-size:.86rem;min-width:0}
+.meter .desc b{display:block}
+h3{margin:0;font-size:1rem;display:flex;align-items:center;gap:8px}
+h3 .chip{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.04em}
+.chip.atk{background:var(--accent);color:var(--accent-ink)}
+.chip.def{background:var(--opp);color:var(--opp-ink)}
+.chip.note{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+ul{margin:0;padding-left:1.2em;display:grid;gap:6px}
+li{font-size:.92rem}
+.kid{border-left:3px solid var(--warn);padding:8px 12px;background:var(--warn-bg);border-radius:0 8px 8px 0;font-size:.9rem}
+.foot{font-size:.75rem;color:var(--muted)}
+.tag{font-size:.95rem;font-weight:700}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.grade{display:inline-block;font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--line);margin-right:4px}
+.hint{font-size:.8rem;color:var(--muted);text-align:center}
+.player .pname{font-size:1.3px;font-weight:700;fill:#fff;stroke:rgba(0,0,0,.65);stroke-width:.35px;paint-order:stroke}
+.ball{cursor:grab}
+.ball.dragging{cursor:grabbing}
+.board-tools{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.addrow{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.addrow .field{flex:1 1 140px}
+.addrow .field.numf{flex:0 0 88px}
+input[type=text],input[type=number]{font:inherit;font-size:1rem;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);width:100%;min-height:46px}
+.primary{border:0;border-radius:10px;padding:10px 18px;min-height:46px;font-weight:700;background:var(--accent);color:var(--accent-ink)}
+.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.pl{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--surface-2);min-width:0}
+.pl .no{font-family:var(--display);min-width:2.2em;height:2.2em;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-size:.85rem}
+.pl .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.pl button{border:0;background:none;color:var(--muted);font-size:1.1rem;min-width:36px;min-height:36px;border-radius:8px}
+.lineup{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.slot{display:grid;grid-template-columns:3.2em 1fr;gap:8px;align-items:center}
+.slot b{font-size:.85rem;text-align:center;padding:4px 0;border-radius:8px;background:var(--surface-2)}
+.slot select{font-size:.95rem;min-height:42px;padding:8px}
+.status{font-size:.75rem;color:var(--muted)}
+.pentools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
+.pentools .seg button{padding:10px 12px;font-size:.88rem}
+.swatches{display:flex;gap:6px}
+.sw{width:40px;height:40px;border-radius:50%;border:2px solid var(--line);background:var(--c);box-shadow:inset 0 0 0 3px var(--surface)}
+.sw[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 3px var(--surface),0 0 0 2px var(--fg)}
+svg.pitch.penmode{cursor:crosshair}
+.saverow{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.saverow .field{flex:1 1 180px}
+.boards{display:grid;gap:8px}
+.bd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:10px;background:var(--surface-2)}
+.bd .info{flex:1 1 160px;min-width:0}
+.bd .info b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd .info small{color:var(--muted);font-size:.75rem}
+.bd button{min-height:40px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:.85rem;font-weight:700}
+.bd button.open{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.bd button.danger{color:var(--bad)}
+.autochk{font-weight:700}
+.autochk input{accent-color:var(--accent)}
+#autoHint{min-height:1.2em;font-weight:700;color:var(--fg)}
+.chip.es{background:#c8352b;color:#fff;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block;margin-bottom:6px}
+.chip.en{background:#1f3b73;color:#fff;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block;margin-bottom:6px}
+.styletips{display:grid;gap:8px;font-size:.9rem}
+.styletips .chip{margin:0 8px 0 0}
+.principle{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--line)}
+.chip.both{background:var(--surface-2);color:var(--fg);border:1px solid var(--line);font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px}
+.drills{display:grid;gap:8px}
+details.drill{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+details.drill summary{display:flex;gap:10px;align-items:center;padding:10px 12px;cursor:pointer;list-style:none}
+details.drill summary::-webkit-details-marker{display:none}
+details.drill[open] summary{border-bottom:1px solid var(--line)}
+.dhead{flex:1;min-width:0;display:grid;gap:4px}
+.dmeta{font-size:.78rem;color:var(--muted)}
+.dtags{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.ttag{font-size:.7rem;padding:1px 7px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.why{font-size:.8rem;font-weight:700;color:var(--accent)}
+button.add{border:0;border-radius:10px;padding:8px 12px;min-height:42px;font-weight:700;background:var(--fg);color:var(--bg);white-space:nowrap}
+.dbody{padding:12px;display:grid;gap:12px}
+.themes{display:flex;flex-wrap:wrap;gap:6px}
+.themes button{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:6px 12px;min-height:38px;font-size:.85rem;font-weight:700}
+.themes button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+ol.session{margin:0;padding-left:1.4em;display:grid;gap:6px}
+ol.session li{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border-radius:10px;background:var(--surface-2)}
+ol.session .sname{flex:1 1 160px;min-width:0;font-weight:700;font-size:.92rem}
+ol.session input{width:4.2em;min-height:38px;padding:6px 8px}
+ol.session button{min-width:38px;min-height:38px;border-radius:8px;border:1px solid var(--line);background:var(--surface)}
+ol.session button:disabled{opacity:.35}
+.total{margin:0;font-size:.95rem}
+textarea{font:inherit;font-size:.95rem;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);width:100%;resize:vertical}
+.cform{display:grid;gap:10px}
+.dplayer{transition:transform .9s cubic-bezier(.3,.7,.2,1)}
+.dplayer text{font-family:var(--body);font-weight:700;font-size:1.2px;pointer-events:none}
+.dball{transition:transform .7s cubic-bezier(.3,.7,.2,1)}
+@media (prefers-reduced-motion:reduce){.dplayer,.dball{transition:none}}
+.trail{stroke:#fff;stroke-width:.3;stroke-dasharray:.8 .6;opacity:.9;animation:fade 2.6s forwards}
+@keyframes fade{to{opacity:0}}
+.demobar{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--accent)}
+.dtitle{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dcap{margin:0;font-size:1.05rem;font-weight:700;min-height:2.6em}
+.dctl{display:flex;flex-wrap:wrap;gap:8px}
+.dbtns{display:flex;flex-direction:column;gap:6px}
+button.play{border:1px solid var(--accent);border-radius:10px;padding:8px 12px;min-height:42px;font-weight:700;background:transparent;color:var(--accent);white-space:nowrap}
+.recbar{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--surface-2);border:2px dashed var(--bad)}
+.reclist{margin:0;padding-left:1.4em;font-size:.85rem;color:var(--muted);display:grid;gap:2px}
+.notice{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:10;display:flex;gap:10px;align-items:center;max-width:720px;margin:0 auto;padding:12px 14px;border-radius:12px;background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad);font-weight:700;font-size:.9rem;box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.notice span{flex:1;min-width:0}
+.notice button{border:0;background:none;color:var(--bad);font-size:1.1rem;min-width:40px;min-height:40px}
+/* full-screen board: pitch as large as the screen allows, tools beside it (landscape) or below (portrait) */
+.fsbtn{margin-left:auto;min-height:40px;padding:6px 12px;font-weight:700}
+body.fs{overflow:hidden}
+body.fs .board{position:fixed;inset:0;z-index:30;border-radius:0;border:0;overflow:auto;padding:calc(10px + env(safe-area-inset-top,0px)) 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--surface)}
+body.fs svg.pitch{max-width:100%;width:auto;height:min(calc(100dvh - 260px), calc((100vw - 32px) * 74 / 56))}
+@media (min-aspect-ratio: 1/1){
+  body.fs .board{display:grid;grid-template-columns:auto minmax(260px,360px);grid-auto-rows:min-content;column-gap:20px;align-content:start}
+  body.fs .board > svg.pitch{grid-column:1;grid-row:1 / span 30;width:auto;height:calc(100dvh - 24px);max-height:calc(100dvh - 24px)}
+  body.fs .board > *:not(svg){grid-column:2}
+}
+.poslist{display:grid;gap:12px}
+.poscard{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:12px;scroll-margin-top:12px}
+.poscard.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.poshead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.rolechip{font-family:var(--display);font-size:.85rem;min-width:2.6em;text-align:center;padding:3px 8px;border-radius:8px;background:var(--accent);color:var(--accent-ink)}
+.extra{font-size:.9rem;padding:8px 12px;border-radius:8px;background:var(--surface-2)}
+.chip.warnchip{background:var(--bad-bg);color:var(--bad)}
+.toast{font-size:.85rem;font-weight:700;color:var(--good)}
+
+/* ---------- look & feel: broadcast / floodlit pitch ---------- */
+body{background:
+  radial-gradient(1200px 500px at 20% -10%, rgba(61,220,140,.08), transparent 60%),
+  radial-gradient(900px 400px at 100% 0%, rgba(75,141,255,.07), transparent 60%), var(--bg)}
+header.brand{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;padding:10px 14px;border-radius:16px;
+  background:linear-gradient(100deg,var(--surface) 0%,var(--surface-2) 100%);border:1px solid var(--line);box-shadow:var(--shadow)}
+.logo{width:42px;height:42px;flex:0 0 auto}
+.brandtext{display:grid;gap:0;min-width:0}
+h1{font-size:1.6rem;line-height:1.1;letter-spacing:.03em}
+h1 .num8{font-family:var(--num);font-weight:700;color:var(--accent);font-size:1.15em;margin-right:2px}
+header.brand p{font-size:.78rem;letter-spacing:.08em}
+.scorebar{margin-left:auto;display:flex;align-items:stretch;border-radius:12px;overflow:hidden;border:1px solid var(--line);font-family:var(--num);min-width:0}
+.scorebar .t{display:flex;align-items:center;gap:8px;padding:6px 12px;font-weight:700;font-size:1.15rem;letter-spacing:.04em;white-space:nowrap}
+.scorebar .t small{font-family:var(--body);font-size:.68rem;font-weight:700;opacity:.85;letter-spacing:.06em}
+.scorebar .m{background:var(--accent);color:var(--accent-ink)}
+.scorebar .o{background:var(--opp);color:var(--opp-ink)}
+.scorebar .vs{display:grid;place-items:center;padding:0 10px;background:var(--surface-2);color:var(--muted);font-size:.8rem;font-weight:700}
+.scorebar .meta{display:flex;align-items:center;gap:6px;padding:0 12px;background:var(--surface-2);font-family:var(--body);font-size:.75rem;font-weight:700;color:var(--fg);white-space:nowrap}
+.scorebar .meta .live{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 3px var(--good-bg)}
+@media (max-width:620px){.scorebar{margin-left:0;width:100%}.scorebar .t{flex:1;justify-content:center}}
+.board{background:linear-gradient(180deg,var(--surface),var(--surface-2));border-radius:18px;box-shadow:var(--shadow);padding:14px}
+svg.pitch{filter:drop-shadow(0 14px 22px rgba(0,0,0,.35));border-radius:10px}
+.controls,.card{border-radius:16px;box-shadow:var(--shadow)}
+.card{background:linear-gradient(180deg,var(--surface),var(--surface) 70%,var(--surface-2))}
+select{background:var(--surface-2);border-radius:12px}
+select#mine{box-shadow:inset 5px 0 0 var(--accent)} select#opp{box-shadow:inset 5px 0 0 var(--opp)}
+.seg{border-radius:12px;padding:3px;gap:3px;background:var(--surface-2)}
+.seg button{border-radius:9px;transition:background .15s,color .15s}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);box-shadow:0 4px 14px var(--glow)}
+.primary{box-shadow:0 6px 18px var(--glow);letter-spacing:.03em}
+.ghost{background:var(--surface-2)}
+.tabs{border-bottom:0;gap:6px;padding:4px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.tabs button{border-radius:10px;border-bottom:0;padding:8px 14px;font-size:.9rem}
+.tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg)}
+.vs{font-family:var(--num);font-weight:700;font-size:1.6rem;letter-spacing:.03em}
+.vs small{font-family:var(--num);font-size:.9rem;letter-spacing:.1em}
+.num{font-family:var(--num);font-weight:700;font-size:1.6rem}
+.meter{border:1px solid var(--line);background:var(--surface-2)}
+.good .num{box-shadow:inset 0 0 0 1px var(--good)} .warn .num{box-shadow:inset 0 0 0 1px var(--warn)} .bad .num{box-shadow:inset 0 0 0 1px var(--bad)}
+.kid{border-radius:12px;border-left-width:4px}
+.rolechip{font-family:var(--num);letter-spacing:.06em;box-shadow:0 4px 12px var(--glow)}
+.legend{font-size:.76rem}
+.player text,.dplayer text{font-family:var(--num);font-weight:700;letter-spacing:.02em}
+.player .pname{font-family:var(--body)}
+</style>
+
+<div class="notice" id="notice" role="alert" hidden><span></span><button id="noticeClose" aria-label="閉じる">✕</button></div>
+<div class="app">
+  <header class="brand">
+    <svg class="logo" viewBox="0 0 42 42" aria-hidden="true"><rect x="1" y="1" width="40" height="40" rx="10" fill="var(--grass)"/><rect x="7" y="5" width="28" height="32" rx="1.5" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.4"/><line x1="7" y1="21" x2="35" y2="21" stroke="rgba(255,255,255,.85)" stroke-width="1.4"/><circle cx="21" cy="21" r="5" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.4"/><circle cx="15" cy="29" r="2.6" fill="var(--accent)"/><circle cx="27" cy="13" r="2.6" fill="var(--opp)"/></svg>
+    <div class="brandtext"><h1><span class="num8">8</span>人制 作戦ボード</h1><p>U-9〜U-12 コーチ用 ・ フォーメーションの相性と戦術</p></div>
+    <div class="scorebar" id="scorebar" aria-live="polite"></div>
+  </header>
+
+  <div class="main">
+    <section class="board" aria-label="作戦ボード">
+      <div class="legend">
+        <span><span class="dot" style="background:var(--accent)"></span>自チーム（下から上へ攻める）</span>
+        <span><span class="dot" style="background:var(--opp)"></span>相手</span>
+        <span>帯の色＝そのエリアの人数の有利・不利</span>
+        <button class="ghost fsbtn" id="fsBtn" aria-pressed="false">⛶ 全画面</button>
+      </div>
+      <svg class="pitch" id="pitch" viewBox="-3 -3 56 74" role="img" aria-label="ピッチ図"></svg>
+      <div class="pentools" aria-label="ペン">
+        <div class="seg" role="group" aria-label="モード">
+          <button data-mode="move" aria-pressed="true">✋ 動かす</button>
+          <button data-mode="pen" aria-pressed="false">✏️ 矢印を書く</button>
+        </div>
+        <div class="swatches" role="group" aria-label="ペンの色">
+          <button class="sw" data-color="#ffffff" aria-label="白" aria-pressed="true" style="--c:#ffffff"></button>
+          <button class="sw" data-color="#ffd23f" aria-label="黄" aria-pressed="false" style="--c:#ffd23f"></button>
+          <button class="sw" data-color="#ff4d4d" aria-label="赤" aria-pressed="false" style="--c:#ff4d4d"></button>
+          <button class="sw" data-color="#5ec8ff" aria-label="水色" aria-pressed="false" style="--c:#5ec8ff"></button>
+        </div>
+        <div class="seg" role="group" aria-label="線の種類">
+          <button data-dash="0" aria-pressed="true" title="パス・ボールの動き">― 実線</button>
+          <button data-dash="1" aria-pressed="false" title="選手の動き">┄ 点線</button>
+        </div>
+        <button class="ghost" id="undo">1つ戻す</button>
+        <button class="ghost" id="clearDraw">全部消す</button>
+      </div>
+      <p class="hint" id="modeHint">選手とボールはドラッグで動かせます</p>
+      <div class="board-tools">
+        <button class="primary" id="quickSave">この配置を保存</button>
+        <button class="ghost" id="ballCenter">ボールを中央へ</button>
+        <label class="check"><input type="checkbox" id="showBall" checked>ボールを表示</label>
+        <label class="check autochk"><input type="checkbox" id="autoSlide">ボールに合わせて自動スライド</label>
+      </div>
+      <div class="board-tools">
+        <span class="label">ボール保持</span>
+        <div class="seg" role="group" aria-label="ボール保持">
+          <button data-poss="mine" aria-pressed="true">自チーム</button>
+          <button data-poss="opp" aria-pressed="false">相手</button>
+          <button data-poss="auto" aria-pressed="false">近い方</button>
+        </div>
+        <label class="check"><input type="checkbox" id="transMode">切り替えの瞬間（奪った・奪われた直後）</label>
+        <label class="check"><input type="checkbox" id="gkMode">GKがボールを持っている（ゴールキック・キャッチ）</label>
+      </div>
+      <p class="toast" id="quickMsg" role="status" style="text-align:center;margin:0" hidden></p>
+      <p class="hint" id="autoHint" aria-live="polite"></p>
+      <div class="recbar" id="recBar" hidden>
+        <div class="dtitle"><span class="chip warnchip">動きを記録中</span><b id="recTitle"></b><span id="recCount" class="dmeta"></span></div>
+        <p class="foot">選手とボールを動かして場面を作り、「この場面を記録」を押します。これを繰り返すと、記録した順に動くアニメーションになります（2場面以上）。自動スライドを使うと、ボールを動かすだけで全員が動きます。</p>
+        <div class="field"><label for="recCap">この場面の説明</label><input type="text" id="recCap" maxlength="60" placeholder="例：SHへパス。SBは外を回る"></div>
+        <div class="dctl"><button class="primary" id="recAdd">この場面を記録</button><button class="ghost" id="recUndo">最後の場面を消す</button><button class="primary" id="recSave">保存して終了</button><button class="ghost" id="recCancel">やめる</button></div>
+        <ol id="recList" class="reclist"></ol>
+      </div>
+      <div class="demobar" id="demoBar" hidden>
+        <div class="dtitle"><span class="chip both">練習の動き</span><b id="demoTitle"></b><span id="demoStep" class="dmeta"></span></div>
+        <p id="demoCap" class="dcap" aria-live="polite"></p>
+        <div class="dctl"><button class="ghost" id="demoPrev">◀ 前へ</button><button class="primary" id="demoPlay">一時停止</button><button class="ghost" id="demoNext">次へ ▶</button><button class="ghost" id="demoStop">終了してボードに戻る</button></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="controls">
+        <div class="row">
+          <div class="field"><label for="mine">自チーム</label><select id="mine"></select></div>
+          <button class="iconbtn" id="swap" aria-label="自チームと相手を入れ替える" title="入れ替え">⇄</button>
+          <div class="field"><label for="opp">相手</label><select id="opp"></select></div>
+          <div class="field" style="flex:0 0 96px"><label for="gradeSel">学年</label><select id="gradeSel"><option>U-9</option><option>U-10</option><option selected>U-11</option><option>U-12</option></select></div>
+        </div>
+        <div class="row" style="justify-content:space-between">
+          <div style="display:grid;gap:4px">
+            <span class="label">自チームの局面</span>
+            <div class="seg" role="group" aria-label="局面">
+              <button data-phase="base" aria-pressed="true">基本</button>
+              <button data-phase="atk" aria-pressed="false">攻撃時</button>
+              <button data-phase="def" aria-pressed="false">守備時</button>
+            </div>
+          </div>
+          <div class="row" style="gap:8px">
+            <label class="check"><input type="checkbox" id="showOpp" checked>相手を表示</label>
+            <button class="ghost" id="reset">配置をリセット</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="match" aria-selected="true">相性分析</button>
+        <button role="tab" data-tab="mine" aria-selected="false">自チームの戦術</button>
+        <button role="tab" data-tab="opp" aria-selected="false">相手の特徴</button>
+        <button role="tab" data-tab="style" aria-selected="false">プレー原則</button>
+        <button role="tab" data-tab="pos" aria-selected="false">ポジション</button>
+        <button role="tab" data-tab="roster" aria-selected="false">選手</button>
+        <button role="tab" data-tab="drill" aria-selected="false">練習メニュー</button>
+        <button role="tab" data-tab="boards" aria-selected="false">保存した配置</button>
+      </div>
+      <div id="tabbody"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+// ---------- Formation data (x: 0-50 width, y: 0-68, own goal at y=68) ----------
+const F = {
+ "3-3-1":{df:3,mf:3,fw:1,
+  roles:["GK","LB","CB","RB","LH","CH","RH","CF"],
+  base:[[25,65],[10,54],[25,56],[40,54],[8,44],[25,45],[42,44],[25,38]],
+  atk:[[25,61],[6,40],[25,50],[40,50],[8,28],[22,34],[44,30],[26,22]],
+  def:[[25,65],[11,58],[25,59],[39,58],[9,50],[25,50],[41,50],[25,42]],
+  tag:"主流のバランス型。守備の原則を教えやすい",
+  grade:["U-9","U-10","U-11","U-12"],
+  strengths:["初期配置のまま守備ブロックになる（プレス・カバー・スライドを教えやすい）","3バックで幅50mを分けるのでビルドアップが楽","中盤3人が戻れば実質4バック"],
+  weaknesses:["1トップが孤立しやすい","斜めのパスラインが少なく、個人頼みになりやすい（点が取りにくい）","SHの運動量が多い"],
+  attack:["SBとSHの2人組でサイドを崩すのが主軸（どちらが幅を取るか決める）","SHが持ったらCHがDFライン背後へ飛び出す","DFとMFを縦一列に並べず、斜めの関係を作る","CBが押し上げて2-3-1-1に変える手もある"],
+  defense:["FWは中央CBへのパスコースを背中で消す","ボールサイドへ全体でスライド、逆サイドMFは中に絞る","前から行き過ぎるとゴール前で2対2になる"],
+  rule:"片方のSBが上がったら、もう片方は残る",
+  defNote:"守備時もそのまま3-3-1",
+  suits:"初めてシステムを導入するチーム。運動量の多いSH、能力の高いCHがいる"},
+ "2-3-2":{df:2,mf:3,fw:2,
+  roles:["GK","CB","CB","LH","CH","RH","FW","FW"],
+  base:[[25,65],[17,55],[33,55],[8,45],[25,46],[42,45],[18,38],[32,38]],
+  atk:[[25,60],[15,48],[35,48],[6,32],[25,38],[44,32],[19,22],[31,26]],
+  def:[[25,65],[13,58],[37,58],[9,50],[25,58],[41,50],[25,49],[25,41]],
+  tag:"2-3-2同士なら全員が1対1。個を伸ばす攻撃型",
+  grade:["U-10","U-11"],
+  strengths:["最初から三角形ができていてパスコースが多い","2トップで前からプレスをかけやすい","1対1の経験が増える"],
+  weaknesses:["CBの横と背後のスペース","2トップが守備をしないと押し込まれる","中盤中央で数的不利になりやすい"],
+  attack:["2トップは「1人が降りる・1人が裏」","相手1トップのプレスが間に合わない側へ横に動かしてから前進","相手が1枚で来たらCBが運ぶ／2枚で来たらGKから逆SHへ、またはCHが落ちる","スローイン：自陣ではSH、敵陣ではCBが投げてFWを中に残す"],
+  defense:["2トップは左右に分かれてコースを限定（同じ側に寄らない）","CB横のスペースは逆SHかCHが下がって埋める","相手スローイン時は3-3-1に戻してゾーンで守る"],
+  rule:"ボールを取られたらCHがDFラインに入る",
+  defNote:"守備時はCHが下がり、FWが1人戻って3-3-1",
+  suits:"1対1を経験させたい、前からのプレスを鍛えたい。対人とカバーに強いCB2人が必要"},
+ "2-4-1":{df:2,mf:4,fw:1,
+  roles:["GK","CB","CB","LH","CM","CM","RH","CF"],
+  base:[[25,65],[17,56],[33,56],[7,45],[19,46],[31,46],[43,45],[25,38]],
+  atk:[[25,60],[15,50],[35,50],[5,30],[21,41],[30,32],[45,30],[25,21]],
+  def:[[25,65],[13,58],[25,58],[9,50],[25,50],[37,58],[41,50],[25,42]],
+  tag:"中盤で数的優位。ボールを持って崩す",
+  grade:["U-11","U-12"],
+  strengths:["中盤で数的優位を作りやすい","三角形が多くボールを動かしやすい","奪ったとき幅を取る選手がはっきりしている"],
+  weaknesses:["DF2枚の両脇のスペース","裏へのロングボール","カウンター時の数的不利"],
+  attack:["2CMは縦関係（1人が低め）で段差を作る","サイドが起点。SHが幅、CFが深さ、CMがライン間で受ける","パスを回せるGKが必要"],
+  defense:["ボールを失った瞬間にプレス（奪い返す）","低い方のCMが2バックの前を必ず埋める","プレスが弱いとSHがDFラインに吸収されて重心が下がる"],
+  rule:"失ったら低い方のCMがDFの間に下りる",
+  defNote:"守備時はCMが1人下りて3-3-1（攻撃2-4-1／守備3-3-1は高学年の定番）",
+  suits:"パスワークで崩したい、小柄で技術のある子が多い。走れるSHが必要"},
+ "2-1-2-1":{df:2,mf:4,fw:1,
+  roles:["GK","CB","CB","DM","LH","RH","OH","CF"],
+  base:[[25,65],[17,56],[33,56],[25,49],[8,43],[42,43],[25,39],[25,31]],
+  atk:[[25,60],[14,51],[36,51],[25,44],[5,30],[45,30],[21,31],[28,21]],
+  def:[[25,65],[13,58],[37,58],[25,58],[9,50],[41,50],[25,50],[25,42]],
+  tag:"2-4-1のダイヤモンド型。11人制の4-3-3につながる",
+  grade:["U-11","U-12"],
+  strengths:["縦に段差があり、ライン間で受けやすい","トップ下がFWを追い越して厚みが出る","11人制への移行がスムーズ"],
+  weaknesses:["DF2枚の両脇","DMの横のスペース","カウンター時の数的不利"],
+  attack:["トップ下をDFとMFのライン間に置く（守備側が混乱する）","トップ下がFWを追い越す・裏へ出る","SHは大外の高い位置で幅を取る"],
+  defense:["DMは2バックの前を空けない","CFも中盤まで戻る","失った瞬間のプレスが前提"],
+  rule:"失ったらDMがDFの間に下りる",
+  defNote:"守備時はDMが下りて3-3-1",
+  suits:"技術のある子が多い高学年。DM役に判断力のある子"},
+ "3-2-2":{df:3,mf:2,fw:2,
+  roles:["GK","LB","CB","RB","CM","CM","FW","FW"],
+  base:[[25,65],[10,54],[25,56],[40,54],[19,46],[31,46],[18,38],[32,38]],
+  atk:[[25,61],[6,36],[20,50],[36,50],[20,38],[32,40],[20,23],[32,25]],
+  def:[[25,65],[11,58],[25,59],[39,58],[19,51],[31,51],[19,43],[31,43]],
+  tag:"3バックで守備を安定させ、2トップを生かす",
+  grade:["U-11","U-12"],
+  strengths:["DF3＋MF2の5人で中央を固められる","攻撃の起点が前に2つある","DFが1人上がれば2-3-2に変わる"],
+  weaknesses:["中盤2人の負担が大きく、中盤で数的不利になりやすい","サイドの高い位置に人がいない","攻撃が「前に蹴るだけ」になりがち"],
+  attack:["パターン1：DF3人が広がり、CM2人が縦関係、FW2人は中央で縦パス・ワンツー","パターン2：片方のサイドDFが高く上がり、CMがサイドに流れて2対1","パターン3：FW2人を縦か斜めに。1人ポスト、1人裏"],
+  defense:["2トップは奪いに行くよりコースを限定。奪うのは2列目","寄せる役とカバー役を分けて横スライド"],
+  rule:"サイドDFが上がったら、残り2人がスライド",
+  defNote:"守備時もそのまま3-2-2（5人で中央ブロック）",
+  suits:"失点を減らしつつ2トップを生かしたい。FWにボールを収められる子がいる"},
+ "3-1-2-1":{df:3,mf:3,fw:1,
+  roles:["GK","LB","CB","RB","DM","LH","RH","CF"],
+  base:[[25,65],[10,55],[25,57],[40,55],[25,48],[13,40],[37,40],[25,33]],
+  atk:[[25,61],[6,42],[25,52],[40,50],[25,42],[17,30],[33,30],[25,20]],
+  def:[[25,65],[11,58],[25,59],[39,58],[25,51],[9,50],[41,50],[25,42]],
+  tag:"攻撃的な4ライン型。守備時は3-3-1に戻す",
+  grade:["U-12"],
+  strengths:["SHが内側に絞り、ライン間で受けられる","CBのドリブルで最初のプレスを外せばサイドで数的優位"],
+  weaknesses:["3-1-2-1のまま守るのは子どもには難しい","逆サイドのSBが高すぎるとカウンター"],
+  attack:["GKとCBで始め、CBはGKに対して斜めに立つ","ボールサイドに人が集まるのでサイドチェンジで逆サイドを使う","SHは裏へ抜ける"],
+  defense:["守備時は3-3-1に戻すのが前提","DMの横を使われないよう、SHの戻りを約束する"],
+  rule:"左SBが攻めているときは右SBは上がらない",
+  defNote:"守備時はSHが外に開いて3-3-1",
+  suits:"高学年で攻撃的に戦いたい。DMを任せられる子がいる"},
+ "3-1-3":{df:3,mf:1,fw:3,
+  roles:["GK","LB","CB","RB","DM","LW","RW","CF"],
+  base:[[25,65],[10,55],[25,57],[40,55],[25,47],[7,37],[43,37],[25,35]],
+  atk:[[25,61],[9,48],[25,52],[41,48],[25,40],[5,22],[45,22],[25,20]],
+  def:[[25,65],[11,58],[25,59],[39,58],[25,51],[9,50],[41,50],[25,42]],
+  tag:"前線3枚で幅と深さを同時に取る超攻撃型",
+  grade:["U-12"],
+  strengths:["相手3バックと前線3対3（相手にカバーがいない）","高い位置で奪えればすぐ数的優位"],
+  weaknesses:["DM1人の横を使われやすい","WGが戻らないと中盤が空洞","連携が完璧でないと厳しい"],
+  attack:["中盤は飛ばし、縦に速いボールで前線の1対1","WGは幅いっぱい、CFは中央でポスト、DMが散らす"],
+  defense:["WGが下がって守備時は3-3-1","前3枚で相手3バックにプレス、抜かれたらWGが戻る"],
+  rule:"ボールを取られたらWGは必ず中盤まで戻る",
+  defNote:"守備時はWGが下がって3-3-1",
+  suits:"高学年、攻撃的に戦いたい、1対1に強いウイングがいる"},
+ "4-2-1":{df:4,mf:2,fw:1,
+  roles:["GK","LB","CB","CB","RB","CM","CM","CF"],
+  base:[[25,65],[8,54],[19,57],[31,57],[42,54],[19,46],[31,46],[25,37]],
+  atk:[[25,61],[6,40],[18,52],[32,52],[42,50],[20,40],[30,38],[25,24]],
+  def:[[25,65],[9,59],[19,61],[31,61],[41,59],[19,53],[31,53],[25,44]],
+  tag:"堅守速攻。格上相手や逃げ切りに",
+  grade:["U-12"],
+  strengths:["DF4＋MF2で低い位置に堅いブロック","サイド攻撃が得意な相手に強い"],
+  weaknesses:["奪う位置がゴールから遠く、攻撃が単調","FWの個の力頼み","ラインだけで守るとミドルシュートを許す"],
+  attack:["1トップがカウンターの起点（単独で仕掛けるか、キープして待つか）","保持時はSBのオーバーラップでサイドに数的優位"],
+  defense:["前からのプレスは人数的に難しい。低い位置で奪う","DFラインの手前（ミドルシュート）にも誰かが出る"],
+  rule:"SBが1人上がったら残り3人がスライド",
+  defNote:"守備時もそのまま4-2-1",
+  suits:"格上相手、終盤の逃げ切り。育成年代での常用は攻撃参加の経験が減るので注意"}
+};
+const ORDER = ["3-3-1","2-3-2","2-4-1","2-1-2-1","3-2-2","3-1-2-1","3-1-3","4-2-1"];
+const LABEL = {"2-1-2-1":"2-1-2-1（2-4-1ダイヤ）","3-1-2-1":"3-1-2-1"};
+
+// Curated matchup notes from research (key: mine|opp, by line group)
+const NOTES = {
+ "3-3-1|2-4-1":["相手は中盤で1人多い。余っているDF（中央CBか逆サイドCB）が相手のトップ下を前に出て捕まえる → 守備時は実質ミラー","相手は2バックで幅を守れない。SHを大外高く、SBのオーバーラップでサイド2対1","FWは相手CB2人の間に立って2人とも動けなくする"],
+ "2-4-1|3-3-1":["中盤の余り（トップ下）へボランチから斜めのパス","相手サイドCBが前に出てきたら、その背中をFWが狙う","失ったらCMが1枚下りて3バック化（相手のサイド攻撃に備える）"],
+ "3-3-1|3-3-1":["ミラー。後ろの余り（+2）を先に前へ出した方が勝つ","CBがドリブルで中盤に入ると相手の中盤が釣り出され、フリーが生まれる","SHがFWの横まで上がると3-2-2のようになり、前線の不利が縮まる"],
+ "2-3-2|3-3-1":["2トップは相手CBとサイドCBの間（ハーフスペース）に立つ。サイドCBが絞ればサイドが、絞らなければ中が空く","弱点は相手SH＋SBのコンビにDF2人の外を突かれること → ボールサイドのFWが戻る"],
+ "3-3-1|2-3-2":["ビルドアップは3対2でCBが1人余る → その選手が運んで前進","サイドCBのオーバーラップで相手SHに2対1","相手2トップがハーフスペースに立つ → 誰が出るかを事前に決めておく"],
+ "3-1-3|3-3-1":["中盤は1対3。中盤は飛ばして縦に速く、前線3対3の1対1を作る","WGが相手サイドCBと1対1になった瞬間が最大のチャンス","守備時はWGが下がって3-3-1"],
+ "3-3-1|3-1-3":["後ろが3対3で余りなし（危険）。DFは1人カバーに残し、無理に前に出ない","SHを高い位置に置くと相手WGは下がるしかなくなり、3トップの迫力が消える","中盤の+2を使ってボールを持ち続ける"],
+ "2-4-1|3-2-2":["後ろが2対2の同数（カウンター危険）。保持中から低い方のCMをDFの間に下げておく","中盤の+2でボールを持つ"],
+ "3-2-2|2-4-1":["中盤で劣勢。奪ったらすぐ2トップへ、相手2バックと2対2","余ったサイドCBが1人中盤に出て3-3-2気味に"],
+ "3-2-2|3-3-1":["中盤−1・前線−2。2トップがサイドに流れて相手サイドCBを外へ引き出す","攻撃はシンプルに縦へ。セカンドボールをCM2人で回収"]
+};
+const groupOf = id => id==="2-1-2-1" ? "2-4-1" : id==="3-1-2-1" ? "3-3-1" : id;
+
+// ---------- State ----------
+const S = {mine:"3-3-1", opp:"2-4-1", phase:"base", showOpp:true, showBall:true, ball:[25,34], tab:"match", pos:{mine:null, opp:null},
+  selPos:null, auto:false, poss:"mine", trans:false, gk:false, grade:"U-11", possession:"mine", mode:"move", pen:{color:"#ffffff", dash:false}, draw:[]};
+const oppPhase = p => p==="atk" ? "def" : p==="def" ? "atk" : "base";
+function freshPositions(){
+  S.pos.mine = F[S.mine][S.phase].map(p=>[...p]);
+  S.pos.opp  = F[S.opp][oppPhase(S.phase)].map(([x,y])=>[50-x,68-y]);
+  if(S.auto) computeAuto();
+}
+
+// ---------- Auto slide v2: role-based rules (11人制の原則を8人制の大きさに縮尺) ----------
+// Team frame: X = width 0..50, D = distance from own goal line 0..68 (attacking toward D=68). Screen Y = 68 - D.
+// Sources and derivations: youth-soccer/research-11v11-attack.md, research-11v11-defense.md
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+// U-9/U-10: safety first, shorter distances, kick it long from deep. U-11/U-12: build up, use the full width.
+const lowAge=()=>S.grade==="U-9"||S.grade==="U-10";
+// width / distances by grade: U-9 narrow, U-10 in between, U-11/U-12 full width
+const kickSafe=()=>S.grade==="U-9";                              // deep in own third / GK ball: U-9 kicks it long, U-10+ builds up
+const byAge=(u9,u10,u11)=>S.grade==="U-9"?u9:S.grade==="U-10"?u10:u11;
+function roleClass(fid,role){
+  const f=F[fid];
+  if(role==="GK") return "GK";
+  if(role==="CB") return "CD";
+  if(role==="LB"||role==="RB") return f.df===4?"FB":"SD";
+  if(role==="LH"||role==="RH") return "WM";
+  if(role==="LW"||role==="RW") return "WF";
+  if(role==="DM"||role==="CH") return "PV";
+  if(role==="OH") return "AM";
+  if(role==="CM") return "CM";
+  return "ST"; // CF, FW
+}
+function teamSetup(fid,bx){
+  const roles=F[fid].roles, shape=F[fid].base, side=bx>=25?1:-1;
+  const cls=roles.map(r=>roleClass(fid,r));
+  const off=shape.map(p=>p[0]-25);                       // lateral slot from the formation
+  const cms=cls.map((c,i)=>c==="CM"?i:-1).filter(i=>i>=0);
+  if(cms.length===2){ const [a,b]=cms; const aHigh=off[a]*side>=off[b]*side; cls[aHigh?a:b]="IM"; cls[aHigh?b:a]="PV"; }
+  const ballSide=i=>Math.abs(off[i])<5 || Math.sign(off[i])===side;
+  return {roles,cls,off,side,ballSide};
+}
+const toScreen=P=>P.map(([X,D])=>[clamp(X,1.5,48.5),clamp(68-D,1,67)]);
+
+// push team-mates apart until they are at least `gap` metres from each other (fixed players don't move)
+function spread(T,fixed,gap){
+  for(let it=0;it<6;it++) for(let a=0;a<T.length;a++) for(let b=a+1;b<T.length;b++){
+    let dx=T[b][0]-T[a][0], dy=T[b][1]-T[a][1]; if(Math.hypot(dx,dy)<.01){ dx=(b%2?1:-1)*.01; dy=.005; }   // identical spots: split sideways
+    const dist=Math.hypot(dx,dy);
+    if(dist<gap){ const push=(gap-dist)/2, nx=dx/dist, ny=dy/dist;
+      const fa=fixed.includes(a), fb=fixed.includes(b), ka=fa?0:fb?2:1, kb=fb?0:fa?2:1;
+      T[a][0]-=nx*push*ka;T[a][1]-=ny*push*ka; T[b][0]+=nx*push*kb;T[b][1]+=ny*push*kb; }
+  }
+}
+// ----- Out of possession -----
+function defendTeam(fid,bx,by,trans,gk){
+  if(trans && 68-by<25) trans=false;                              // lost it near our own goal: defend normally, no swarm
+  const {roles,cls,off,side,ballSide}=teamSetup(fid,bx);
+  const d=68-by, wide=Math.abs(bx-25)>12;
+  // England: press high when the ball is in the opponents' third. Spain: compact zonal block elsewhere.
+  // Just lost the ball (trans): don't drop, the nearest three swarm the ball (即時奪回).
+  const high=(lowAge()?d>50:d>45)||trans;                        // younger: press high only deep in their half
+  const lineX=high?clamp(d-14,8,32):clamp(d-12,8,28);
+  // pressing high: the back line stops around halfway (offside), but midfield and forwards keep pushing
+  // so the whole block stays within ~14m of the ball and the short passes are covered
+  const midX=high?Math.max(lineX+9,d-14):lineX+10, fwX=high?Math.max(lineX+18,d-5):lineX+20;
+  const cy=25+0.5*(bx-25);                                      // block centre follows the ball
+  const T=[];
+  roles.forEach((r,i)=>{
+    const c=cls[i];
+    if(c==="GK"){
+      let D=d<23?3:d<45?7:11; D=clamp(D,Math.max(1,lineX-13),Math.max(1.5,lineX-3));
+      if(d<16) D=Math.min(D,2);
+      let X=25+(bx-25)*clamp(D/Math.max(d,1),0,.5);
+      if(d<14&&wide){ D=1.5; X=25+side*1.5; }                   // near post, not glued to it
+      T[i]=[X,D]; return;
+    }
+    const isDF=c==="CD"||c==="SD"||c==="FB";
+    let D = isDF ? lineX-(!ballSide(i)&&Math.abs(off[i])>5?2:0)    // far-side defender a step deeper
+          : c==="ST" ? fwX : c==="AM" ? midX+3 : midX;              // wingers drop to the midfield line (守備時3-3-1)
+    const wcap=byAge(22,24,26); let X = clamp(cy+off[i]*byAge(.85,.93,1), bx-wcap, bx+wcap);                    // team width <= ~28m around the ball
+    if(Math.abs(bx-25)>8) X = side>0 ? Math.min(X,bx+1) : Math.max(X,bx-1);  // nobody outside the ball
+    T[i]=[X,D];
+  });
+  const crossD = d<16 && wide;                                    // defending a cross / cut-back
+  if(crossD){
+    // defenders stay in the box: ball-side back tucks in to the near post, CB centre, far-side back far post
+    const dfs=roles.map((_,i)=>i).filter(i=>["CD","SD","FB"].includes(cls[i])).sort((a,b)=>(T[b][0]-T[a][0])*side);
+    const spots=[25+side*4,25,25-side*4.5,25-side*8];            // near post -> far post
+    dfs.forEach((i,k)=>{ T[i]=[spots[Math.min(k,spots.length-1)],4+k*1.2]; });
+    roles.forEach((_,i)=>{
+      if(cls[i]==="PV") T[i]=[25+side*1.5,13.5];                   // steps up to the edge of the box: wins the clearance, blocks the shot
+      if((cls[i]==="WM"||cls[i]==="WF")&&!ballSide(i)) T[i]=[25-side*7,13];   // far side: edge of the box for the second ball
+    });
+  }
+  // first defender: goal side of the ball, showing it outside
+  let first=-1,bd=1e9;
+  roles.forEach((r,i)=>{ if(r==="GK")return;
+    // near our box the wide midfielder goes out to the crosser so the defenders can stay in the box
+    const keepIn = crossD && (["CD","SD","FB","PV"].includes(cls[i]));
+    const dd=Math.hypot(T[i][0]-bx,T[i][1]-d)+(keepIn?10:0); if(dd<bd){bd=dd;first=i;} });
+  const ux=25-bx, uy=0-d, ul=Math.hypot(ux,uy)||1;
+  T[first]=[bx+ux/ul*1.5-(wide?side*.5:0), d+uy/ul*1.5];
+  // second defender: covers 3-5m behind at an angle, inside
+  let second=-1; bd=1e9;
+  roles.forEach((r,i)=>{ if(r==="GK"||i===first)return; const dd=Math.hypot(T[i][0]-bx,T[i][1]-d); if(dd<bd){bd=dd;second=i;} });
+  if(second>=0 && !crossD){
+    const cd=d<23?4:d>45?6:5, inward=Math.sign(25-bx)||0;
+    if(d<12){ const lat=T[second][0]>=T[first][0]?1:-1; T[second]=[T[first][0]+lat*4.5, Math.max(1.5,T[first][1]-1)]; }   // no room behind near our goal: cover from the side
+    else T[second]=[T[first][0]+ux/ul*cd*.8+inward*cd*.6, T[first][1]+uy/ul*cd*.8];
+  }
+  // ball-side lane stays connected: full-back no more than 11m behind the wide midfielder (also when the WM presses)
+  if(!crossD){
+    const bsDF=roles.map((_,i)=>i).filter(i=>(cls[i]==="SD"||cls[i]==="FB")&&ballSide(i)&&Math.abs(off[i])>5&&i!==first&&i!==second);
+    const bsWM=roles.map((_,i)=>i).filter(i=>(cls[i]==="WM"||cls[i]==="WF")&&ballSide(i));
+    bsDF.forEach(a=>bsWM.forEach(b=>{ if(T[b][1]-T[a][1]>11) T[a][1]=T[b][1]-11; }));
+  }
+  // counter-press: a third player closes the ball from the other side
+  if(trans){
+    let third=-1; bd=1e9;
+    roles.forEach((r,i)=>{ if(r==="GK"||i===first||i===second||["CD","SD","FB"].includes(cls[i])||off[i]*side<-6)return; const dd=Math.hypot(T[i][0]-bx,T[i][1]-d); if(dd<bd){bd=dd;third=i;} });
+    if(third>=0){ const lat=Math.abs(bx-25)>8?-side:(T[third][0]>=bx?1:-1); T[third]=[bx+lat*3.5, d+1.5]; }
+    spread(T,[0,first],4);
+    return {P:toScreen(T),near:first};
+  }
+  if(gk){
+    // GK in possession: wide players take an in-between spot (between the full-back at the box corner and the winger),
+    // so a long ball from the GK to the winger can be intercepted; the two/three backs widen to cover the flanks
+    roles.forEach((r,i)=>{
+      const c=cls[i];
+      if(c==="WM"||c==="WF") T[i]=[off[i]<0?9:41, d-21];
+      if(c==="CD"||c==="SD"||c==="FB") T[i][0]=25+(T[i][0]-25)*1.35;
+    });
+    const out=()=>T.forEach((p,i)=>{ if(i>0) p[1]=Math.min(p[1],68-13); }); for(let k=0;k<3;k++){ out(); spread(T,[0],6); } out(); }   // stay outside the box (goal kick / GK in hands)
+  else spread(T,[0,first],crossD?4:6);
+  return {P:toScreen(T),near:first};
+}
+
+// ----- In possession -----
+// offL: distance (from this team's own goal) of the opponents' second-last defender = offside line
+function attackTeam(fid,bx,by,offL,trans,gk){
+  if(trans && 68-by<14) trans=false;                              // won it deep in our box: secure it first
+  const {roles,cls,off,side,ballSide}=teamSetup(fid,bx);
+  const d=68-by, Tt=side>0?50:0, zone=d<22.7?0:d<=45.3?1:2, wide=Math.abs(bx-25)>12;
+  const lim=Math.max(offL-1,d);
+  const hasWideWM=roles.some((r,i)=>(cls[i]==="WM"||cls[i]==="WF")&&ballSide(i)&&Math.abs(off[i])>10);
+  const nCD=cls.filter(c=>c==="CD").length;
+  const nST=cls.filter(c=>c==="ST").length;
+  const hasIM=cls.includes("IM")||cls.includes("AM");
+  const T=[];
+  roles.forEach((r,i)=>{
+    const c=cls[i], bs=ballSide(i); let X,D;
+    switch(c){
+      case "GK": if(zone===0){D=nCD===2?clamp(d-12,2,10):clamp(d-14,2,4);X=25+(bx-25)*.3;} else {D=clamp(d-30,4,22);X=25+(bx-25)*.2;} break;
+      case "CD":
+        if(nCD===1){X=25+(bx-25)*.25;D=clamp(d-16,9,36);}
+        else if(nCD===2){X=25+Math.sign(off[i])*(zone===0?10:8)+(bx-25)*.2;D=zone===0?clamp(d-4,4,14):clamp(d-18,10,36);}
+        else {X=25+Math.sign(off[i])*7+(bx-25)*.2;D=clamp(d-18,8,34);}
+        break;
+      case "SD": case "FB":
+        if(zone===0){X=off[i]<0?8:42;D=clamp(d-2,6,40);}
+        else if(bs&&!hasWideWM&&!wide){X=Tt-side*5;D=d-3;}                              // no wide midfielders (3-2-2): the back gives the width
+        else if(bs&&zone===1){ if(wide){X=bx-side*3;D=d-8;} else {X=Tt-side*6;D=d-6;} }   // middle third: behind the ball (wide ball) / keep width (central ball)
+        else if(bs){                                                                     // final third
+          const wingWide=Math.abs(bx-25)>=15;                                            // ball near the touchline = winger is wide
+          if(!wide){X=side>0?37:13;D=d-6;}                                               //   central ball: support from the half-space, behind it
+          else if(d>52){X=side>0?36:14;D=d-5;}                                           //   ball at the byline: cut-back support, never past the ball
+          else if(hasWideWM&&wingWide){X=side>0?37:13;D=d-3;}                            //   winger wide   -> full-back goes inside (underlap) 中村憲剛氏の5レーンの原則
+          else {X=Tt-side*4;D=Math.min(d+5,58);} }                                       //   winger inside -> full-back goes outside (overlap)
+        else {X=25-side*12;D=null;}                                                     // far side: tuck in, rest defence
+        break;
+      case "PV":
+        if(zone===0){D=d+8;X=25+(bx-25)*.4;}
+        else if(zone===1&&wide&&!hasIM){X=side>0?36:14;D=d-2;}                         // middle third: CH comes beside the ball in the half-space
+        else if(zone===2&&wide){D=Math.min(55,lim);X=25+side;}                         // edge of the box
+        else {D=d-11;X=25+(bx-25)*.4;}
+        break;
+      case "IM": case "AM":
+        if(zone===2&&wide){D=59;X=25+side*3;}                                          // cut-back zone
+        else if(zone===2){X=side>0?14:36;D=lim-3;}                                     // far half-space between the lines
+        else {X=side>0?36:14;D=d+8;}                                                    // ball-side half-space, ahead of the ball
+        break;
+      case "WM": case "WF":
+        if(bs&&Math.abs(off[i])>=5){X=Tt-side*byAge(6,5,4);D=clamp(d+byAge(6,7,7),15,lim);}                   // ball side: width, ~7m ahead of the ball
+        else if(zone===2&&d>48){D=63;X=25-side*4;}                                      // far side: attack the far post
+        else {X=side>0?byAge(10,6,4):50-byAge(10,6,4);D=d+2;}                          // U-11/12: full width for a switch, U-9/10: within a kid's pass                                                     // far side: width for a switch, but within a kid's pass (7m inside)
+        break;
+      case "ST": {
+        const primary = nST===1 || bs;
+        if(zone===2&&wide){ D=primary?63:60; X=primary?25+side*3:25-side*2; }          // near post / penalty spot
+        else { D=lim; X=25+(bx-25)*.3+(nST===2?(primary?side*4:-side*5):0); }
+        break; }
+    }
+    T[i]=[X,D];
+  });
+  // just won the ball: counter-attack. Forwards and wide players sprint forward, one runs in behind
+  if(trans){
+    roles.forEach((r,i)=>{
+      const c=cls[i];
+      if(c==="ST"){ T[i]=[25+(bx-25)*.2+(nST===2?(ballSide(i)?side*5:-side*6):0), lim]; }
+      else if(c==="WM"||c==="WF"){ T[i]=[off[i]<0?7:43, Math.min(lim,Math.max(T[i][1],d+14))]; }
+      else if(c==="IM"||c==="AM"){ T[i]=[25+side*4, Math.min(lim-2,d+10)]; }
+      else if(c==="PV"){ T[i]=[25+(bx-25)*.4, d-5]; }
+    });
+  }
+  // ball deep in our own third (near our goal line): safety first. CH steps up to the edge for the second ball,
+  // ball-side SH comes forward as the outlet, backs stay inside the box, far side does not drift to the corner
+  if(zone===0 && d<14 && !trans){
+    roles.forEach((r,i)=>{
+      const c=cls[i], bs=ballSide(i);
+      if(c==="GK") T[i]=[25+side*1.5,2];
+      else if(c==="CD") T[i]=[25+side*3+(nCD>1?Math.sign(off[i])*4:0),6];
+      else if(c==="SD"||c==="FB") T[i]= bs?[25+side*9,7]:[25-side*7,7];
+      else if(c==="PV") T[i]=[25+side*5,15];
+      else if(c==="IM"||c==="AM") T[i]=[25-side*3,17];
+      else if(c==="WM"||c==="WF") T[i]= bs?[Tt-side*4,Math.max(15,d+9)]:[25-side*15,20];
+      else if(c==="ST") T[i]=[25+side*3+(nST===2?(bs?side*3:-side*6):0),Math.max(30,d+20)];
+    });
+  }
+  // GK has the ball (goal kick / catch): backs split to the corners of the box, the holding mid drops to receive,
+  // wide players high and wide, forwards on the last line (スペイン流のビルドアップ。苦しければCFへ長いボール＝イングランド流)
+  if(gk){
+    const lineSt=Math.max(34,offL-1);
+    roles.forEach((r,i)=>{
+      const c=cls[i], sg=Math.sign(off[i])||1;
+      if(c==="GK") T[i]=[25,3];
+      else if(c==="CD") T[i]= nCD===1?[25,14]: nCD===2?[25+sg*byAge(10,12,13),7]: [25+sg*8,7];
+      else if(c==="SD") T[i]=[25+sg*byAge(12,14,15),9];
+      else if(c==="FB") T[i]=[25+sg*20,16];
+      else if(c==="PV") T[i]=[25,nCD===1?21:15];
+      else if(c==="IM"||c==="AM") T[i]=[25+sg*9,26];
+      else if(c==="WM"||c==="WF") T[i]=[sg<0?byAge(8,6,4):50-byAge(8,6,4),28];
+      else if(c==="ST") T[i]=[25+(nST===2?sg*6:0),lineSt];
+    });
+    T.forEach(p=>{ p[1]=Math.min(p[1],Math.max(offL-.4,34)); });
+    spread(T,[0],6);
+    return {P:toScreen(T),near:0};
+  }
+  if(zone===1&&wide&&!hasIM&&!trans){
+    roles.forEach((r,i)=>{
+      if(cls[i]==="CD"&&nCD===1&&T[i][1]!=null) T[i][1]+=4;                             // centre back steps up to cover the middle
+      if((cls[i]==="WM"||cls[i]==="WF")&&!ballSide(i)) T[i][0]+=side*3;                  // far-side midfielder tucks in
+    });
+  }
+  // far-side back players hold the same height as the centre backs (rest defence)
+  const cdD=T.filter((p,i)=>cls[i]==="CD").map(p=>p[1]); const restD=cdD.length?Math.min(...cdD):d-16;
+  T.forEach((p,i)=>{ if(p[1]===null) p[1]=restD+4; });             // far-side back: a little ahead of the CB, still insurance
+  // ball carrier: the player whose spot is closest to the ball
+  let near=-1,bd=1e9;
+  roles.forEach((r,i)=>{ if(r==="GK")return; const isDF=["CD","SD","FB"].includes(cls[i]);
+    const deep=zone===0&&d<14;                                     // deep in our third the ball-side back has it, SH goes forward
+    const dd=Math.hypot(T[i][0]-bx,T[i][1]-d)+(isDF&&zone>0?4:0)+(deep&&!isDF?8:0); if(dd<bd){bd=dd;near=i;} });
+  T[near]=[bx,d-1.8];
+  // at least two options within 10m of the ball
+  const within=()=>T.filter((p,i)=>i!==near&&i!==0&&Math.hypot(p[0]-bx,p[1]-d)<byAge(10,11,12)).length;
+  let guard=0;
+  while(within()<(trans?1:2) && guard++<3){
+    let best=-1,bd2=1e9;
+    T.forEach((p,i)=>{ if(i===near||i===0||(cls[i]==="CD"&&zone>0))return; const dd=Math.hypot(p[0]-bx,p[1]-d); if(dd>=byAge(10,11,12)&&dd<bd2){bd2=dd;best=i;} });
+    if(best<0) break;
+    const p=T[best], k=byAge(8,9,10)/bd2; T[best]=[bx+(p[0]-bx)*k, d+(p[1]-d)*k];
+  }
+  // stay onside (unless behind the ball or in own half)
+  const maxD=Math.max(offL-.4,d,34);
+  T.forEach((p,i)=>{ if(i!==near&&i!==0) p[1]=Math.min(p[1],maxD); });
+  spread(T,[0,near],byAge(6,6.5,7));
+  return {P:toScreen(T),near};
+}
+// near our box (cross / cut-back): every attacker in or around the box gets a defender on his goal side
+function markBox(fid,D,A,bx,by,presser){
+  const d=68-by; if(!(d<16 && Math.abs(bx-25)>12)) return D;
+  const cls=teamSetup(fid,bx).cls;
+  const threats=A.map((p,i)=>({i,p,dist:Math.hypot(p[0]-25,68-p[1])}))
+    .filter(t=>t.i!==0 && (68-t.p[1])<18 && Math.hypot(t.p[0]-bx,t.p[1]-by)>2.5)
+    .sort((a,b)=>a.dist-b.dist);                                   // most dangerous (closest to goal) first
+  const free=D.map((_,i)=>i).filter(i=>i!==0 && i!==presser && cls[i]!=="ST");   // CF stays up for the counter
+  threats.forEach(t=>{
+    if(!free.length) return;
+    let best=-1,bd=1e9; free.forEach(i=>{ const dd=Math.hypot(D[i][0]-t.p[0],D[i][1]-t.p[1]); if(dd<bd){bd=dd;best=i;} });
+    free.splice(free.indexOf(best),1);
+    const vx=25-t.p[0], vy=68-t.p[1], l=Math.hypot(vx,vy)||1;
+    D[best]=[t.p[0]+vx/l*1.6, t.p[1]+vy/l*1.6];
+  });
+  return D;
+}
+function markOwnBox(fid,P,Opp,bx,by,holder){
+  const d=68-by; if(d>=14) return P;
+  const cls=teamSetup(fid,bx).cls;
+  let presser=-1,bd=1e9; Opp.forEach((p,i)=>{ if(i===0)return; const dd=Math.hypot(p[0]-bx,p[1]-by); if(dd<bd){bd=dd;presser=i;} });
+  const threats=Opp.map((p,i)=>({i,p,dist:Math.hypot(p[0]-25,68-p[1])})).filter(t=>t.i!==0&&t.i!==presser&&(68-t.p[1])<13).sort((a,b)=>a.dist-b.dist);   // only players in/at our box
+  const free=P.map((_,i)=>i).filter(i=>i!==holder&&["CD","SD","FB"].includes(cls[i]));
+  threats.forEach(t=>{ if(!free.length) return;
+    let best=-1,b2=1e9; free.forEach(i=>{ const dd=Math.hypot(P[i][0]-t.p[0],P[i][1]-t.p[1]); if(dd<b2){b2=dd;best=i;} });
+    free.splice(free.indexOf(best),1);
+    const vx=25-t.p[0], vy=68-t.p[1], l=Math.hypot(vx,vy)||1; P[best]=[t.p[0]+vx/l*1.6, t.p[1]+vy/l*1.6]; });
+  return P;
+}
+function computeAuto(){
+  const bx=clamp(S.ball[0],.5,49.5), by=clamp(S.ball[1],.5,67.5), mir=([x,y])=>[50-x,68-y];   // a ball dragged off the pitch counts as on the line
+  let mineAtt;
+  if(S.poss==="mine") mineAtt=true;
+  else if(S.poss==="opp") mineAtt=false;
+  else { // whoever is closer to the ball has it
+    const dm=Math.min(...S.pos.mine.slice(1).map(p=>Math.hypot(p[0]-bx,p[1]-by)));
+    const dop=Math.min(...S.pos.opp.slice(1).map(p=>Math.hypot(p[0]-bx,p[1]-by)));
+    mineAtt = dm<=dop;
+  }
+  // offside line for the attackers = second-last defender (GK counts), measured from the attackers' own goal
+  const offLine=P=>{ const ys=P.map(p=>p[1]).sort((a,b)=>b-a); return ys[1]; };
+  const gk=!!S.gk;
+  if(mineAtt && gk){
+    const o=defendTeam(S.opp,50-bx,68-by,false,true);
+    const m=attackTeam(S.mine,bx,by,offLine(o.P),false,true);
+    S.pos.mine=m.P; S.pos.opp=o.P.map(mir); S.possession="mine"; return;
+  }
+  if(!mineAtt && gk){
+    const m=defendTeam(S.mine,bx,by,false,true);
+    const o=attackTeam(S.opp,50-bx,68-by,offLine(m.P),false,true);
+    S.pos.mine=m.P; S.pos.opp=o.P.map(mir); S.possession="opp"; return;
+  }
+  if(mineAtt){
+    const o=defendTeam(S.opp,50-bx,68-by,S.trans);
+    const m=attackTeam(S.mine,bx,by,offLine(o.P),S.trans);
+    o.P=markBox(S.opp,o.P,m.P.map(mir),50-bx,68-by,o.near);
+    m.P=markOwnBox(S.mine,m.P,o.P.map(mir),bx,by,m.near);
+    S.pos.mine=m.P; S.pos.opp=o.P.map(mir);
+  } else {
+    const m=defendTeam(S.mine,bx,by,S.trans);
+    const o=attackTeam(S.opp,50-bx,68-by,offLine(m.P),S.trans);
+    m.P=markBox(S.mine,m.P,o.P.map(mir),bx,by,m.near);
+    o.P=markOwnBox(S.opp,o.P,m.P.map(mir),50-bx,68-by,o.near);
+    S.pos.mine=m.P; S.pos.opp=o.P.map(mir);
+  }
+  S.possession=mineAtt?"mine":"opp";
+}
+let autoPending=false;
+function scheduleAuto(){
+  if(!S.auto||autoPending) return; autoPending=true;
+  requestAnimationFrame(()=>{ autoPending=false; computeAuto(); drawTeam("opp"); drawTeam("mine"); drawSelection(); updateAutoHint(); });
+}
+function updateAutoHint(){
+  const h=document.getElementById("autoHint"); if(!h) return;
+  updateScorebar();
+  if(!S.auto){ h.textContent=""; return; }
+  if(S.gk){ h.textContent = S.possession==="mine"
+      ? (kickSafe() ? "自チームGKのボール（"+S.grade+"）：まずは大きく前へ。近くの味方が完全にフリーのときだけつなぐ"
+                  : "自チームGKのボール：CBは左右に開いてエリアの角へ、CHが下りて受ける。SHは高く広く、CFは最前線。前からプレスされたらCFへ大きく（スペイン流＋イングランド流）")
+      : "相手GKのボール：エリアの外から前線でプレス。CFはCHへのコースを背中で消し、中盤は近くの相手を捕まえる";
+    return; }
+  const mineAtt=S.possession==="mine", dMine=68-S.ball[1];
+  let t;
+  if(mineAtt) t = S.trans ? "自チーム：奪った瞬間のカウンター。前の選手は一気に相手の背後へ（イングランド流）"
+    : dMine<14 ? (kickSafe() ? "自チーム（"+S.grade+"）：自陣深く。無理につながず大きく蹴る（タッチに出してもOK）。CHはエリアの外でこぼれ球"
+                           : "自チーム：自陣深くでボール保持。RH・CHが空いていればつなぐ、囲まれたら大きく。DFはゴール前の相手をマーク、CHはエリアの外でこぼれ球")
+    : dMine>45.3 ? "自チーム：ゴール前。ニア・ファー・折り返しの3か所に入る（イングランド流のクロス＋スペイン流の折り返し）"
+    : "自チーム：幅と三角形でボールを動かす。FWは相手DFの背後を狙い続ける（スペイン流＋イングランド流）";
+  else t = S.trans ? "自チーム：奪われた瞬間。近い3人で囲んですぐ奪い返す（スペイン流の即時奪回）"
+    : dMine<22.7 ? "自チーム：自陣ゴール前。コンパクトに固め、ニアとファーを埋める"
+    : dMine>45.3 ? "自チーム：相手陣でボールを奪いに行く前からのプレス（イングランド流）" : "自チーム：コンパクトなゾーンで、ボール側に寄せて逆は絞る（スペイン流）";
+  h.textContent = t + (S.poss==="auto"?"　※ボールに近いチームを保持側と判定":"");
+}
+
+// ---------- Matchup math ----------
+function matchup(a,b){
+  const A=F[a], B=F[b];
+  return {back:A.df-B.fw, mid:A.mf-B.mf, front:A.fw-B.df};
+}
+function rateBack(n){ return n<=0?["bad","危険：余りなし","MFを1人下げて後ろを+1に"] : n===1?["good","理想（+1）","1人はカバーに残す"] : ["warn","余りすぎ","1人を中盤に出せる"]; }
+function rateMid(n){ return n>0?["good","有利","中盤でボールを持てる"] : n===0?["warn","互角","1対1で負けない・サポート次第"] : ["bad","不利","相手のフリーマンに注意"]; }
+function rateFront(n){ return n>=0?["good","同数以上","相手DFにカバーがいない"] : n===-1?["warn","標準（−1）","FWはCBの間に立つ"] : ["bad","孤立","2列目の押し上げが必要"]; }
+const sgn = n => n>0?"+"+n:n===0?"±0":String(n);
+
+function advice(a,b){
+  const m=matchup(a,b), A=F[a], B=F[b], atk=[], def=[];
+  if(m.back>=2){ atk.push("後ろで"+m.back+"人余る → 余ったCBがドリブルで1列運ぶ。相手が寄ってきたらパス（ここに+1が生まれる）"); def.push("余ったDFを1人中盤に出し、相手の中盤のあまりを捕まえる"); }
+  if(m.back===1) def.push("後ろは理想の+1。1人は必ずカバーに残す");
+  if(m.back<=0) def.push("後ろが同数以下で危険 → 守備時はMFを1人下げて+1にする（例：3-3-1に変形）");
+  if(m.mid>0) atk.push("中盤で"+m.mid+"人多い → 「あまりの人」にボールを集めて保持する");
+  if(m.mid<0){ atk.push("中盤は不利 → 中盤を飛ばして縦に速く、またはサイドから"); def.push("相手の中盤のあまりは誰か？ 名前でマーク担当を決める（WG/FWが下がる、またはSBを押し上げる）"); }
+  if(m.mid===0) def.push("中盤は同数でマンツーマンになりやすい → 1対1で負けない、抜かれたら隣がカバー");
+  if(m.front>=0) atk.push("前線は相手DFと同数以上 → 縦に速いボールで1対1を仕掛ける");
+  if(m.front===-1) atk.push("前線は標準の−1 → FWは相手CBの間に立ち、2人を同時に止める");
+  if(m.front<=-2) atk.push("FWが孤立しやすい（"+sgn(m.front)+"）→ SHや2列目がFWを追い越す、SHがFWの横まで上がる");
+  if(B.df===2) atk.push("相手は2バックで幅を守れない → SHを大外高く＋SBのオーバーラップでサイド2対1。2バックの背中が一番の狙い目");
+  if(B.df>=4) atk.push("相手は4バックで引いて守る → ミドルシュート、サイドで数的優位を作る");
+  if(B.fw===2) def.push("相手2トップはCBとサイドCBの間（ハーフスペース）に立ちやすい → 誰が出るかを試合前に決める");
+  if(B.fw>=3) def.push("相手は3トップ → SBは同時に上がらない。WGへの縦パスを中盤が限定");
+  if(A.df===2) def.push("自分は2バック → ボールを失った瞬間にプレス。DF2人の前を必ず誰かが埋める");
+  if(A.fw===2) def.push("2トップは左右に分かれてパスコースを限定（同じ側に寄らない）");
+  return {m,atk,def,notes:NOTES[groupOf(a)+"|"+groupOf(b)]||null};
+}
+
+// ---------- Pitch rendering ----------
+const NS="http://www.w3.org/2000/svg";
+const svg=document.getElementById("pitch");
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function drawPitch(){
+  svg.innerHTML="";
+  const st="var(--chalk)";
+  // shared paint: team kits (soft 3D), keeper kits, floodlight vignette, goal net
+  const defs=el("defs",{},svg);
+  const grad=(id,c,hi)=>{ const g=el("radialGradient",{id,cx:"35%",cy:"30%",r:"75%"},defs);
+    el("stop",{offset:"0%",style:`stop-color:${hi}`},g); el("stop",{offset:"55%",style:`stop-color:${c}`},g); el("stop",{offset:"100%",style:`stop-color:${c};stop-opacity:.9`},g); };
+  grad("kitM","var(--accent)","#ffd2b8"); grad("kitO","var(--opp)","#cfe0ff"); grad("kitGM","#f6c71b","#fff3b8"); grad("kitGO","#b37bff","#eadbff");
+  const f=el("filter",{id:"tok",x:"-50%",y:"-50%",width:"200%",height:"200%"},defs);
+  el("feDropShadow",{dx:".15",dy:".35",stdDeviation:".35","flood-color":"#000","flood-opacity":".55"},f);
+  const v=el("radialGradient",{id:"vig",cx:"50%",cy:"50%",r:"70%"},defs);
+  el("stop",{offset:"60%",style:"stop-color:#000;stop-opacity:0"},v); el("stop",{offset:"100%",style:"stop-color:#000;stop-opacity:.35"},v);
+  const net=el("pattern",{id:"net",width:".6",height:".6",patternUnits:"userSpaceOnUse"},defs);
+  el("path",{d:"M0,0 L.6,.6 M.6,0 L0,.6",stroke:"rgba(255,255,255,.55)","stroke-width":".07"},net);
+  el("rect",{x:-3,y:-3,width:56,height:74,fill:"var(--grass-2)",rx:1.5},svg);
+  for(let i=0;i<7;i++) el("rect",{x:-3,y:i*68/7,width:56,height:68/14,fill:"var(--grass)"},svg);   // mow stripes
+  el("rect",{x:-3,y:-3,width:56,height:74,fill:"url(#vig)",rx:1.5,"pointer-events":"none"},svg);
+  // zone bands (my perspective)
+  const zg=el("g",{id:"zones"},svg);
+  el("rect",{id:"z-front",x:0,y:0,width:50,height:22.7,opacity:.3},zg);
+  el("rect",{id:"z-mid",x:0,y:22.7,width:50,height:22.6,opacity:.3},zg);
+  el("rect",{id:"z-back",x:0,y:45.3,width:50,height:22.7,opacity:.3},zg);
+  const g=el("g",{fill:"none",stroke:st,"stroke-width":.22},svg);
+  el("rect",{x:0,y:0,width:50,height:68},g);
+  el("line",{x1:0,y1:34,x2:50,y2:34},g);
+  el("circle",{cx:25,cy:34,r:7},g);
+  el("circle",{cx:25,cy:34,r:.3,fill:st},g);
+  [[0,1],[68,-1]].forEach(([gy,d])=>{
+    el("rect",{x:10.5,y:d>0?0:56,width:29,height:12},g);
+    el("rect",{x:18.5,y:d>0?0:64,width:13,height:4},g);
+    el("circle",{cx:25,cy:gy+d*8,r:.3,fill:st},g);
+    el("rect",{x:22.5,y:d>0?-1.6:68,width:5,height:1.6,fill:"url(#net)","stroke-width":.3},g);
+    // penalty arc (outside the box) and corner arcs
+    const py=gy+d*8, a=Math.acos(4/7), sx=25-7*Math.sin(a), ex=25+7*Math.sin(a), ey=gy+d*12;
+    el("path",{d:`M${sx.toFixed(2)},${ey} A7,7 0 0,${d>0?0:1} ${ex.toFixed(2)},${ey}`},g);
+    el("path",{d:`M0,${gy+d*1} A1,1 0 0,${d>0?0:1} 1,${gy}`},g); el("path",{d:`M49,${gy} A1,1 0 0,${d>0?0:1} 50,${gy+d*1}`},g);
+  });
+  const zl=el("g",{"font-size":"1.5","font-family":"var(--body)","font-weight":"700",fill:"rgba(255,255,255,.75)"},svg);
+  el("text",{x:-2.4,y:11.5,transform:"rotate(-90 -2.4 11.5)","text-anchor":"middle"},zl).textContent="前線";
+  el("text",{x:-2.4,y:34,transform:"rotate(-90 -2.4 34)","text-anchor":"middle"},zl).textContent="中盤";
+  el("text",{x:-2.4,y:56.6,transform:"rotate(-90 -2.4 56.6)","text-anchor":"middle"},zl).textContent="後ろ";
+  el("g",{id:"oppLayer"},svg); el("g",{id:"mineLayer"},svg);
+  el("g",{id:"drawLayer","pointer-events":"none"},svg);
+  const b=el("g",{class:"ball",id:"ball"},svg);
+  el("circle",{r:3,fill:"transparent"},b); // larger touch target
+  el("circle",{r:1.25,fill:"#fff",stroke:"#111","stroke-width":.22,filter:"url(#tok)"},b);
+  el("path",{d:"M0,-0.55 L0.52,-0.17 L0.32,0.45 L-0.32,0.45 L-0.52,-0.17 Z",fill:"#111"},b);
+  b.addEventListener("pointerdown",e=>{if(S.mode==="pen")return;const p=S.ball;startGenericDrag(e,b,(x,y)=>{p[0]=x;p[1]=y;
+    if(S.gk){ const g=S.poss==="opp"?[25,4.2]:[25,63.8]; if(Math.hypot(x-g[0],y-g[1])>6){ S.gk=false; document.getElementById("gkMode").checked=false; } }   // ball left the GK
+    scheduleAuto();});});
+}
+function drawBall(){
+  const b=document.getElementById("ball");
+  b.setAttribute("transform",`translate(${S.ball[0]} ${S.ball[1]})`);
+  b.style.display=S.showBall?"":"none";
+}
+function startGenericDrag(e,g,onMove){
+  try{g.setPointerCapture(e.pointerId);}catch(_){} g.classList.add("dragging"); e.preventDefault();
+  const mv=ev=>{const p=svgPoint(ev);const x=Math.max(-1.5,Math.min(51.5,p.x)),y=Math.max(-1.5,Math.min(69.5,p.y));onMove(x,y);g.setAttribute("transform",`translate(${x} ${y})`);};
+  const up=()=>{g.classList.remove("dragging");g.removeEventListener("pointermove",mv);g.removeEventListener("pointerup",up);g.removeEventListener("pointercancel",up);};
+  g.addEventListener("pointermove",mv);g.addEventListener("pointerup",up);g.addEventListener("pointercancel",up);
+}
+function zoneColor(cls){return cls==="good"?"var(--good)":cls==="warn"?"var(--warn)":"var(--bad)";}
+function drawZones(){
+  const m=matchup(S.mine,S.opp);
+  document.getElementById("z-back").setAttribute("fill",zoneColor(rateBack(m.back)[0]));
+  document.getElementById("z-mid").setAttribute("fill",zoneColor(rateMid(m.mid)[0]));
+  document.getElementById("z-front").setAttribute("fill",zoneColor(rateFront(m.front)[0]));
+}
+function drawTeam(side){
+  const layer=document.getElementById(side==="mine"?"mineLayer":"oppLayer");
+  const roles=F[S[side]].roles, pos=S.pos[side];
+  const fill=side==="mine"?"var(--accent)":"var(--opp)", ink=side==="mine"?"var(--accent-ink)":"var(--opp-ink)";
+  if(layer.children.length!==8 || layer.dataset.f!==S[side]){
+    layer.innerHTML=""; layer.dataset.f=S[side];
+    roles.forEach((r,i)=>{
+      const g=el("g",{class:"player","data-side":side,"data-i":i,tabindex:-1},layer);
+      el("circle",{r:1.9,fill:r==="GK"?(side==="mine"?"url(#kitGM)":"url(#kitGO)"):(side==="mine"?"url(#kitM)":"url(#kitO)"),"fill-opacity":.8,stroke:"rgba(255,255,255,.95)","stroke-width":.28,filter:"url(#tok)"},g);
+      el("text",{"text-anchor":"middle",y:.43,fill:r==="GK"?"#1a1406":ink,class:"plabel"},g);
+      if(side==="mine") el("text",{"text-anchor":"middle",y:3.5,class:"pname"},g);
+      g.style.transform=`translate(${pos[i][0]}px,${pos[i][1]}px)`;
+      g.addEventListener("pointerdown",startDrag);
+    });
+    // force layout then let transitions run for later moves
+    layer.getBoundingClientRect();
+  }
+  [...layer.children].forEach((g,i)=>{
+    g.style.transform=`translate(${pos[i][0]}px,${pos[i][1]}px)`;
+    const pl = side==="mine" ? playerById(R.lineup[i]) : null;
+    g.querySelector(".plabel").textContent = pl && pl.num!=="" ? pl.num : roles[i];
+    const nm=g.querySelector(".pname"); if(nm) nm.textContent = pl ? pl.name : "";
+  });
+  layer.style.display = side==="opp" && !S.showOpp ? "none" : "";
+}
+let drag=null;
+function svgPoint(evt){const p=svg.createSVGPoint();p.x=evt.clientX;p.y=evt.clientY;return p.matrixTransform(svg.getScreenCTM().inverse());}
+function startDrag(e){
+  if(S.mode==="pen") return;
+  const g=e.currentTarget; try{g.setPointerCapture(e.pointerId);}catch(_){} g.classList.add("dragging");
+  drag={g,side:g.dataset.side,i:+g.dataset.i,sx:e.clientX,sy:e.clientY}; e.preventDefault();
+  g.addEventListener("pointermove",moveDrag); g.addEventListener("pointerup",endDrag); g.addEventListener("pointercancel",endDrag);
+}
+function moveDrag(e){
+  if(!drag)return; const p=svgPoint(e);
+  const x=Math.max(0,Math.min(50,p.x)), y=Math.max(0,Math.min(68,p.y));
+  S.pos[drag.side][drag.i]=[x,y]; drag.g.style.transform=`translate(${x}px,${y}px)`;
+}
+function endDrag(e){
+  if(!drag)return; const g=drag.g; g.classList.remove("dragging");
+  g.removeEventListener("pointermove",moveDrag); g.removeEventListener("pointerup",endDrag); g.removeEventListener("pointercancel",endDrag);
+  const tap = e.type==="pointerup" && Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<6;
+  const {side,i}=drag; drag=null;
+  if(tap && side==="mine"){ S.selPos=i; S.tab="pos"; drawSelection(); renderPanel();
+    const c=document.getElementById("pos-"+i); if(c) c.scrollIntoView({behavior:"smooth",block:"nearest"}); }
+}
+function drawSelection(){
+  [...document.getElementById("mineLayer").children].forEach((g,i)=>{
+    g.querySelector("circle").setAttribute("stroke", i===S.selPos ? "#ffd23f" : "rgba(255,255,255,.9)");
+    g.querySelector("circle").setAttribute("stroke-width", i===S.selPos ? .55 : .25);
+  });
+}
+
+// ---------- Position guide ----------
+// key: role family. do = やるべきこと（攻撃/守備）, care = 気をつけること
+const POS = {
+ GK:{name:"ゴールキーパー",
+  atk:["DFが広がったら、GKも最後尾の11人目（8人目）として足でパスを受ける","相手FWがいない側のDFへ素早くつなぐ","ロングボールは「ひとつ前のゾーン」に蹴って味方に拾わせる"],
+  def:["DFラインの背後のスペースを守る（飛び出しの判断）","味方DFに「右！」「マーク！」と声で位置を伝える","シュートの角度を狭める立ち位置を取る"],
+  care:["手でボールを8秒より長く持つと、相手のコーナーキックになる（2025年度から）","前に出すぎてループシュートを打たれない","パスを受けるとき、相手FWの真正面に蹴らない"],
+  kid:"GKはチームで一番うしろの司令塔。声でみんなを動かそう"},
+ CB3:{name:"センターバック（3バックの真ん中）",
+  atk:["相手FWの横（あいている側）に立ってパスを受ける","前があいていたらドリブルで1列運ぶ（相手が寄ってきたらパス）","サイドのDFが上がったら、真ん中に残ってバランスを取る"],
+  def:["チャレンジ＆カバー：味方DFが相手に寄せたら、その斜め後ろでカバー","相手FWと味方GKの間に立つ","ラインの上げ下げの声を出す"],
+  care:["横パスを相手FWの前に出さない（取られると即失点）","ボールばかり見て、背後に走る相手を見失わない","3人が横一列にならない（少し段差をつける）"],
+  kid:"真ん中のDFは「最後の砦」。ボールと相手の両方を見よう"},
+ CB2:{name:"センターバック（2バック）",
+  atk:["2人で幅を取り、GKと三角形を作ってパスを回す","相手のプレスが1人なら、あいている方がドリブルで運ぶ","前に出るのは1人だけ。もう1人は必ず残る"],
+  def:["相手FWと1対1になる場面が多い。簡単に飛び込まず、遅らせる","1人が寄せたら、もう1人はカバー","サイドに引っ張られたら、MFに中を埋めてもらう"],
+  care:["2人の両脇と背中のスペースが弱点","2人同時に前へ出ない（カウンターで0人になる）","ロングボールの落下点を早く予測する"],
+  kid:"2人でひとつ。1人が行ったら、1人は残る"},
+ CB4:{name:"センターバック（4バック）",
+  atk:["SBが上がったら、残りの3人でスライドしてバランスを取る","ボールを持ったら1トップへの縦パスかサイドへ"],
+  def:["ゴール前を固め、低い位置で奪う","DFラインの手前（ミドルシュートを打たれる場所）にも誰かが出る"],
+  care:["ラインが下がりすぎない（シュートを打たれ放題になる）","全員がボールに寄って中が空かない"],
+  kid:"ゴール前で負けない。でもシュートは打たせない位置に"},
+ SB3:{name:"サイドのDF（3バックの左右）",
+  atk:["SHと2人組でサイドを崩す（どちらが幅を取るか決める）","オーバーラップ（外から追い越す）とインナーラップ（内側を追い越す）を使い分ける","CBがボールを持ったら、サイドに広がってパスコースを作る"],
+  def:["相手のサイドの選手に対応し、中に入れさせない","逆サイドにボールがあるときは中に絞る"],
+  care:["左右のサイドDFが同時に上がらない（片方が上がったら、もう片方は残る）","上がった後、取られたら全力で戻る","相手2トップがCBとの間に立つと、誰が出るか迷いやすい→事前に決めておく"],
+  kid:"上がるのは片方だけ。上がったら、取られた瞬間に戻ろう"},
+ SB4:{name:"サイドバック（4バック）",
+  atk:["攻撃時はオーバーラップでサイドに数的優位を作る","1トップへの縦パス、またはSHへのパス"],
+  def:["相手のサイドアタッカーへの対応","中を締めて、CBとの間を空けない"],
+  care:["SBが1人上がったら残り3人がスライド。2人同時に上がらない","上がりっぱなしにしない"],
+  kid:"行くときは思い切って、戻るときも全力で"},
+ SH:{name:"サイドハーフ",
+  atk:["大外の高い位置で幅を取る（相手DFを広げる）","足元で受けるか、裏へ走るかを相手DFを見て決める","SBとの2人組で2対1を作る。逆サイドにボールがあるときはゴール前に入る"],
+  def:["相手のサイドの選手を見る。ボールが逆サイドなら中に絞る","守備時は下がって4バック気味になる場面もある"],
+  care:["運動量が一番多いポジション。攻守の切り替えで止まらない","中に入りすぎて幅がなくならない","SBと縦一列に並ばない（斜めの関係を作る）"],
+  kid:"サイドは攻めも守りも全部やる。切り替えを一番速く"},
+ CH:{name:"センターハーフ（中盤の真ん中）",
+  atk:["DFからパスを受けて、逆サイドへ展開する","SHが持ったら、DFラインの背後へ飛び出す","相手のライン間（MFとDFの間）で前を向いて受ける"],
+  def:["中央のパスコースを消す（チームのへそ）","ボールサイドへスライドし、中を空けない"],
+  care:["ボランチ役だけにすると攻撃が薄くなる。飛び出しのタイミングを持つ","受ける前に首を振ってまわりを見る","中央で取られるとピンチ直結。無理なドリブルは避ける"],
+  kid:"真ん中の人は首ふり名人。受ける前にまわりを見よう"},
+ CM:{name:"センターハーフ（2人の中盤）",
+  atk:["2人は縦関係（1人が少し低め）で段差を作る","低い方は散らす、高い方は前へ飛び出す","サイドに流れて2対1を作る"],
+  def:["2人で中央を閉じる。横と縦のスライドが必要","低い方はDFの前を必ず埋める"],
+  care:["2人が横一列に並ばない","2人とも前に出ると、DFの前がぽっかり空く","運動量の負担が大きいので交代も活用"],
+  kid:"2人で1人が前、1人が後ろ。同じ高さに並ばない"},
+ DM:{name:"アンカー／守備的MF",
+  atk:["DFとFWをつなぐ中継役。左右にボールを散らす","CBが運んだら、空いたスペースに立ち位置を変える"],
+  def:["DFラインの前を必ず埋める（ここが空くと一気にピンチ）","ボールを失ったら、DFの間に下りて3バックにする形もある"],
+  care:["自分の横のスペースを使われやすい。SHやCMに戻ってもらう声を出す","前に出すぎない"],
+  kid:"アンカーはチームの「へそ」。いつもDFの前にいよう"},
+ OH:{name:"トップ下",
+  atk:["相手のDFとMFの間（ライン間）で受け、前を向く","FWを追い越す、DFの裏へ飛び出す","ラストパスとミドルシュート"],
+  def:["相手のアンカー（ボランチ）へのパスコースを消す","取られたらすぐに奪い返す"],
+  care:["ボールを受けたいからと下がりすぎない","守備をサボると中盤で数的不利になる"],
+  kid:"相手の「すきま」で受けて、前を向こう"},
+ CF:{name:"センターフォワード（1トップ）",
+  atk:["相手CB2人の間に立って、2人とも動けなくする","楔（くさび）のパスを受けて、味方に落とす","裏へ抜ける動きで相手DFラインを下げる"],
+  def:["相手CBの間から、中央のパスコースを背中で消す（影の守備）","片側にボールを追い込み、味方に奪わせる"],
+  care:["孤立しやすい。1人で無理に仕掛け続けない（2列目を待つ判断も）","オフサイドに注意（8人制にもオフサイドあり）"],
+  kid:"パスの道を背中で隠そう。取られたら一番先に守るのはFW"},
+ FW2:{name:"フォワード（2トップ）",
+  atk:["1人が手前に降りる、もう1人は裏を狙う（引く・抜ける）","相手CBとサイドDFの間（ハーフスペース）に立って迷わせる","ワンツー、斜めの走り込みでコンビを作る"],
+  def:["2人で左右に分かれてパスコースを限定する","奪いに行くより、追い込んで2列目に奪わせる"],
+  care:["2人が同じ場所に寄らない","同じ動き（2人とも降りる／2人とも裏）をしない","守備をしないと押し込まれる"],
+  kid:"2人で反対の動き。1人が来たら、1人は行く"},
+ WG:{name:"ウイング（3トップの左右）",
+  atk:["幅いっぱいに張って、相手サイドDFと1対1を作る","逆サイドにボールがあるときはファーサイドに入る","裏へ抜けてクロスかシュート"],
+  def:["取られたら必ず中盤まで戻る（守備時は3-3-1）","相手サイドDFの縦パスを限定"],
+  care:["戻らないと中盤が空洞になり、3対4で崩される","幅を取り続けるため、中に入りすぎない"],
+  kid:"攻めでは一番外、取られたら一番早く戻る"}
+};
+// Spain (位置で崩す・即時奪回) x England (縦への速さ・球際・クロス) — one tip each per position
+const STYLE = {
+ GK:{es:"足でパスを受けて、空いている味方へつなぐ。GKもビルドアップの1人",en:"取ったら素早く投げて・蹴ってカウンターの起点に。ハイボールは前に出て強く処理"},
+ CB3:{es:"前が空いていたらドリブルで1列運び、相手を引きつけてからパス",en:"1対1で簡単に抜かれない。ロングボールの競り合いとこぼれ球で負けない"},
+ CB2:{es:"2人とGKで三角形を作り、慌てずにつなぐ",en:"背後へのボールに先に反応。カバーの声を出して、2人でゴール前を守る"},
+ CB4:{es:"SBが上がったら3人でずれて、横パスで逆サイドへ展開",en:"ゴール前のクロスはまず跳ね返す。こぼれ球に一番に反応"},
+ SB3:{es:"SHが大外なら内側を回る（インナーラップ）。同じレーンに縦に並ばない",en:"SHが内側に入ったら外を回る（オーバーラップ）。クロスまでやり切る"},
+ SB4:{es:"内側に入って中盤の数を増やすことも",en:"タッチライン沿いを何度も上下。クロスの質で勝負"},
+ SH:{es:"大外いっぱいに張って相手DFを広げる。逆サイドにいる時も幅を保つ",en:"縦への1対1で仕掛ける。逆サイドの時はファーへ全力で走り込む"},
+ CH:{es:"受ける前に首を振る。相手の間で前を向いて受ける",en:"奪われたらすぐ切り替えて球際で戦う。こぼれ球を拾う"},
+ CM:{es:"2人で段差を作り、ボールの斜め後ろでいつもパスコースになる",en:"前の選手を追い越して、ゴール前に遅れて入る"},
+ DM:{es:"いつも「ボールとゴールを結ぶ線」の上でパスを受けられる位置に",en:"相手のカウンターの芽をつむ。ファウルにならないように遅らせる"},
+ OH:{es:"相手のMFとDFの間（ライン間）で前を向く。第3の動きでパスを引き出す",en:"ミドルシュートを狙う。こぼれ球に詰める"},
+ CF:{es:"下りて受けて、空いた背中に2列目を走らせる",en:"相手DFの背中を何度も狙い、最終ラインを押し下げる。ニアに飛び込む"},
+ FW2:{es:"1人が下りたら1人は裏。2人で相手CBを迷わせる",en:"前から2人で追い込み、相手のミスを奪ってすぐシュート"},
+ WG:{es:"大外で幅を取り、相手DFを1対1の状況に孤立させる",en:"奪ったら真っ先に前へ。カウンターで一番速く走る"}
+};
+const PRINCIPLES = [
+ {phase:"攻撃（ボールを持っている）",
+  es:["幅と深さ：両サイドは大外いっぱい、FWは相手DFの背後ぎりぎり","同じレーンに縦に並ばない。いつも三角形でパスコースを2つ以上","GK・CBから運ぶドリブルで「あまり」を作って前進","相手のMFとDFの間（ライン間）で前を向いて受ける","第3の動き：AとBがパス交換している間にCが背後へ"],
+  en:["前が空いていたら迷わず縦へ。横パスより前へのパスを先に探す","FWは何度も背後を狙って、相手の最終ラインを下げる","ゴール前はニア・ファー・折り返しの3か所に入る","セットプレー（CK・FK）で点を取る形を持つ"],
+  kid:"「広がって、三角形。前が空いたら一気に行こう」",
+  app:"自動スライドでは、SHが幅を取り、SBが内か外を追い越し、CFは相手の最終ラインに立ちます。ゴール前ではニア・ファー・折り返し・エリア手前に入ります。"},
+ {phase:"守備（ボールを持っていない）",
+  es:["コンパクトなゾーン：横は約35m、DF〜FWは約20mにまとまる","ボール側に寄せて、逆サイドは中に絞る","チャレンジ＆カバー：1人が寄せたら、もう1人は斜め後ろ"],
+  en:["相手陣にボールがあるときは前から追う（プレスの合図：バックパス、タッチライン方向へのパス）","球際で負けない。1対1は飛び込まずに遅らせて、奪えるときに奪う","クロスはまず跳ね返す"],
+  kid:"「みんなでボールの方へ。1人が行ったら1人はうしろ」",
+  app:"自動スライドでは、相手陣ではラインを上げて前からプレス、自陣ではコンパクトにまとまって、寄せる人とカバーする人を自動で決めます。"},
+ {phase:"攻撃から守備への切り替え（奪われた瞬間）",
+  es:["即時奪回：奪われたら5秒間、近い3人で囲んで奪い返す","ふだんから近い距離でパスをつないでいるから、すぐ囲める"],
+  en:["奪い返せなければ、すぐに全力で戻って守備の形を作る","ファウルで止める判断（危険な位置以外）"],
+  kid:"「取られたら、すぐ取り返す。ダメならすぐ戻る」",
+  app:"「切り替えの瞬間」にチェックを入れて相手ボールにすると、近い3人がボールを囲み、ラインは下がらずに高いまま保ちます。"},
+ {phase:"守備から攻撃への切り替え（奪った瞬間）",
+  es:["1本目は安全に。前が無理なら落ち着いてボールを持つ攻撃に切り替える"],
+  en:["カウンター：奪った瞬間、前の選手とSHは一気に相手の背後へ","3本以内のパスでシュートまで行く"],
+  kid:"「取ったら前を見る。行けるなら一気にゴールへ」",
+  app:"「切り替えの瞬間」にチェックを入れて自チームボールにすると、FWとSHが一気に前へ走り、相手の背後を狙います。"}
+];
+function renderStyle(){
+  return `<div class="card">
+    <div class="vs"><span class="m">スペイン</span><small>×</small><span class="o">イングランド</span></div>
+    <p class="foot">このアプリは、スペイン流（位置で崩す・すぐ奪い返す）とイングランド流（縦への速さ・球際・クロス）のいいとこ取りで動きと説明を作っています。</p>
+    ${PRINCIPLES.map(pr=>`<div class="principle">
+      <h3>${esc(pr.phase)}</h3>
+      <div class="grid2">
+        <div><span class="chip es">スペイン流</span>${list(pr.es)}</div>
+        <div><span class="chip en">イングランド流</span>${list(pr.en)}</div>
+      </div>
+      <div class="kid"><b>子どもへの一言：</b>${esc(pr.kid)}</div>
+      <p class="foot"><b>アプリでは：</b>${esc(pr.app)}</p>
+    </div>`).join("")}
+  </div>`;
+}
+function posKey(fid,role){
+  const f=F[fid];
+  if(role==="GK") return "GK";
+  if(role==="CB") return f.df===2?"CB2":f.df===4?"CB4":"CB3";
+  if(role==="LB"||role==="RB") return f.df===4?"SB4":"SB3";
+  if(role==="LH"||role==="RH") return "SH";
+  if(role==="LW"||role==="RW") return "WG";
+  if(role==="FW") return "FW2";
+  return role; // CH, CM, DM, OH, CF
+}
+// formation-specific reminders
+const POS_EXTRA = {
+ "3-3-1":{LB:"相手がサイドに2人来たら、SHと2対2で対応",CF:"前線は1対3。2列目（SH・CH）の飛び出しを待つ判断も"},
+ "2-3-2":{CH:"ボールを取られたら、DFラインに入って3バックにする",LH:"相手スローインのときは下がって3-3-1",RH:"相手スローインのときは下がって3-3-1"},
+ "2-4-1":{CM:"取られたら、低い方のCMがDFの間に下りて3バックに",LH:"プレスが弱いとDFラインに吸収される。高い位置を保つ",RH:"プレスが弱いとDFラインに吸収される。高い位置を保つ"},
+ "2-1-2-1":{DM:"取られたらDFの間に下りて3バックに",OH:"守備時はSHと横に並んで3-3-1の中盤に"},
+ "3-2-2":{CM:"2人の負担が一番大きい。中盤で数的不利になりやすいので、サイドDFが1人押し上げて助ける",FW:"奪いに行くより、コースを限定。奪うのは2列目"},
+ "3-1-2-1":{LB:"右SBが攻めているときは、左SBは上がらない",RB:"左SBが攻めているときは、右SBは上がらない",LH:"守備時は外に開いて3-3-1",RH:"守備時は外に開いて3-3-1"},
+ "3-1-3":{DM:"中盤に1人だけ。WGが戻るまで、ボールに飛び込まず遅らせる",LW:"守備時は中盤まで戻って3-3-1",RW:"守備時は中盤まで戻って3-3-1"},
+ "4-2-1":{LB:"1人が上がったら残り3人でスライド",RB:"1人が上がったら残り3人でスライド",CF:"カウンターの起点。単独で行くか、キープして待つかを判断"}
+};
+function renderPositions(){
+  const f=F[S.mine], ex=POS_EXTRA[S.mine]||{};
+  const seen=new Set();
+  const cards=f.roles.map((r,i)=>{
+    const k=posKey(S.mine,r), p=POS[k], pl=playerById(R.lineup[i]);
+    const sel=i===S.selPos, first=!seen.has(k); seen.add(k);
+    return `<div class="poscard${sel?" sel":""}" id="pos-${i}">
+      <div class="poshead"><span class="rolechip">${r}</span><b>${esc(p.name)}</b>${pl?`<span class="foot">${pl.num!==""?esc(pl.num)+" ":""}${esc(pl.name)}</span>`:""}</div>
+      ${sel||first?`
+      ${ex[r]?`<div class="extra"><b>${esc(nameOf(S.mine))}では：</b>${esc(ex[r])}</div>`:""}
+      <div class="grid2">
+        <div><h3><span class="chip atk">攻撃</span>やるべきこと</h3>${list(p.atk)}</div>
+        <div><h3><span class="chip def">守備</span>やるべきこと</h3>${list(p.def)}</div>
+      </div>
+      <div><h3><span class="chip warnchip">注意</span>気をつけること</h3>${list(p.care)}</div>
+      <div class="kid"><b>子どもへの一言：</b>「${esc(p.kid)}」</div>
+      ${STYLE[k]?`<div class="styletips"><div><span class="chip es">スペイン流</span>${esc(STYLE[k].es)}</div><div><span class="chip en">イングランド流</span>${esc(STYLE[k].en)}</div></div>`:""}`
+      :`<p class="foot">${ex[r]?`<b>${esc(nameOf(S.mine))}では：</b>${esc(ex[r])}　`:""}内容は上の同じポジションと共通です。</p>`}
+    </div>`;
+  }).join("");
+  return `<div class="card">
+    <div class="vs"><span class="m">${esc(nameOf(S.mine))}</span><small>のポジション別ガイド</small></div>
+    <p class="foot">ピッチ上の自チームの選手をタップすると、そのポジションに移動します。</p>
+    <div class="poslist">${cards}</div>
+  </div>`;
+}
+function wirePositions(){}
+
+// ---------- Panel ----------
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const list=a=>"<ul>"+a.map(x=>"<li>"+esc(x)+"</li>").join("")+"</ul>";
+const nameOf=id=>LABEL[id]||id;
+function meter(zone,sub,n,r){return `<div class="meter ${r[0]}"><div class="zone">${zone}<small>${sub}</small></div><div class="num">${sgn(n)}</div><div class="desc"><b>${r[1]}</b>${r[2]}</div></div>`;}
+function renderMatch(){
+  const a=advice(S.mine,S.opp), m=a.m, A=F[S.mine], B=F[S.opp];
+  return `<div class="card">
+    <div class="vs"><span class="m">${esc(nameOf(S.mine))}</span><small>vs</small><span class="o">${esc(nameOf(S.opp))}</span></div>
+    <div class="meters">
+      ${meter("後ろ",`自DF${A.df} − 相手FW${B.fw}`,m.back,rateBack(m.back))}
+      ${meter("中盤",`自MF${A.mf} − 相手MF${B.mf}`,m.mid,rateMid(m.mid))}
+      ${meter("前線",`自FW${A.fw} − 相手DF${B.df}`,m.front,rateFront(m.front))}
+    </div>
+    ${a.notes?`<div><h3><span class="chip note">研究メモ</span>この組み合わせのポイント</h3>${list(a.notes)}</div>`:""}
+    <div class="grid2">
+      <div><h3><span class="chip atk">攻撃</span>こう攻める</h3>${list(a.atk)}</div>
+      <div><h3><span class="chip def">守備</span>こう守る</h3>${list(a.def)}</div>
+    </div>
+    <div class="kid"><b>ハーフタイムの一言：</b>「${m.back>=2?"後ろで余っている人はだれ？ 空いていたらドリブルで運ぼう":m.mid<0?"相手のあまりの人はだれ？ だれがつくか決めよう":m.front<=-2?"FWをひとりにしない。SHはFWの横まで行こう":"パスの道を背中で隠そう。取られたらすぐ奪い返そう"}」</div>
+    <p class="foot">数字はフォーメーションの人数から計算（ドラッグした位置は反映されません）。日本の資料に噛み合わせの解説はほぼ無く、人数カウントからの導出です。</p>
+  </div>`;
+}
+function renderFormation(id,isMine){
+  const f=F[id];
+  return `<div class="card">
+    <div class="vs"><span class="${isMine?"m":"o"}">${esc(nameOf(id))}</span></div>
+    <div class="tag">${esc(f.tag)}</div>
+    <div>${f.grade.map(g=>`<span class="grade">${g}</span>`).join("")}<span class="foot"> おすすめ学年</span></div>
+    <div class="grid2">
+      <div><h3>強み</h3>${list(f.strengths)}</div>
+      <div><h3>弱み</h3>${list(f.weaknesses)}</div>
+    </div>
+    <div class="grid2">
+      <div><h3><span class="chip atk">攻撃</span>攻め方</h3>${list(f.attack)}</div>
+      <div><h3><span class="chip def">守備</span>守り方</h3>${list(f.defense)}</div>
+    </div>
+    <div class="kid"><b>${isMine?"チームの約束":"相手の約束（ここが崩れたら狙い目）"}：</b>${esc(f.rule)}</div>
+    <p><span class="label">守備時の形</span><br>${esc(f.defNote)}</p>
+    <p><span class="label">向いているチーム</span><br>${esc(f.suits)}</p>
+  </div>`;
+}
+// ---------- Roster (saved in the artifact's database; falls back to this device) ----------
+const R = {players:[], lineup:[null,null,null,null,null,null,null,null]};
+let rosterDoc=null, saveMode="local";
+const playerById = id => id ? R.players.find(p=>p.id===id) || null : null;
+function loadLocal(){ try{const v=JSON.parse(localStorage.getItem("roster8")||"null"); if(v&&Array.isArray(v.players)){R.players=v.players;R.lineup=(v.lineup||[]).concat(Array(8).fill(null)).slice(0,8);} }catch(e){} }
+function saveRoster(){
+  const body={players:R.players, lineup:R.lineup};
+  try{localStorage.setItem("roster8",JSON.stringify(body));}catch(e){}
+  if(rosterDoc) rosterDoc.set(body).catch(()=>{ saveMode="local-only"; if(S.tab==="roster") renderPanel(); });
+}
+async function connectDb(){
+  try{
+    const db = await window.claude?.use?.("db");
+    if(!db) return;
+    rosterDoc = db.doc("team/roster"); saveMode="db";
+    rosterDoc.onSnapshot(snap=>{
+      if(!snap.exists){ if(R.players.length) saveRoster(); return; }
+      const d=snap.data();
+      R.players=(d.players||[]).map(p=>({...p}));
+      R.lineup=(d.lineup||[]).concat(Array(8).fill(null)).slice(0,8);
+      drawTeam("mine"); if(S.tab==="roster") renderPanel();
+    });
+    if(S.tab==="roster") renderPanel();
+  }catch(e){}
+}
+function renderRoster(){
+  const roles=F[S.mine].roles;
+  const opts=sel=>`<option value="">（未設定）</option>`+R.players.map(p=>`<option value="${esc(p.id)}"${p.id===sel?" selected":""}>${p.num!==""?esc(p.num)+" ":""}${esc(p.name)}</option>`).join("");
+  return `<div class="card">
+    <div><h3>選手を登録</h3></div>
+    <form class="addrow" id="addForm" autocomplete="off">
+      <div class="field numf"><label for="pNum">背番号</label><input type="number" id="pNum" min="0" max="99" inputmode="numeric"></div>
+      <div class="field"><label for="pName">名前</label><input type="text" id="pName" maxlength="12" placeholder="例：たろう" required></div>
+      <button class="primary" type="submit">追加</button>
+    </form>
+    ${R.players.length?`<div class="roster">${R.players.map(p=>`<div class="pl"><span class="no">${p.num!==""?esc(p.num):"-"}</span><span class="nm">${esc(p.name)}</span><button data-del="${esc(p.id)}" aria-label="${esc(p.name)}を削除">✕</button></div>`).join("")}</div>`:`<p class="foot">まだ選手がいません。名前（と背番号）を入れて「追加」を押してください。</p>`}
+    <div><h3>スタメン（${esc(nameOf(S.mine))}）</h3><p class="foot">ポジションに選手を割り当てると、ピッチに背番号と名前が出ます。割り当てはフォーメーションを変えても順番どおりに引き継がれます。</p></div>
+    <div class="lineup">${roles.map((r,i)=>`<label class="slot"><b>${r}</b><select data-slot="${i}" id="slot${i}">${opts(R.lineup[i])}</select></label>`).join("")}</div>
+    <p class="status">${saveMode==="db"?"保存先：このアプリ（どの端末から開いても同じ選手リスト）":"保存先：この端末のブラウザのみ"}</p>
+  </div>`;
+}
+function wireRoster(){
+  const f=document.getElementById("addForm"); if(!f) return;
+  f.addEventListener("submit",e=>{
+    e.preventDefault();
+    const name=document.getElementById("pName").value.trim(); if(!name) return;
+    const num=document.getElementById("pNum").value.trim();
+    R.players.push({id:"p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,num});
+    saveRoster(); renderPanel(); drawTeam("mine");
+    document.getElementById("pName").focus();
+  });
+  document.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{
+    const id=b.dataset.del; R.players=R.players.filter(p=>p.id!==id); R.lineup=R.lineup.map(x=>x===id?null:x);
+    saveRoster(); renderPanel(); drawTeam("mine");
+  }));
+  document.querySelectorAll("[data-slot]").forEach(s=>s.addEventListener("change",()=>{
+    const i=+s.dataset.slot, v=s.value||null;
+    if(v) R.lineup=R.lineup.map((x,j)=>x===v&&j!==i?null:x); // one player, one slot
+    R.lineup[i]=v; saveRoster(); renderPanel(); drawTeam("mine");
+  }));
+}
+
+// ---------- Pen (freehand arrows) ----------
+function pathD(p){
+  if(p.length<3) return "M"+p.map(q=>q[0].toFixed(2)+","+q[1].toFixed(2)).join(" L");
+  let d=`M${p[0][0].toFixed(2)},${p[0][1].toFixed(2)}`;
+  for(let i=1;i<p.length-1;i++){const mx=(p[i][0]+p[i+1][0])/2,my=(p[i][1]+p[i+1][1])/2;d+=` Q${p[i][0].toFixed(2)},${p[i][1].toFixed(2)} ${mx.toFixed(2)},${my.toFixed(2)}`;}
+  const l=p[p.length-1]; return d+` L${l[0].toFixed(2)},${l[1].toFixed(2)}`;
+}
+function arrowHead(p){
+  const e=p[p.length-1]; let k=p.length-2;
+  while(k>0 && Math.hypot(e[0]-p[k][0],e[1]-p[k][1])<1.8) k--;
+  const a=Math.atan2(e[1]-p[k][1],e[0]-p[k][0]), s=1.5, w=.5;
+  const pt=t=>[e[0]+Math.cos(a+t)*s*(t?1:0),e[1]+Math.sin(a+t)*s*(t?1:0)];
+  const L=[e[0]-Math.cos(a-w)*s,e[1]-Math.sin(a-w)*s], R=[e[0]-Math.cos(a+w)*s,e[1]-Math.sin(a+w)*s];
+  const tip=[e[0]+Math.cos(a)*.35,e[1]+Math.sin(a)*.35];
+  return `M${tip[0].toFixed(2)},${tip[1].toFixed(2)} L${L[0].toFixed(2)},${L[1].toFixed(2)} L${R[0].toFixed(2)},${R[1].toFixed(2)} Z`;
+}
+function strokeEl(st,parent,withHead){
+  const g=el("g",{},parent);
+  el("path",{d:pathD(st.pts),fill:"none",stroke:"rgba(0,0,0,.35)","stroke-width":.85,"stroke-linecap":"round","stroke-linejoin":"round","stroke-dasharray":st.dash?"1.1 1.1":"none"},g);
+  const main=el("path",{d:pathD(st.pts),fill:"none",stroke:st.color,"stroke-width":.5,"stroke-linecap":"round","stroke-linejoin":"round","stroke-dasharray":st.dash?"1.1 1.1":"none"},g);
+  if(withHead) el("path",{d:arrowHead(st.pts),fill:st.color,stroke:"rgba(0,0,0,.35)","stroke-width":.15},g);
+  return g;
+}
+function drawStrokes(){
+  const layer=document.getElementById("drawLayer"); layer.innerHTML="";
+  S.draw.forEach(st=>strokeEl(st,layer,true));
+}
+let cur=null, curEl=null;
+function penDown(e){
+  if(S.mode!=="pen") return;
+  e.preventDefault(); try{svg.setPointerCapture(e.pointerId);}catch(_){}
+  const p=svgPoint(e); cur={pts:[[p.x,p.y]],color:S.pen.color,dash:S.pen.dash};
+}
+function penMove(e){
+  if(!cur) return;
+  const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+  for(const ev of (evs.length?evs:[e])){
+    const p=svgPoint(ev), l=cur.pts[cur.pts.length-1];
+    if(Math.hypot(p.x-l[0],p.y-l[1])>.35) cur.pts.push([p.x,p.y]);
+  }
+  if(curEl) curEl.remove();
+  curEl=strokeEl(cur,document.getElementById("drawLayer"),cur.pts.length>3);
+}
+function penUp(){
+  if(!cur) return;
+  let len=0; for(let i=1;i<cur.pts.length;i++) len+=Math.hypot(cur.pts[i][0]-cur.pts[i-1][0],cur.pts[i][1]-cur.pts[i-1][1]);
+  if(len>1.5) S.draw.push({...cur,pts:cur.pts.map(q=>[+q[0].toFixed(2),+q[1].toFixed(2)])});
+  cur=null; if(curEl){curEl.remove();curEl=null;} drawStrokes();
+}
+svg.addEventListener("pointerdown",penDown);
+svg.addEventListener("pointermove",penMove);
+svg.addEventListener("pointerup",penUp);
+svg.addEventListener("pointercancel",penUp);
+
+// ---------- Saved boards ----------
+const B = {list:[], col:null, mode:"local", msg:"", confirmDel:null};
+function loadLocalBoards(){ try{const v=JSON.parse(localStorage.getItem("boards8")||"[]"); if(Array.isArray(v)) B.list=v;}catch(e){} }
+function saveLocalBoards(){ try{localStorage.setItem("boards8",JSON.stringify(B.list));}catch(e){} }
+function snapshotBoard(name){
+  return {name, savedAt:Date.now(), mine:S.mine, opp:S.opp, phase:S.phase, poss:S.poss, auto:S.auto, gk:!!S.gk, grade:S.grade, showOpp:S.showOpp, showBall:S.showBall,
+    ball:S.ball.map(v=>+v.toFixed(2)), pos:{mine:S.pos.mine.map(q=>q.map(v=>+v.toFixed(2))), opp:S.pos.opp.map(q=>q.map(v=>+v.toFixed(2)))},
+    draw:S.draw};
+}
+async function saveBoard(name,id){
+  const body=snapshotBoard(name);
+  if(B.col){
+    try{ if(id) await B.col.doc(id).set(body); else await B.col.doc().set(body); B.msg=`「${name}」を保存しました`; }
+    catch(e){ B.msg="保存できませんでした。通信を確認してもう一度押してください"; }
+  }else{
+    if(id){ B.list=B.list.map(b=>b.id===id?{...body,id}:b); } else { B.list.unshift({...body,id:"b"+Date.now().toString(36)}); }
+    saveLocalBoards(); B.msg=`「${name}」を保存しました`;
+  }
+  if(S.tab==="boards") renderPanel();
+}
+async function deleteBoard(id){
+  if(B.col){ try{ await B.col.doc(id).delete(); }catch(e){ B.msg="削除できませんでした"; } }
+  else { B.list=B.list.filter(b=>b.id!==id); saveLocalBoards(); }
+  B.confirmDel=null; if(S.tab==="boards") renderPanel();
+}
+function openBoard(b){
+  S.mine=F[b.mine]?b.mine:S.mine; S.opp=F[b.opp]?b.opp:S.opp; S.phase=b.phase||"base";
+  S.showOpp=b.showOpp!==false; S.showBall=b.showBall!==false;
+  S.ball=b.ball?[...b.ball]:[25,34];
+  S.pos.mine=(b.pos&&b.pos.mine||F[S.mine][S.phase]).map(q=>[...q]);
+  S.pos.opp=(b.pos&&b.pos.opp||F[S.opp][oppPhase(S.phase)].map(([x,y])=>[50-x,68-y])).map(q=>[...q]);
+  S.draw=(b.draw||[]).map(st=>({...st,pts:st.pts.map(q=>[...q])}));
+  selMine.value=S.mine; selOpp.value=S.opp;
+  document.querySelectorAll(".seg [data-phase]").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.phase===S.phase)));
+  document.getElementById("showOpp").checked=S.showOpp; document.getElementById("showBall").checked=S.showBall;
+  S.poss=b.poss||"mine"; S.auto=!!b.auto; document.getElementById("autoSlide").checked=S.auto;
+  S.gk=!!b.gk; document.getElementById("gkMode").checked=S.gk;
+  if(b.grade){ S.grade=b.grade; Dx.grade=b.grade; document.getElementById("gradeSel").value=b.grade; }
+  document.querySelectorAll("[data-poss]").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.poss===S.poss)));
+  B.msg=`「${b.name}」を開きました`;
+  renderAll();
+}
+function fmtDate(ms){const d=new Date(ms);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;}
+function renderBoards(){
+  return `<div class="card">
+    <div><h3>いまの配置を保存</h3><p class="foot">フォーメーション・選手の位置・ボール・書いた矢印をまとめて保存します。</p></div>
+    <form class="saverow" id="saveForm" autocomplete="off">
+      <div class="field"><label for="bName">名前</label><input type="text" id="bName" maxlength="30" placeholder="例：右サイドの2対1" required></div>
+      <button class="primary" type="submit">保存</button>
+    </form>
+    ${B.msg?`<p class="toast" role="status">${esc(B.msg)}</p>`:""}
+    ${B.list.length?`<div class="boards">${B.list.map(b=>`<div class="bd">
+      <div class="info"><b>${esc(b.name)}</b><small>${esc(nameOf(b.mine))} vs ${esc(nameOf(b.opp))} ・ ${(b.draw||[]).length}本の矢印 ・ ${fmtDate(b.savedAt)}</small></div>
+      <button class="open" data-open="${esc(b.id)}">開く</button>
+      <button data-over="${esc(b.id)}">上書き</button>
+      ${B.confirmDel===b.id?`<button class="danger" data-del2="${esc(b.id)}">本当に削除</button><button data-cancel="1">やめる</button>`:`<button class="danger" data-delb="${esc(b.id)}">削除</button>`}
+    </div>`).join("")}</div>`:`<p class="foot">保存した配置はまだありません。ピッチで配置を作ってから名前を付けて保存してください。</p>`}
+    <p class="status">${B.col?"保存先：このアプリ（どの端末から開いても同じ）":"保存先：この端末のブラウザのみ"}</p>
+  </div>`;
+}
+function wireBoards(){
+  const f=document.getElementById("saveForm"); if(!f) return;
+  f.addEventListener("submit",e=>{e.preventDefault();const n=document.getElementById("bName").value.trim();if(n) saveBoard(n,null);});
+  const byId=id=>B.list.find(b=>b.id===id);
+  document.querySelectorAll("[data-open]").forEach(x=>x.addEventListener("click",()=>{const b=byId(x.dataset.open);if(b)openBoard(b);}));
+  document.querySelectorAll("[data-over]").forEach(x=>x.addEventListener("click",()=>{const b=byId(x.dataset.over);if(b)saveBoard(b.name,b.id);}));
+  document.querySelectorAll("[data-delb]").forEach(x=>x.addEventListener("click",()=>{B.confirmDel=x.dataset.delb;B.msg="";renderPanel();}));
+  document.querySelectorAll("[data-del2]").forEach(x=>x.addEventListener("click",()=>deleteBoard(x.dataset.del2)));
+  document.querySelectorAll("[data-cancel]").forEach(x=>x.addEventListener("click",()=>{B.confirmDel=null;renderPanel();}));
+}
+async function connectBoards(){
+  try{
+    const db=await window.claude?.use?.("db"); if(!db) return;
+    B.col=db.collection("boards");
+    B.col.orderBy("savedAt","desc").onSnapshot(qs=>{
+      B.list=qs.docs.map(d=>({...d.data(),id:d.id}));
+      if(S.tab==="boards") renderPanel();
+    });
+  }catch(e){}
+}
+
+// ---------- Training menus ----------
+const GRADES=["U-9","U-10","U-11","U-12"];
+const THEMES=["攻撃","守備","切り替え","ビルドアップ","1対1","試合形式","ウォームアップ"];
+// style: es = スペイン流, en = イングランド流, both
+const DRILLS=[
+ {id:"wu-tag",name:"ボールタッチ＋しっぽ取り鬼ごっこ",theme:["ウォームアップ"],grade:["U-9","U-10"],style:"both",min:10,players:"全員",area:"20×20m",
+  how:["全員がボールを1個ずつ持ち、ドリブルしながらしっぽ（ビブス）を取り合う","取られたら1回リフティングかボールタッチ10回で復帰","後半は鬼役を2人にしてボールを奪いに行かせる"],
+  points:["顔を上げてまわりを見る","ボールを体の近くに置く","空いているスペースへ動く"],kid:"顔を上げて、空いているところへ！"},
+ {id:"wu-rondo41",name:"ロンド 4対1（鳥かご）",theme:["ウォームアップ","ビルドアップ"],grade:["U-9","U-10","U-11","U-12"],style:"es",min:10,players:"5人1組",area:"8×8m",
+  how:["四角の4辺に1人ずつ、真ん中に鬼1人","2タッチ以内でパスを回す。鬼が触ったら交代","慣れたら1タッチや、間を通すパスにボーナス"],
+  points:["パスを受ける前に体の向きを作る（開いて受ける）","ボールを持っている人の両隣はいつもパスコースになる","鬼の足が届かない側の足に出す"],kid:"となりの人はいつもパスコース。開いて受けよう"},
+ {id:"rondo52",name:"ロンド 5対2＋中央フリーマン",theme:["ビルドアップ","攻撃"],grade:["U-10","U-11","U-12"],style:"es",min:12,players:"7〜8人",area:"12×12m",
+  how:["外に4人、中に味方1人（フリーマン）と鬼2人","中のフリーマンを経由したら1点","鬼がボールを奪ったら、ミスした人と交代"],
+  points:["鬼2人の間（ライン間）で受ける","3人目の動き：AからBに出ている間にCが空く","奪われた瞬間は外の人もすぐ奪い返しに行く"],kid:"鬼と鬼のあいだで受けたら勝ち"},
+ {id:"pos3lane",name:"3レーン・ポゼッション 4対4＋2",theme:["攻撃","ビルドアップ"],grade:["U-11","U-12"],style:"es",min:15,players:"10人",area:"30×25m（縦に3レーン）",
+  how:["4対4＋両サイドのレーンに味方側になるフリーマン2人","同じレーンに味方が3人入ったら相手ボール","10本パスがつながったら1点"],
+  points:["幅を取る（両サイドのレーンを使う）","縦に同じレーンに並ばない（三角形を作る）","逆サイドへ展開するタイミング"],kid:"広がって三角形。同じ線に並ばない"},
+ {id:"build32",name:"ビルドアップ 3対2→ゴール",theme:["ビルドアップ"],grade:["U-11","U-12"],style:"es",min:15,players:"GK＋CB2＋FW2＋攻撃側MF1",area:"ハーフコート",
+  how:["GKとCB2人（＋MF1人）でボールを持ち、相手FW2人のプレスを外す","ハーフウェーラインのミニゴール2つにドリブルで通過したら1点","FWが奪ったらそのままゴールを狙う"],
+  points:["GKも足で受ける3人目のCB","相手が来ない側のCBが運ぶ（あまりを使う）","苦しいときは前に蹴る判断もOK"],kid:"空いている人が運ぼう。GKも仲間"},
+ {id:"side21",name:"サイドの2対1（オーバーラップ／インナーラップ）",theme:["攻撃"],grade:["U-10","U-11","U-12"],style:"both",min:15,players:"SH＋SB＋DF1＋中にFW",area:"サイドのレーン（縦30m）",
+  how:["SHとSBの2人で、DF1人を突破してクロスか折り返し","SHが外にいたらSBは内側を、SHが内側に入ったらSBは外を回る","中にFW1〜2人を置いてシュートまで"],
+  points:["追い越す人の声（「中！」「外！」）","DFを引きつけてからパス","クロスはニア・ファー・折り返しのどこを狙うか決める"],kid:"1人を2人でやっつけよう。声を出して追い越す"},
+ {id:"box3",name:"ゴール前の3か所（ニア・ファー・折り返し）",theme:["攻撃"],grade:["U-10","U-11","U-12"],style:"en",min:15,players:"6〜8人＋GK",area:"ペナルティエリア周辺",
+  how:["サイドからのクロス（またはグラウンダーの折り返し）に3人が入る","ニア・ファー・ペナルティマーク付近の3か所を役割分担","DFを1〜2人入れて実戦に近づける"],
+  points:["3人が同じ場所に入らない","ボールを見てから走り出すタイミング（早すぎない）","ファーの選手は最後まであきらめずに詰める"],kid:"ニア、ファー、まんなか。3人で別々の場所へ"},
+ {id:"v1goal",name:"1対1 ゴールへ（攻守）",theme:["1対1"],grade:["U-9","U-10","U-11","U-12"],style:"en",min:12,players:"2人1組",area:"15×20m＋小ゴール",
+  how:["コーチのパスで攻撃1人、守備1人がスタート","攻撃はゴールかラインをドリブル突破","攻守を交代しながら繰り返す"],
+  points:["攻撃：スピードの変化と方向の変化","守備：飛び込まずに遅らせて、外へ追い出す","守備：奪える瞬間（トラップが大きくなった時）を逃さない"],kid:"守備は飛び込まない。外へ追い出してから取る"},
+ {id:"cover22",name:"2対2＋カバー（チャレンジ＆カバー）",theme:["守備"],grade:["U-10","U-11","U-12"],style:"both",min:15,players:"4人1組＋GK",area:"20×25m",
+  how:["2対2でゴールを狙う","守備は1人が寄せたら、もう1人は斜め後ろでカバー","ボールが動いたら役割を入れ替える"],
+  points:["寄せる人：ゴール側に立って外へ追い出す","カバーの人：抜かれたらすぐ行ける距離（3〜5m）","声で役割を伝える（「行け！」「カバー！」）"],kid:"1人が行ったら、1人はうしろ"},
+ {id:"slide-shadow",name:"ボール側スライドの動き確認（シャドー）",theme:["守備"],grade:["U-10","U-11","U-12"],style:"es",min:10,players:"チーム7人＋GK",area:"ハーフコート",
+  how:["コーチがボールを持って左右・前後に動く","チーム全員がボールの位置に合わせてスライドする","合図で止まり、立ち位置を確認する（アプリの自動スライドを見せてから行うと効果的）"],
+  points:["ボール側に寄せる、逆サイドは絞る","DF〜FWの距離をコンパクトに保つ","寄せる人とカバーの人がすぐ決まるか"],kid:"みんなでボールの方へ。逆の人は中へ"},
+ {id:"press-trigger",name:"プレスの合図ゲーム 4対4＋GK",theme:["守備"],grade:["U-11","U-12"],style:"en",min:15,players:"8人＋GK2",area:"30×25m",
+  how:["守備側は相手のバックパスやタッチライン方向へのパスを合図に一斉にプレス","合図から5秒以内に奪えたら守備側に1点","攻撃側は普通にゴールを狙う"],
+  points:["合図（バックパス、横パス、背中を向けた受け）を見逃さない","FWはパスコースを背中で消しながら寄せる","1人だけで行かず、2人目・3人目も連動"],kid:"バックパスはチャンス。みんなで一気に行こう"},
+ {id:"regain5",name:"5秒即時奪回ゲーム 4対4",theme:["切り替え"],grade:["U-10","U-11","U-12"],style:"es",min:15,players:"8人",area:"25×20m＋小ゴール4つ",
+  how:["4対4のミニゲーム","ボールを奪われてから5秒以内に奪い返したら1点","5秒を過ぎたら全員で守備の形に戻る"],
+  points:["奪われた瞬間に一番近い人がすぐ寄せる","近くの2人も囲みに行く（3人で囲む）","奪えないときはすぐ戻る判断"],kid:"取られたら5秒で取り返す！"},
+ {id:"counter",name:"カウンターゲーム 4対3（3本以内でシュート）",theme:["切り替え","攻撃"],grade:["U-11","U-12"],style:"en",min:15,players:"7〜8人＋GK",area:"ハーフコート",
+  how:["守備側4人が奪ったら、3本以内のパスでシュートまで","攻撃側は奪われたらすぐ戻る","役割を交代して繰り返す"],
+  points:["奪った瞬間に前を見る","FWとSHは一気に相手の背後へ","ボールを持った人は数的優位を作ってからパス"],kid:"取ったら前！ 3本でシュートまで"},
+ {id:"run32",name:"裏抜け＆2列目の飛び出し 3対2",theme:["攻撃"],grade:["U-11","U-12"],style:"en",min:15,players:"5人＋GK",area:"縦30m×横25m",
+  how:["攻撃3人（MF・FW・SH）対DF2人","FWが下りて受け、空いたDFの背後へMFが飛び出す","オフサイドあり"],
+  points:["FWは相手DFの背中ぎりぎりに立つ","下りる人と抜ける人が逆の動き","パスを出す人は顔を上げて走る人を見る"],kid:"1人が下りたら、1人は裏へ"},
+ {id:"ssg4v4",name:"4対4 ミニゲーム（4ゴール）",theme:["試合形式"],grade:["U-9","U-10"],style:"both",min:20,players:"8人",area:"20×30m＋小ゴール4つ",
+  how:["JFAが小学校低〜中学年に勧める少人数ゲーム","各チームが2つのゴールを攻め、2つを守る","審判は置かず、子どもたちで判断する"],
+  points:["空いているゴールを探す（逆サイドを見る）","サポートの距離（ボールから離れる）","シュートを打つ意識"],kid:"空いているゴールはどっち？"},
+ {id:"game8",name:"8対8 条件付きゲーム",theme:["試合形式"],grade:["U-10","U-11","U-12"],style:"both",min:20,players:"16人",area:"68×50m（8人制コート）",
+  how:["その日のテーマに合わせて条件を付けた試合","例：奪ってから3本以内のゴールは2点／全員が敵陣にいる時のゴールは2点","例：サイドの2対1から生まれたゴールは2点"],
+  points:["その日の練習で覚えたことを試合で出す","コーチは止めすぎない。ハーフタイムに1つだけ伝える","ポジションのローテーション（GK含む）"],kid:"今日練習したことを、試合で1回やってみよう"}
+];
+// ---- more drills: technique, finishing, goalkeeping, set pieces, coordination ----
+DRILLS.push(
+ {id:"shot-dribble",name:"ドリブルからのシュート（左右の足）",theme:["シュート"],grade:["U-9","U-10","U-11","U-12"],style:"en",min:12,players:"2列＋GK",area:"ペナルティエリア周辺",
+  how:["2列に並び、交互にドリブルからシュート","右の列は右足、左の列は左足で打つ","慣れたらコーチがDF役で後ろから追いかける"],
+  points:["シュートの前に顔を上げてGKの位置を見る","GKが寄った反対側（ファー）へ低く","最後まで足首を固める"],kid:"打つ前にGKを見る。ファーへ低く！"},
+ {id:"shot-onetwo",name:"ワンツーからのシュート",theme:["シュート","攻撃"],grade:["U-10","U-11","U-12"],style:"es",min:15,players:"3人1組＋GK",area:"縦25m",
+  how:["攻撃・壁役・DF（最初は軽く）の3人","DFに向かってドリブル→壁役に当てて、DFの背後でもらい直してシュート","役割を交代して繰り返す"],
+  points:["DFを引きつけてからパス（早すぎない）","パスを出したらすぐ走る（出して終わりにしない）","壁役はDFの背後へ落とす"],kid:"出したら走る。DFの後ろでもらい直そう"},
+ {id:"pass-tri",name:"三角形パス（体の向き・ファーストタッチ）",theme:["パス","ウォームアップ"],grade:["U-9","U-10","U-11","U-12"],style:"es",min:10,players:"3人1組",area:"1辺10mの三角形",
+  how:["3人で三角形を作ってパスを回す","受ける前に体を開き、次に出す方向へファーストタッチ","合図で逆回り、慣れたら2タッチ→1タッチ"],
+  points:["ボールが来る前に体の向きを作る（開いて受ける）","止める足は出す方向と反対の足","パスの強さ：味方の前の足に"],kid:"受ける前に体を開こう"},
+ {id:"pass-turn",name:"対面パス→首を振ってターン",theme:["パス","1対1"],grade:["U-9","U-10","U-11","U-12"],style:"es",min:12,players:"3人1組",area:"縦20m",
+  how:["出し手・受け手・後ろに相手（最初は立っているだけ）","受け手は受ける前に首を振って後ろを確認","空いていればターンして前へ、相手が近ければ出し手に落とす"],
+  points:["首を振る回数（受ける前に2回）","ターンは相手と反対の足で","無理にターンしない判断もOK"],kid:"もらう前に後ろを見る！空いていたら前を向こう"},
+ {id:"dribble-cone",name:"コーンドリブル→1対1",theme:["ドリブル","1対1"],grade:["U-9","U-10","U-11"],style:"both",min:12,players:"2列",area:"縦30m",
+  how:["ジグザグのコーンをドリブルで抜ける","抜けたところでDFと1対1、ミニゴールへ","左右の足、インサイド・アウトサイドを使い分ける"],
+  points:["ボールを体の近くに置く（細かいタッチ）","コーンを抜けたらスピードを上げる","DFの前で一度止まらずに仕掛ける"],kid:"細かく運んで、抜けたら一気に！"},
+ {id:"dribble-land",name:"陣取りドリブル（ゴールラインを突破）",theme:["ドリブル","ウォームアップ"],grade:["U-9","U-10"],style:"en",min:12,players:"6〜8人",area:"25×20m",
+  how:["ボールを持った攻撃側が反対のラインをドリブルで突破すれば1点","真ん中の守備（鬼）はボールを外に出す","取られたら守備と交代"],
+  points:["空いているところを探す","鬼が来たら方向転換・スピードの変化","守備は2人で挟む"],kid:"空いているところ、どこ？"},
+ {id:"gk-dist",name:"GK：キャッチ＆配球（スロー・キック）",theme:["GK","ビルドアップ"],grade:["U-9","U-10","U-11","U-12"],style:"es",min:12,players:"GK＋3〜4人",area:"ハーフコート",
+  how:["コーチのシュートをキャッチしたら素早く配球","近くのCBへは転がすスロー、遠くのSHへはキック","バックパスは足で受けて、空いている方へ"],
+  points:["キャッチは胸の前で両手（ボールの後ろに体）","配球は「早く・正確に」。相手が戻る前に","足で受けるときは体を開いて逆サイドも見る"],kid:"取ったらすぐ前を見る。空いている人へ"},
+ {id:"gk-1v1",name:"GK：1対1の飛び出し",theme:["GK","守備"],grade:["U-10","U-11","U-12"],style:"en",min:12,players:"GK＋FW数人",area:"ペナルティエリア",
+  how:["FWがドリブルでゴールへ向かう","GKは角度を消しながら前へ出て、シュートの瞬間は止まって構える","FWのタッチが大きくなったら飛び込んで取る"],
+  points:["ボールとゴールの中央を結ぶ線上に立つ","走りながら構えない（打たれる瞬間は止まる）","低く構え、手は体の横"],kid:"近づいて、打つ瞬間は止まる！"},
+ {id:"sp-ck",name:"セットプレー：コーナーキック",theme:["セットプレー","攻撃"],grade:["U-10","U-11","U-12"],style:"en",min:15,players:"6〜8人＋GK",area:"ゴール前",
+  how:["ニア・ファー・中央・エリアの外（こぼれ球）の役割を決める","キッカーの合図で一斉に動き出す","守備側をつけて、こぼれ球のカウンター対応まで"],
+  points:["動き出しは遅らせて、相手のマークを外す","ニアで触ってファーへ流す形も","1人は必ず後ろに残る（カウンター対策）"],kid:"合図で一斉に！1人はうしろ"},
+ {id:"sp-throw",name:"セットプレー：スローインから3人目",theme:["セットプレー","パス"],grade:["U-9","U-10","U-11","U-12"],style:"es",min:10,players:"4〜5人",area:"タッチライン沿い",
+  how:["受け手は一度離れてから戻って受ける（チェックの動き）","受けたらすぐ近くの味方（3人目）へ","投げた人もすぐピッチに入ってサポート"],
+  points:["投げる人は相手の逆を取って足元へ","受け手は体を開いて前を見る","投げたら止まらない"],kid:"離れてから戻る。投げたらすぐ入る"},
+ {id:"sp-fk",name:"セットプレー：フリーキックとこぼれ球",theme:["セットプレー","シュート"],grade:["U-11","U-12"],style:"en",min:12,players:"5〜6人＋GK",area:"ゴール前",
+  how:["8人制は壁まで7m。キッカーと、こぼれ球に詰める2人を決める","キッカーは壁の外か上、GKの逆を狙う","GKがはじいたら詰める選手が押し込む"],
+  points:["詰める選手はオフサイドに注意してから走る","キッカーは助走の向きで狙いを隠す","守備側は壁の人数と、こぼれ球担当を決める"],kid:"打ったら全員でこぼれ球へ！"},
+ {id:"coord-react",name:"コーディネーション：ラダー＆反応ダッシュ",theme:["コーディネーション","ウォームアップ"],grade:["U-9","U-10","U-11","U-12"],style:"both",min:10,players:"全員",area:"20×15m",
+  how:["ラダー（またはマーカー）のステップで素早い足さばき","コーチの合図（色・数字）で指定のコーンへダッシュ","2人で競争にすると盛り上がる"],
+  points:["かかとをつけずに母指球で","合図を見てから動く（フライングしない）","ゴールデンエイジ前の神経系トレーニング"],kid:"見てから、すぐ動く！"},
+ {id:"switch64",name:"サイドチェンジ 6対4（逆サイドへ）",theme:["攻撃","ビルドアップ"],grade:["U-11","U-12"],style:"es",min:15,players:"10人",area:"40×28m",
+  how:["6人がボールを持ち、4人が奪いに来る","相手がボール側に寄ったら、中央を経由して逆サイドへ","逆サイドで受けて前を向けたら1点"],
+  points:["一度ボール側に人を集めて相手を寄せる","逆サイドの選手は幅を取って待つ（パスが届く距離）","中央の選手は体を開いて両方を見る"],kid:"寄ってきたら、逆が空いている！"},
+ {id:"ssg3v3",name:"3対3 ライン突破ゲーム",theme:["攻撃","守備","1対1"],grade:["U-9","U-10","U-11","U-12"],style:"both",min:15,players:"6人",area:"25×20m",
+  how:["相手のゴールラインをドリブルで突破したら1点","攻撃は幅と深さ、守備はチャレンジ＆カバー","奪ったらすぐ反対へ攻める"],
+  points:["攻撃：1人が持ったら2人は三角形の位置","守備：寄せる人とカバーの人を声で決める","切り替えの速さ"],kid:"1人が行ったら1人はうしろ。取ったらすぐ攻める"},
+ {id:"def32",name:"守備：数的不利の3対2",theme:["守備"],grade:["U-11","U-12"],style:"both",min:15,players:"5人＋GK",area:"ハーフコート",
+  how:["攻撃3人に対してDF2人とGK","DFは遅らせて、中を締め、外へ追い出す","味方が戻ってくるまで時間を稼ぐ（6秒など）"],
+  points:["飛び込まない。ボールに1人、もう1人は中央","パスコースを背中で消しながら下がる","GKと声で連携（「打たせていい」「中！」）"],kid:"飛び込まない。時間をかせげば味方が来る"},
+ {id:"cooldown",name:"クールダウン：リフティング＆ストレッチ",theme:["コンディショニング"],grade:["U-9","U-10","U-11","U-12"],style:"both",min:10,players:"全員",area:"どこでも",
+  how:["ゆっくりリフティング（足・もも・頭は軽く）","ペアでゆっくりパス交換","最後に下半身中心のストレッチ（各20〜30秒）"],
+  points:["息を整える","今日の練習で良かったことを1つずつ話す","水分補給"],kid:"今日できるようになったこと、1つ教えて"}
+);
+THEMES.push("シュート","パス","ドリブル","GK","セットプレー","コーディネーション","コンディショニング");
+const T_=(id)=>DRILLS.find(d=>d.id===id)||Dx.custom.find(d=>d.id===id)||null;
+// drill suggestions from the current matchup
+function recommendDrills(){
+  const m=matchup(S.mine,S.opp), B=F[S.opp], out=[];
+  const add=(id,why)=>{ if(!out.some(o=>o.id===id)) out.push({id,why}); };
+  if(m.back<=0) add("cover22","後ろが同数（"+sgn(m.back)+"）→ カバーの約束が大事");
+  if(m.mid<0){ add("rondo52","中盤で数的不利（"+sgn(m.mid)+"）→ 狭い所でも取られない"); add("counter","中盤を飛ばして縦に速く"); }
+  if(m.mid>0) add("pos3lane","中盤で数的有利（"+sgn(m.mid)+"）→ ボールを持って崩す");
+  if(m.front<=-2) add("run32","FWが孤立しやすい（"+sgn(m.front)+"）→ 2列目の飛び出し");
+  if(B.df===2) add("side21","相手は2バック → サイドの2対1が狙い目");
+  if(B.fw>=2) add("cover22","相手は"+B.fw+"トップ → 2対2で負けない");
+  if(m.back>=2) add("build32","後ろで余る（"+sgn(m.back)+"）→ 余った人が運ぶビルドアップ");
+  if(m.front<=-2) add("shot-onetwo","前線が少ない → 2列目がワンツーで飛び出してシュート");
+  if(m.mid<0) add("pass-turn","中盤で不利 → 首を振って前を向く技術");
+  if(B.df===2) add("switch64","相手は2バック → 寄せてから逆サイドへ");
+  if(B.fw>=2) add("def32","相手の前線が多い → 数的不利でも時間をかせぐ守備");
+  add("regain5","奪われた瞬間の即時奪回（スペイン流）");
+  return out;
+}
+const Dx={grade:"U-11", theme:"all", name:"", items:[], sessions:[], custom:[], scol:null, ccol:null, msg:"", confirmDel:null, cmsg:""};
+try{ const v=JSON.parse(localStorage.getItem("sessions8")||"[]"); if(Array.isArray(v)) Dx.sessions=v; }catch(e){}
+try{ const v=JSON.parse(localStorage.getItem("drills8")||"[]"); if(Array.isArray(v)) Dx.custom=v; }catch(e){}
+const saveLocalDx=()=>{ try{localStorage.setItem("sessions8",JSON.stringify(Dx.sessions));localStorage.setItem("drills8",JSON.stringify(Dx.custom));}catch(e){} };
+function autoSession(total){
+  const g=Dx.grade, low=g==="U-9"||g==="U-10", ok=id=>T_(id)&&T_(id).grade.includes(g);
+  const rec=recommendDrills().map(r=>r.id).filter(id=>ok(id)&&id!=="regain5");
+  const mids=[...new Set(rec)].slice(0,total>=90?3:2);
+  if(low && !mids.includes("v1goal")) mids.unshift("v1goal");     // 1対1 is the core at U-9/U-10
+  if(ok("regain5")) mids.push("regain5");                         // transition every session
+  if(!mids.length) mids.push("v1goal");
+  if(total>=90){ const sh=ok("shot-onetwo")?"shot-onetwo":"shot-dribble"; if(!mids.includes(sh)) mids.push(sh); }
+  const wu=10, cool=total>=90?10:0, game=total>=90?20:15, rest=total-wu-game-cool;
+  const per=clamp(Math.floor(rest/mids.length/5)*5,10,20);
+  const items=[{id:low?"wu-tag":"wu-rondo41",min:wu}, ...mids.map(id=>({id,min:per}))];
+  items.push({id:low?"ssg4v4":"game8",min:Math.max(10,total-cool-items.reduce((a,b)=>a+b.min,0))});
+  if(cool) items.push({id:"cooldown",min:cool});
+  Dx.items=items; const d=new Date(); Dx.name=Dx.name||`${d.getMonth()+1}/${d.getDate()}の練習`;
+  Dx.msg=`${nameOf(S.mine)} vs ${nameOf(S.opp)} の相性と ${g} に合わせて ${items.reduce((a,b)=>a+b.min,0)}分のメニューを組みました`;
+}
+const styleChip=s=>s==="es"?`<span class="chip es">スペイン流</span>`:s==="en"?`<span class="chip en">イングランド流</span>`:`<span class="chip both">両方</span>`;
+function drillCard(dr,why){
+  return `<details class="drill">
+    <summary><div class="dhead"><b>${esc(dr.name)}</b><span class="dmeta">${dr.min}分・${esc(dr.players)}${dr.area?"・"+esc(dr.area):""}</span>
+      <span class="dtags">${dr.custom?`<span class="chip both">自作</span>`:styleChip(dr.style)}${dr.theme.map(t=>`<span class="ttag">${esc(t)}</span>`).join("")}</span>
+      ${why?`<span class="why">${esc(why)}</span>`:""}</div>
+      <span class="dbtns">${demoOf(dr)?`<button class="play" data-demo="${esc(dr.id)}">▶ 動きを見る</button>`:""}<button class="add" data-dadd="${esc(dr.id)}">＋追加</button></span></summary>
+    <div class="dbody">
+      ${dr.how&&dr.how.length?`<div><h3>やり方</h3>${list(dr.how)}</div>`:""}
+      ${dr.points&&dr.points.length?`<div><h3><span class="chip warnchip">ポイント</span>コーチングポイント</h3>${list(dr.points)}</div>`:""}
+      ${dr.kid?`<div class="kid"><b>子どもへの一言：</b>「${esc(dr.kid)}」</div>`:""}
+      ${dr.custom?`<div class="row" style="gap:8px"><button class="primary" data-rec="${esc(dr.id)}">${dr.demo?"動きを作り直す":"動きを作る"}</button><button class="ghost" data-cdel="${esc(dr.id)}">このドリルを削除</button></div>`:""}
+    </div></details>`;
+}
+function renderDrills(){
+  const g=Dx.grade, total=Dx.items.reduce((a,b)=>a+(+b.min||0),0);
+  const rec=recommendDrills().filter(r=>T_(r.id)&&T_(r.id).grade.includes(g));
+  const all=[...DRILLS,...Dx.custom].filter(d=>d.grade.includes(g)&&(Dx.theme==="all"||d.theme.includes(Dx.theme)));
+  return `<div class="card">
+    <div class="vs"><span class="m">練習メニュー</span></div>
+    <div class="row">
+      <div class="field"><label for="dGrade">学年</label><select id="dGrade">${GRADES.map(x=>`<option${x===g?" selected":""}>${x}</option>`).join("")}</select></div>
+      <div class="field"><label for="dName">メニューの名前</label><input type="text" id="dName" maxlength="30" value="${esc(Dx.name)}" placeholder="例：10/18の練習"></div>
+    </div>
+    <div class="row" style="gap:8px">
+      <button class="primary" data-auto="60">相性に合わせて自動で組む（60分）</button>
+      <button class="ghost" data-auto="90">90分で組む</button>
+    </div>
+    ${Dx.msg?`<p class="toast" role="status">${esc(Dx.msg)}</p>`:""}
+    ${Dx.items.length?`<ol class="session">${Dx.items.map((it,k)=>{const dr=T_(it.id); return `<li>
+      <span class="sname">${dr?esc(dr.name):"（削除されたドリル）"}</span>
+      <input type="number" min="1" max="60" value="${it.min}" data-imin="${k}" aria-label="分数" id="imin${k}">分
+      <button data-up="${k}" aria-label="上へ" ${k===0?"disabled":""}>↑</button><button data-down="${k}" aria-label="下へ" ${k===Dx.items.length-1?"disabled":""}>↓</button><button data-rm="${k}" aria-label="外す">✕</button></li>`;}).join("")}</ol>
+      <p class="total">合計 <b>${total}分</b></p>
+      <div class="row" style="gap:8px"><button class="primary" data-ssave="1">このメニューを保存</button><button class="ghost" data-sclear="1">空にする</button></div>`
+     :`<p class="foot">「自動で組む」を押すか、下のドリルの「＋追加」でメニューを作れます。</p>`}
+  </div>
+
+  <div class="card">
+    <div><h3>いまの相性（${esc(nameOf(S.mine))} vs ${esc(nameOf(S.opp))}）におすすめ</h3></div>
+    <div class="drills">${rec.map(r=>drillCard(T_(r.id),r.why)).join("")||`<p class="foot">${g}向けのおすすめはありません。下の一覧から選んでください。</p>`}</div>
+  </div>
+
+  <div class="card">
+    <div><h3>ドリル一覧（${g}）</h3></div>
+    <div class="themes">${["all",...THEMES].map(t=>`<button data-theme="${t}" aria-pressed="${Dx.theme===t}">${t==="all"?"すべて":t}</button>`).join("")}</div>
+    <div class="drills">${all.map(d=>drillCard(d)).join("")||`<p class="foot">この条件のドリルはありません。</p>`}</div>
+  </div>
+
+  <div class="card">
+    <div><h3>自分のドリルを登録</h3><p class="foot">チームでいつもやっている練習を登録すると、一覧とメニューで使えます。</p></div>
+    <form id="cForm" class="cform" autocomplete="off">
+      <div class="row">
+        <div class="field"><label for="cName">名前</label><input type="text" id="cName" maxlength="30" required></div>
+        <div class="field numf" style="flex:0 0 90px"><label for="cMin">分</label><input type="number" id="cMin" min="1" max="60" value="15"></div>
+        <div class="field"><label for="cTheme">テーマ</label><select id="cTheme">${THEMES.map(t=>`<option>${t}</option>`).join("")}</select></div>
+      </div>
+      <div class="field"><label for="cHow">やり方（1行に1つ）</label><textarea id="cHow" rows="3"></textarea></div>
+      <div class="field"><label for="cPts">コーチングポイント（1行に1つ）</label><textarea id="cPts" rows="2"></textarea></div>
+      <div><button class="primary" type="submit">ドリルを登録</button></div>
+    </form>
+    ${Dx.cmsg?`<p class="toast" role="status">${esc(Dx.cmsg)}</p>`:""}
+  </div>
+
+  <div class="card">
+    <div><h3>保存した練習メニュー</h3></div>
+    ${Dx.sessions.length?`<div class="boards">${Dx.sessions.map(se=>`<div class="bd">
+      <div class="info"><b>${esc(se.name)}</b><small>${esc(se.grade||"")}・${(se.items||[]).length}種目・${(se.items||[]).reduce((a,b)=>a+(+b.min||0),0)}分・${fmtDate(se.savedAt)}</small></div>
+      <button class="open" data-sopen="${esc(se.id)}">開く</button>
+      ${Dx.confirmDel===se.id?`<button class="danger" data-sdel2="${esc(se.id)}">本当に削除</button><button data-scancel="1">やめる</button>`:`<button class="danger" data-sdel="${esc(se.id)}">削除</button>`}
+    </div>`).join("")}</div>`:`<p class="foot">まだありません。</p>`}
+    <p class="status">${Dx.scol?"保存先：このアプリ（どの端末から開いても同じ）":"保存先：この端末のブラウザのみ"}</p>
+  </div>`;
+}
+async function saveSession(){
+  const name=(Dx.name||"").trim()||"練習メニュー";
+  const body={name, grade:Dx.grade, items:Dx.items.map(it=>({id:it.id,min:+it.min||0})), savedAt:Date.now()};
+  if(Dx.scol){ try{ await Dx.scol.doc().set(body); Dx.msg=`「${name}」を保存しました`; }catch(e){ Dx.msg="保存できませんでした。通信を確認してもう一度押してください"; } }
+  else { Dx.sessions.unshift({...body,id:"s"+Date.now().toString(36)}); saveLocalDx(); Dx.msg=`「${name}」を保存しました`; }
+  renderPanel();
+}
+async function addCustomDrill(d){
+  if(Dx.ccol){ try{ await Dx.ccol.doc(d.id).set(d); }catch(e){ Dx.cmsg="登録できませんでした"; renderPanel(); return; } }
+  else { Dx.custom.push(d); saveLocalDx(); }
+  Dx.cmsg=`「${d.name}」を登録しました`; renderPanel();
+}
+function wireDrills(){
+  const body=document.getElementById("tabbody");
+  const gsel=document.getElementById("dGrade"); if(gsel) gsel.addEventListener("change",()=>{Dx.grade=gsel.value; S.grade=gsel.value; document.getElementById("gradeSel").value=gsel.value; if(S.auto) scheduleAuto(); renderPanel();});
+  const nm=document.getElementById("dName"); if(nm) nm.addEventListener("input",()=>{Dx.name=nm.value;});
+  body.querySelectorAll("[data-imin]").forEach(inp=>inp.addEventListener("change",()=>{Dx.items[+inp.dataset.imin].min=clamp(+inp.value||1,1,60);renderPanel();}));
+  body.querySelectorAll("details.drill").forEach(dt=>dt.addEventListener("toggle",()=>{
+    const b=dt.querySelector("[data-demo]"); if(dt.open&&b&&DM.id!==b.dataset.demo) startDemo(b.dataset.demo);
+  }));
+  const f=document.getElementById("cForm");
+  if(f) f.addEventListener("submit",e=>{
+    e.preventDefault();
+    const name=document.getElementById("cName").value.trim(); if(!name) return;
+    const lines=id=>document.getElementById(id).value.split("\n").map(x=>x.trim()).filter(Boolean);
+    addCustomDrill({id:"c"+Date.now().toString(36), custom:true, name, min:clamp(+document.getElementById("cMin").value||15,1,60),
+      theme:[document.getElementById("cTheme").value], grade:[...GRADES], style:"both", players:"", area:"", how:lines("cHow"), points:lines("cPts"), kid:""});
+  });
+}
+document.getElementById("tabbody").addEventListener("click",e=>{
+  if(S.tab!=="drill") return;
+  const b=e.target.closest("button"); if(!b) return;
+  const ds=b.dataset;
+  if(ds.demo){ e.preventDefault(); startDemo(ds.demo); return; }
+  if(ds.dadd){ e.preventDefault(); const dr=T_(ds.dadd); if(dr){ Dx.items.push({id:dr.id,min:dr.min}); Dx.msg=`「${dr.name}」をメニューに追加しました`; renderPanel(); } return; }
+  if(ds.auto){ autoSession(+ds.auto); renderPanel(); return; }
+  if(ds.up){ const k=+ds.up; [Dx.items[k-1],Dx.items[k]]=[Dx.items[k],Dx.items[k-1]]; renderPanel(); return; }
+  if(ds.down){ const k=+ds.down; [Dx.items[k+1],Dx.items[k]]=[Dx.items[k],Dx.items[k+1]]; renderPanel(); return; }
+  if(ds.rm){ Dx.items.splice(+ds.rm,1); renderPanel(); return; }
+  if(ds.ssave){ saveSession(); return; }
+  if(ds.sclear){ Dx.items=[]; Dx.msg=""; renderPanel(); return; }
+  if(ds.theme){ Dx.theme=ds.theme; renderPanel(); return; }
+  if(ds.sopen){ const se=Dx.sessions.find(x=>x.id===ds.sopen); if(se){ Dx.items=(se.items||[]).map(it=>({...it})); Dx.name=se.name; Dx.grade=se.grade||Dx.grade; Dx.msg=`「${se.name}」を開きました`; window.scrollTo({top:document.getElementById("tabbody").offsetTop-10,behavior:"smooth"}); renderPanel(); } return; }
+  if(ds.sdel){ Dx.confirmDel=ds.sdel; renderPanel(); return; }
+  if(ds.scancel){ Dx.confirmDel=null; renderPanel(); return; }
+  if(ds.sdel2){ const id=ds.sdel2; Dx.confirmDel=null;
+    if(Dx.scol){ Dx.scol.doc(id).delete().catch(()=>{Dx.msg="削除できませんでした";renderPanel();}); }
+    else { Dx.sessions=Dx.sessions.filter(x=>x.id!==id); saveLocalDx(); renderPanel(); } return; }
+  if(ds.rec){ startRecording(ds.rec); return; }
+  if(ds.cdel){ const id=ds.cdel;
+    if(Dx.ccol){ Dx.ccol.doc(id).delete().catch(()=>{}); } else { Dx.custom=Dx.custom.filter(x=>x.id!==id); saveLocalDx(); renderPanel(); } return; }
+});
+async function connectDrills(){
+  try{
+    const db=await window.claude?.use?.("db"); if(!db) return;
+    Dx.scol=db.collection("sessions"); Dx.ccol=db.collection("drills");
+    Dx.scol.orderBy("savedAt","desc").onSnapshot(qs=>{ Dx.sessions=qs.docs.map(d=>({...d.data(),id:d.id})); if(S.tab==="drill") renderPanel(); });
+    Dx.ccol.onSnapshot(qs=>{ Dx.custom=qs.docs.map(d=>({...d.data(),id:d.id})); if(S.tab==="drill") renderPanel(); });
+  }catch(e){}
+}
+
+// ---------- Drill demos (animated on the pitch) ----------
+// Positions use pitch coordinates: x 0-50 (width), y 0-68 (my goal at y=68, attacking upward).
+// Each script: area / goals overlay, players {id:{t:"m"|"o", lab, p:[x,y], ob(own ball)}}, steps [{cap, ball: playerId | [x,y], mv:{id:[x,y]}}]
+const pm=(lab,x,y,ob)=>({t:"m",lab,p:[x,y],ob}), po=(lab,x,y,ob)=>({t:"o",lab,p:[x,y],ob});
+const DEMOS={
+ "wu-tag":{area:[15,24,20,20],
+  players:{a:pm("",19,28,1),b:pm("",31,29,1),c:pm("",20,40,1),d:pm("",30,40,1),k:po("鬼",25,34)},
+  steps:[{cap:"全員がボールを持ってドリブル。鬼がしっぽを取りに来る"},
+   {cap:"顔を上げて、空いているスペースへ",mv:{a:[24,27],b:[33,35],c:[17,35],d:[27,42],k:[22,30]}},
+   {cap:"鬼が近づいたら方向を変える",mv:{a:[31,26],b:[28,38],c:[18,29],d:[32,37],k:[27,28]}},
+   {cap:"取られたらボールタッチ10回で復帰",mv:{a:[33,31],b:[21,42],c:[24,33],d:[19,38],k:[31,30]}},
+   {cap:"後半は鬼を2人にしてボールを奪いに行く",mv:{a:[29,25],b:[17,37],c:[26,40],d:[23,28],k:[25,34]}}]},
+ "wu-rondo41":{area:[21,30,8,8],
+  players:{A:pm("A",25,30),B:pm("B",29,34),C:pm("C",25,38),D:pm("D",21,34),K:po("鬼",25,34)},
+  steps:[{cap:"四角の4辺に1人ずつ、真ん中に鬼。Aがボールを持つ",ball:"A"},
+   {cap:"となりのBへ。Bは開いて受ける",ball:"B",mv:{K:[27,32]}},
+   {cap:"鬼が来たら、反対側のとなりCへ",ball:"C",mv:{K:[27,36]}},
+   {cap:"Dへ。2タッチ以内で回す",ball:"D",mv:{K:[24,36]}},
+   {cap:"鬼の足が届かない「間」を通すパスにボーナス",ball:"B",mv:{K:[23,33]}}]},
+ "rondo52":{area:[19,28,12,12],
+  players:{A:pm("A",25,28),B:pm("B",31,34),C:pm("C",25,40),D:pm("D",19,34),F:pm("F",25,34),K1:po("鬼",22.5,31.5),K2:po("鬼",27.5,36.5)},
+  steps:[{cap:"外に4人、中にフリーマンF、鬼は2人",ball:"A"},
+   {cap:"Bへ。鬼2人がボール側へ寄る",ball:"B",mv:{K1:[27,31],K2:[29,37],F:[23,35]}},
+   {cap:"鬼と鬼の間にFが入って受ける（1点）",ball:"F",mv:{F:[25,34.5],K1:[25,32],K2:[27,37]}},
+   {cap:"3人目の動き：Fから空いているDへ",ball:"D",mv:{K1:[22,33],K2:[23,37],F:[27,33]}},
+   {cap:"Dから遠い側のAへ。奪われたら全員ですぐ奪い返す",ball:"A",mv:{K1:[24,30],K2:[22,34]}}]},
+ "pos3lane":{area:[10,22,30,25],lanes:[20,30],
+  players:{a:pm("",17,40),b:pm("",25,36),c:pm("",33,40),d:pm("",25,27),L:pm("F",11.5,32),R:pm("F",38.5,32),
+   x:po("",20,33),y:po("",30,33),z:po("",25,40),w:po("",25,29)},
+  steps:[{cap:"4対4＋両サイドのフリーマン。縦3レーンを使う",ball:"a"},
+   {cap:"中央レーンのbへ。同じレーンに3人入らない",ball:"b",mv:{x:[22,36],z:[23,40]}},
+   {cap:"相手がボール側に寄ったら、逆サイドのFへ展開",ball:"R",mv:{x:[24,34],y:[34,33],z:[26,40]}},
+   {cap:"Fからcへ。三角形を作り直す",ball:"c",mv:{y:[34,37],c:[33,43],d:[30,27],w:[29,30]}},
+   {cap:"10本つながったら1点",ball:"d",mv:{x:[26,31],a:[16,36]}}]},
+ "build32":{area:[0,34,50,34],goals:[[6,33,5,2],[39,33,5,2]],
+  players:{G:pm("GK",25,63),L:pm("CB",14,58),R:pm("CB",36,58),M:pm("MF",25,50),f1:po("FW",21,48),f2:po("FW",29,48)},
+  steps:[{cap:"GKとCB2人とMFで、相手FW2人のプレスを外す",ball:"G"},
+   {cap:"FWが寄せてくる。GKも足で受ける3人目のCB",ball:"L",mv:{f1:[17,54],f2:[27,57]}},
+   {cap:"空いている側へ：GKを経由して逆サイドのCBへ",ball:"R",mv:{f1:[20,58],f2:[31,59],G:[25,62]}},
+   {cap:"前が空いている → CBがドリブルで運ぶ（あまりを使う）",ball:"R",mv:{R:[37,47],f2:[34,50],M:[28,44]}},
+   {cap:"FWが寄ってきたらMFへパス",ball:"M",mv:{f2:[36,46]}},
+   {cap:"ミニゴールをドリブルで通過して1点",ball:"M",mv:{M:[41,35]}}]},
+ "side21":{area:[30,6,20,36],
+  players:{SB:pm("SB",40,40),SH:pm("SH",45,30),FW:pm("FW",25,16),D:po("DF",44,22),G:po("GK",25,2.5)},
+  steps:[{cap:"SBとSHの2人で、DF1人を突破する",ball:"SB"},
+   {cap:"SHへパス。DFがSHに寄せる",ball:"SH",mv:{D:[44,26]}},
+   {cap:"SHが内側へ運ぶ → SBは外を回る（オーバーラップ）",ball:"SH",mv:{SH:[38,25],D:[40,24],SB:[47,27],FW:[27,13]}},
+   {cap:"DFを引きつけて外のSBへ",ball:"SB",mv:{SB:[47,15],D:[41,21],SH:[35,18]}},
+   {cap:"SBがクロス。FWはニアへ",ball:"FW",mv:{SB:[47,9],FW:[27,6],SH:[33,10],G:[26,2.5]}},
+   {cap:"シュート！ ※SHが外にいるときはSBが内側を回る",ball:[25.5,0.5]}]},
+ "box3":{area:[10,0,30,18],
+  players:{W:pm("W",45,16),A:pm("A",32,20),B:pm("B",25,22),C:pm("C",17,20),d1:po("DF",28,8),d2:po("DF",21,9),G:po("GK",25,2.5)},
+  steps:[{cap:"サイドの選手がゴールラインへ。中は3人",ball:"W"},
+   {cap:"Wが深く運ぶ。中の3人はまだ待つ",ball:"W",mv:{W:[45,6],A:[31,15],B:[25,17],C:[18,15]}},
+   {cap:"ニア・ファー・折り返しの3か所に分かれて入る",ball:"W",mv:{A:[28,5],C:[19,6],B:[25,11],d1:[27,6],d2:[21,7],G:[27,2]}},
+   {cap:"DFがゴール前に下がったら、空いた折り返しへ",ball:"B"},
+   {cap:"シュート！ 3人が同じ場所に入らないのがポイント",ball:[24,0.5]}]},
+ "v1goal":{area:[17.5,24,15,20],goals:[[22.5,23,5,1.5]],
+  players:{A:pm("攻",25,43),D:po("守",25,29)},
+  steps:[{cap:"コーチのパスで攻撃と守備がスタート",ball:"A"},
+   {cap:"守備は飛び込まず、ゴール側に立って遅らせる",ball:"A",mv:{A:[25,37],D:[25,32]}},
+   {cap:"攻撃：スピードと方向の変化で仕掛ける",ball:"A",mv:{A:[22,34],D:[23,31]}},
+   {cap:"守備：外へ追い出す",ball:"A",mv:{A:[20,30],D:[22,29]}},
+   {cap:"攻撃が抜ければゴール。守備はトラップが大きくなった瞬間を狙う",ball:"A",mv:{A:[23,25],D:[22,27]}}]},
+ "cover22":{area:[15,40,20,25],
+  players:{a:po("攻",20,42),b:po("攻",31,44),d1:pm("守",20,51),d2:pm("守",30,53),G:pm("GK",25,65)},
+  steps:[{cap:"2対2。攻撃がボールを持つ",ball:"a"},
+   {cap:"1人が寄せる（チャレンジ）、もう1人は斜め後ろ（カバー）",ball:"a",mv:{a:[20,45],d1:[20,48],d2:[25,52]}},
+   {cap:"パスが出たら役割を入れ替える",ball:"b",mv:{b:[31,47]}},
+   {cap:"今度は右の人が寄せて、左の人がカバー",ball:"b",mv:{d2:[30,50],d1:[25,54],a:[22,48]}},
+   {cap:"「行け！」「カバー！」と声で伝える",ball:"b",mv:{b:[33,50],d2:[32,52],d1:[27,56]}}]},
+ "slide-shadow":{auto:"slide"},
+ "press-trigger":{area:[5,22,40,30],
+  players:{a:po("",15,30),b:po("",35,30),c:po("",25,38),dd:po("",25,26),p:pm("",18,40),q:pm("",32,40),r:pm("",25,46),s:pm("",25,34)},
+  steps:[{cap:"相手（青）がボールを回す。守備（オレンジ）は待つ",ball:"a"},
+   {cap:"横パスの間はコンパクトに",ball:"c",mv:{s:[25,40],p:[19,43],q:[31,43]}},
+   {cap:"バックパス＝プレスの合図！",ball:"dd",mv:{}},
+   {cap:"全員で一気に押し上げ。FWはパスコースを背中で消す",ball:"dd",mv:{s:[25,29],p:[16,33],q:[34,33],r:[25,38]}},
+   {cap:"慌てたパスを奪う（5秒以内なら1点）",ball:"q",mv:{q:[32,30],b:[37,28]}}]},
+ "regain5":{area:[12.5,24,25,20],goals:[[12.5,23,4,1.5],[33.5,23,4,1.5],[12.5,43.5,4,1.5],[33.5,43.5,4,1.5]],
+  players:{a:pm("",18,34),b:pm("",26,30),c:pm("",32,36),d:pm("",24,40),w:po("",22,32),x:po("",29,33),y:po("",28,39),z:po("",19,40)},
+  steps:[{cap:"4対4。オレンジがボールを持つ",ball:"b"},
+   {cap:"パスを奪われた！",ball:"x",mv:{x:[30,34]}},
+   {cap:"5秒以内に近い3人で囲む",ball:"x",mv:{b:[29,31],c:[33,35],d:[28,38]}},
+   {cap:"奪い返したら1点",ball:"c",mv:{x:[30,35]}},
+   {cap:"5秒を過ぎたら全員で守備の形に戻る",ball:"c",mv:{a:[20,36],b:[27,32],d:[25,40]}}]},
+ "counter":{area:[0,6,50,40],
+  players:{F:pm("FW",25,38),S:pm("SH",42,40),M:pm("MF",25,46),L:pm("SH",8,42),a:po("",22,42),b:po("",30,44),c:po("",36,40),G:po("GK",25,2.5)},
+  steps:[{cap:"相手（青）が攻めている",ball:"b"},
+   {cap:"MFが奪った！ 奪った瞬間に前を見る",ball:"M",mv:{M:[29,44]}},
+   {cap:"FWとSHは一気に相手の背後へ",ball:"F",mv:{F:[24,24],S:[42,26],L:[9,28],a:[24,40],b:[28,42]}},
+   {cap:"2本目：FWからSHへ",ball:"S",mv:{S:[42,18],F:[26,14],L:[13,18]}},
+   {cap:"3本目：SHから中へ。3本以内でシュート",ball:"F",mv:{F:[27,8],L:[18,10],G:[26,3]}},
+   {cap:"シュート！",ball:[24.5,0.5]}]},
+ "run32":{area:[10,6,30,34],
+  players:{M:pm("MF",25,40),F:pm("FW",25,20),S:pm("SH",40,28),d1:po("DF",21,17),d2:po("DF",29,17),G:po("GK",25,2.5)},
+  steps:[{cap:"攻撃3人対DF2人。FWは相手DFの背中ぎりぎり",ball:"M"},
+   {cap:"FWが下りて受ける。DFがついてくる",ball:"F",mv:{F:[25,29],d1:[23,24],M:[24,36]}},
+   {cap:"空いたDFの背後へMFが飛び出す（1人が下りたら1人は裏）",ball:"F",mv:{M:[22,20],S:[38,20]}},
+   {cap:"FWから裏のMFへ",ball:"M",mv:{M:[22,12],d1:[22,17],d2:[27,15]}},
+   {cap:"シュート！",ball:[23,0.5],mv:{G:[24,3]}}]},
+ "ssg4v4":{area:[15,19,20,30],goals:[[15,18,4,1.5],[31,18,4,1.5],[15,48.5,4,1.5],[31,48.5,4,1.5]],
+  players:{a:pm("",19,40),b:pm("",30,38),c:pm("",22,30),d:pm("",31,28),w:po("",22,36),x:po("",28,33),y:po("",19,26),z:po("",27,24)},
+  steps:[{cap:"4対4、ゴールは4つ。上の2つを攻める",ball:"a"},
+   {cap:"相手が左に寄っている",ball:"c",mv:{y:[19,28],z:[22,25],w:[21,33]}},
+   {cap:"空いているゴールはどっち？ 逆サイドへ",ball:"d",mv:{d:[31,24],x:[28,30]}},
+   {cap:"右のゴールへシュート！",ball:[33,18.5]}]},
+ "game8":{auto:"game"}
+};
+// ---- animations for the extra drills ----
+Object.assign(DEMOS,{
+ "shot-dribble":{area:[10,4,30,34],
+  players:{A:pm("A",21,36),B:pm("B",29,36),G:po("GK",25,2.5)},
+  steps:[{cap:"ドリブルで運ぶ。2タッチ目からスピードを上げる",ball:"A"},
+   {cap:"顔を上げてGKの位置を見る",ball:"A",mv:{A:[22,22]}},
+   {cap:"GKが寄った反対側（ファー）へ低いシュート",ball:[28,0.6],mv:{A:[23,15],G:[24,2.5]}},
+   {cap:"次の選手。今度は逆足で",ball:"B",mv:{B:[29,24],G:[25,2.5]}},
+   {cap:"ニア上、ファー下を打ち分ける",ball:[22,0.6],mv:{B:[28,15],G:[26,2.5]}}]},
+ "shot-onetwo":{area:[12,4,26,36],
+  players:{A:pm("攻",25,38),W:pm("壁",32,24),D:po("DF",25,26),G:po("GK",25,2.5)},
+  steps:[{cap:"DFに向かってドリブル",ball:"A",mv:{A:[25,31]}},
+   {cap:"DFを引きつけて壁役へ",ball:"W",mv:{D:[25,28]}},
+   {cap:"出したらすぐ走る！DFの背後へ",ball:"W",mv:{A:[23,20],D:[27,27]}},
+   {cap:"壁役はDFの背後へ落とす",ball:"A",mv:{A:[24,16]}},
+   {cap:"シュート！",ball:[27,0.6],mv:{G:[24,2.5]}}]},
+ "pass-tri":{area:[17,28,16,16],
+  players:{A:pm("A",25,29),B:pm("B",32,42),C:pm("C",18,42)},
+  steps:[{cap:"三角形でパス。受ける前に体を開く",ball:"A"},
+   {cap:"Bへ。出す方向へファーストタッチ",ball:"B"},
+   {cap:"Cへ",ball:"C"},
+   {cap:"Aへ戻す",ball:"A"},
+   {cap:"合図で逆回り（Cへ）。慣れたら1タッチ",ball:"C"}]},
+ "pass-turn":{area:[18,20,14,28],
+  players:{P:pm("出",25,46),R:pm("受",25,32),D:po("相手",26,27)},
+  steps:[{cap:"受け手は受ける前に首を振って後ろを確認",ball:"P"},
+   {cap:"パス。相手が離れている",ball:"R",mv:{D:[28,24]}},
+   {cap:"空いていれば相手と反対側へターンして前へ",ball:"R",mv:{R:[22,24]}},
+   {cap:"次は相手が近い場面",ball:"P",mv:{R:[25,32],D:[25,29.5]}},
+   {cap:"近いときは無理せず出し手に落とす",ball:"P"}]},
+ "dribble-cone":{area:[18,16,14,34],goals:[[22.5,15,5,1.5]],
+  players:{A:pm("A",25,48),D:po("DF",25,22)},
+  steps:[{cap:"ジグザグにコーンを抜ける（細かいタッチ）",ball:"A",mv:{A:[21,43]}},
+   {cap:"インサイド・アウトサイドを使い分け",ball:"A",mv:{A:[29,38]}},
+   {cap:"左右の足で",ball:"A",mv:{A:[21,33]}},
+   {cap:"抜けたらスピードアップ。DFと1対1",ball:"A",mv:{A:[26,27],D:[25,24]}},
+   {cap:"止まらずに仕掛けてミニゴールへ",ball:"A",mv:{A:[28,17],D:[24,21]}}]},
+ "dribble-land":{area:[12,24,26,20],
+  players:{a:pm("",15,42,1),b:pm("",22,43,1),c:pm("",29,42,1),e:pm("",35,43,1),k1:po("鬼",20,33),k2:po("鬼",31,33)},
+  steps:[{cap:"ボールを持った全員が反対のラインを目指す",ball:null},
+   {cap:"空いているところを探して進む",mv:{a:[14,36],b:[22,38],c:[30,38],e:[36,36],k1:[19,35],k2:[31,36]}},
+   {cap:"鬼が来たら方向転換・スピードの変化",mv:{a:[17,30],b:[26,33],c:[27,34],e:[37,29],k1:[22,33],k2:[29,33]}},
+   {cap:"ラインを突破したら1点",mv:{a:[16,24.5],e:[36,24.5],b:[24,30],c:[29,30],k1:[24,31],k2:[28,31]}},
+   {cap:"守備は2人で挟んで奪う",mv:{b:[25,28],c:[30,28],k1:[25,26.5],k2:[27,27]}}]},
+ "gk-dist":{area:[0,34,50,34],
+  players:{G:pm("GK",25,64),L:pm("CB",12,58),R:pm("CB",38,58),S:pm("SH",45,40),K:po("コーチ",25,46)},
+  steps:[{cap:"コーチのシュート",ball:"K"},
+   {cap:"胸の前で両手でキャッチ",ball:"G"},
+   {cap:"すぐ前を見て、近くのCBへ転がすスロー",ball:"L"},
+   {cap:"バックパスは足で受けて体を開く",ball:"G"},
+   {cap:"遠くの空いているSHへキック",ball:"S"}]},
+ "gk-1v1":{area:[8,46,34,22],
+  players:{F:po("FW",25,38),G:pm("GK",25,65)},
+  steps:[{cap:"FWがドリブルでゴールへ",ball:"F",mv:{F:[25,46]}},
+   {cap:"GKはボールとゴール中央を結ぶ線上で前へ（角度を消す）",ball:"F",mv:{F:[24,52],G:[25,61]}},
+   {cap:"打たれる瞬間は止まって低く構える",ball:"F",mv:{F:[23,55],G:[24.5,59.5]}},
+   {cap:"タッチが大きくなった！飛び込んで取る",ball:[22.5,57.5],mv:{F:[22,56],G:[23,58]}}]},
+ "sp-ck":{area:[8,0,34,20],
+  players:{K:pm("CK",49,1),A:pm("A",30,14),B:pm("B",21,15),C:pm("C",26,18),E:pm("E",25,22),R:pm("残",30,36),d1:po("",28,6),d2:po("",22,6),d3:po("",25,10),G:po("GK",25,2.5)},
+  steps:[{cap:"役割を決める：ニア・ファー・中央・こぼれ球・残る人",ball:"K"},
+   {cap:"合図で一斉に動き出す",ball:"K",mv:{A:[28,5],B:[20,6],C:[25,9],E:[25,15]}},
+   {cap:"ニアで触ってファーへ流す",ball:"A",mv:{d1:[28,4.5]}},
+   {cap:"ファーで押し込む",ball:"B",mv:{G:[22,2.5]}},
+   {cap:"こぼれ球はエリアの外のEが拾う。1人は必ずうしろ",ball:[20,0.6]}]},
+ "sp-throw":{area:[34,20,16,24],
+  players:{T:pm("投",49.5,32),A:pm("A",44,28),B:pm("B",40,36),D:po("相手",44,30)},
+  steps:[{cap:"受け手は一度離れる（チェックの動き）",ball:"T",mv:{A:[42,24],D:[43,26]}},
+   {cap:"戻って足元で受ける",ball:"A",mv:{A:[46,29],D:[44,27]}},
+   {cap:"すぐ近くの味方（3人目）へ",ball:"B"},
+   {cap:"投げた人もすぐピッチに入ってサポート",ball:"B",mv:{T:[45,34],B:[39,32]}}]},
+ "sp-fk":{area:[10,0,30,22],
+  players:{K:pm("FK",25,17),R1:pm("詰",31,12),R2:pm("詰",19,12),w1:po("壁",23.5,10),w2:po("壁",25,10),w3:po("壁",26.5,10),G:po("GK",25,2.5)},
+  steps:[{cap:"8人制は壁まで7m。詰める選手を2人決める",ball:"K"},
+   {cap:"壁の外か上、GKの逆を狙う",ball:[29,2],mv:{G:[28,2.5]}},
+   {cap:"GKがはじいた！",ball:[30,5],mv:{G:[29,3]}},
+   {cap:"詰めていた選手が押し込む",ball:[27,0.6],mv:{R1:[30,6],R2:[22,7]}}]},
+ "coord-react":{area:[10,30,30,24],
+  players:{a:pm("",15,50),b:pm("",21,50),c:pm("",29,50),e:pm("",35,50)},
+  steps:[{cap:"ラダーのステップで素早い足さばき（母指球で）",ball:null,mv:{a:[15,44],b:[21,44],c:[29,44],e:[35,44]}},
+   {cap:"細かく、速く",mv:{a:[16,40],b:[20,40],c:[30,40],e:[34,40]}},
+   {cap:"コーチの合図！指定のコーンへダッシュ",mv:{a:[12,32],b:[24,32],c:[26,32],e:[38,32]}},
+   {cap:"見てから、すぐ動く。2人で競争にしても",mv:{a:[15,50],b:[21,50],c:[29,50],e:[35,50]}}]},
+ "switch64":{area:[5,18,40,28],
+  players:{a:pm("",10,30),b:pm("",16,40),c:pm("",22,26),P:pm("中",25,36),e:pm("",40,30),f:pm("",34,42),x:po("",14,33),y:po("",18,30),z:po("",22,37),w:po("",28,32)},
+  steps:[{cap:"ボール側（左）に人を集めて、相手を寄せる",ball:"a"},
+   {cap:"左で回す。相手がどんどん寄ってくる",ball:"c",mv:{x:[16,29],y:[20,27],w:[25,30]}},
+   {cap:"中央の選手を経由",ball:"P",mv:{z:[24,39]}},
+   {cap:"逆サイドへ！幅を取って待っていた選手",ball:"e",mv:{x:[22,31],y:[26,29],w:[32,32]}},
+   {cap:"前を向けたら1点",ball:"e",mv:{e:[40,22],f:[36,30]}}]},
+ "ssg3v3":{area:[12,24,26,24],
+  players:{a:pm("",18,44),b:pm("",25,40),c:pm("",32,44),x:po("",19,33),y:po("",26,30),z:po("",31,34)},
+  steps:[{cap:"攻撃は三角形。相手のラインをドリブルで突破したら1点",ball:"b"},
+   {cap:"1人が持ったら2人は三角形の位置",ball:"c",mv:{y:[29,33],z:[33,38],b:[26,36]}},
+   {cap:"守備：寄せる人とカバーの人",ball:"c",mv:{c:[34,39],z:[33,37],y:[30,34],x:[24,32]}},
+   {cap:"空いた中へ",ball:"b",mv:{b:[25,31],a:[17,36]}},
+   {cap:"ライン突破！",ball:"b",mv:{b:[23,24.5]}}]},
+ "def32":{area:[5,34,40,34],
+  players:{a:po("",14,38),b:po("",25,36),c:po("",36,38),d1:pm("DF",22,48),d2:pm("DF",30,48),G:pm("GK",25,65)},
+  steps:[{cap:"攻撃3人 対 DF2人。飛び込まない",ball:"b"},
+   {cap:"1人がボールへ、もう1人は中央",ball:"b",mv:{b:[25,42],d1:[24,46],d2:[28,51]}},
+   {cap:"外へ出されたら、外へ追い出す",ball:"c",mv:{c:[38,46],d1:[33,48],d2:[27,52],a:[16,46]}},
+   {cap:"中を締めて時間をかせぐ",ball:"c",mv:{c:[40,54],d1:[37,52],d2:[29,57],a:[20,52]}},
+   {cap:"GKと声で連携。その間に味方が戻る",ball:"c",mv:{G:[29,64]}}]},
+ "cooldown":{area:[10,30,30,20],
+  players:{a:pm("",16,36,1),b:pm("",24,40,1),c:pm("",32,36,1),e:pm("",20,46,1),f:pm("",30,46,1)},
+  steps:[{cap:"ゆっくりリフティング",ball:null},
+   {cap:"ペアでゆっくりパス交換",mv:{a:[17,38],c:[31,38]}},
+   {cap:"ストレッチ（各20〜30秒）",mv:{a:[16,36],c:[32,36]}},
+   {cap:"今日できるようになったことを1つずつ",mv:{a:[20,40],b:[25,38],c:[30,40],e:[22,44],f:[28,44]}}]}
+});
+// auto scripts built from the auto-slide engine with the current formations
+function positionsFor(bx,by,mineAtt,trans){
+  bx=clamp(bx,.5,49.5); by=clamp(by,.5,67.5);
+  const mir=([x,y])=>[50-x,68-y], offLine=P=>{ const ys=P.map(p=>p[1]).sort((a,b)=>b-a); return ys[1]; };
+  if(mineAtt){ const od=defendTeam(S.opp,50-bx,68-by,trans), md=attackTeam(S.mine,bx,by,offLine(od.P),trans); od.P=markBox(S.opp,od.P,md.P.map(mir),50-bx,68-by,od.near); return {mine:md.P,opp:od.P.map(mir)}; }
+  const md=defendTeam(S.mine,bx,by,trans), od=attackTeam(S.opp,50-bx,68-by,offLine(md.P),trans); md.P=markBox(S.mine,md.P,od.P.map(mir),bx,by,md.near); return {mine:md.P,opp:od.P.map(mir)};
+}
+function autoScript(kind){
+  const path = kind==="slide"
+    ? [{b:[25,30],a:false,cap:"コーチがボールを持って動く。全員でボールに合わせてスライド"},{b:[40,38],a:false,cap:"ボールが右へ → 全体が右へ、逆サイドは中に絞る"},{b:[42,52],a:false,cap:"自陣の右へ → 一番近い人が寄せて、斜め後ろがカバー"},{b:[10,40],a:false,cap:"逆サイドへ → 全員で素早く横にスライド"},{b:[25,20],a:false,cap:"相手陣へ戻る → ラインを押し上げて前からプレス"}]
+    : [{b:[25,60],a:true,cap:"8対8。GKからつないで攻撃スタート"},{b:[40,48],a:true,cap:"サイドへ。幅を取って三角形を作る"},{b:[44,28],a:true,cap:"SHが前へ運ぶ。FWは相手DFの背後を狙う"},{b:[44,12],a:true,cap:"ゴール前：ニア・ファー・折り返しに入る"},{b:[30,40],a:false,cap:"奪われた！ 近い3人で即時奪回",t:true},{b:[30,40],a:true,cap:"奪い返したらカウンター",t:true}];
+  const players={};
+  F[S.mine].roles.forEach((r,i)=>players["m"+i]={t:"m",lab:r,p:[0,0]});
+  if(kind==="game") F[S.opp].roles.forEach((r,i)=>players["o"+i]={t:"o",lab:r,p:[0,0]});
+  else players.coach={t:"o",lab:"コーチ",p:[0,0]};
+  const steps=path.map((st,k)=>{
+    const P=positionsFor(st.b[0],st.b[1],st.a,!!st.t), mv={};
+    P.mine.forEach((p,i)=>mv["m"+i]=p);
+    if(kind==="game") P.opp.forEach((p,i)=>mv["o"+i]=p); else mv.coach=[st.b[0]+1.5,st.b[1]-1.5];
+    return {cap:st.cap, ball:[st.b[0],st.b[1]], mv};
+  });
+  Object.keys(players).forEach(id=>players[id].p=steps[0].mv[id]);
+  return {players,steps,area:null};
+}
+// resolve a script into absolute frames
+function demoFrames(sc){
+  const pos={}; Object.entries(sc.players).forEach(([id,p])=>pos[id]=[...p.p]);
+  let holder=null, prevBall=null;
+  return sc.steps.map(st=>{
+    Object.entries(st.mv||{}).forEach(([id,p])=>pos[id]=[...p]);
+    let ball=null, pass=false;
+    if(typeof st.ball==="string"){ const p=pos[st.ball]; ball=[p[0]+1.1,p[1]-1.1]; pass=holder!==null&&holder!==st.ball; holder=st.ball; }
+    else if(Array.isArray(st.ball)){ ball=[...st.ball]; pass=holder!==null||(prevBall&&Math.hypot(ball[0]-prevBall[0],ball[1]-prevBall[1])>2); holder=null; }
+    prevBall=ball;
+    return {cap:st.cap, pos:JSON.parse(JSON.stringify(pos)), ball, pass};
+  });
+}
+const DM={id:null, sc:null, frames:[], i:0, timer:null, playing:false};
+function demoLayer(){ let g=document.getElementById("demoLayer"); if(!g) g=el("g",{id:"demoLayer"},svg); return g; }
+function setBoardHidden(h){
+  ["mineLayer","oppLayer","drawLayer","ball","zones"].forEach(id=>{const e=document.getElementById(id); if(e) e.style.display=h?"none":"";});
+  if(!h){ drawBall(); drawTeam("opp"); }
+}
+const demoOf=dr=>dr?(DEMOS[dr.id]||dr.demo||null):null;
+// a script is only played when every number in it is a real position on (or just off) the pitch
+function validScript(sc){
+  const okP=p=>Array.isArray(p)&&p.length===2&&p.every(v=>typeof v==="number"&&isFinite(v)&&v>-5&&v<75);
+  if(!sc||typeof sc!=="object"||!sc.players||!Array.isArray(sc.steps)) return false;
+  const ids=Object.keys(sc.players); if(!ids.length||ids.length>20||!sc.steps.length||sc.steps.length>40) return false;
+  if(!ids.every(id=>okP(sc.players[id].p))) return false;
+  return sc.steps.every(st=>(st.ball==null||typeof st.ball==="string"&&sc.players[st.ball]||okP(st.ball)) && Object.entries(st.mv||{}).every(([id,p])=>sc.players[id]&&okP(p)));
+}
+function startDemo(id){
+  const dr=T_(id), base=demoOf(dr); if(!dr||!base) return;
+  stopDemo(true);
+  let sc;
+  try{ sc=base.auto?autoScript(base.auto):base; if(!validScript(sc)) throw new Error("invalid"); }
+  catch(e){ stopDemo(false); showNotice("この練習の動きのデータが読み込めませんでした。「動きを作る」で作り直してください。"); return; }
+  DM.id=id; DM.sc=sc; DM.frames=demoFrames(sc); DM.i=0;
+  setBoardHidden(true);
+  const g=demoLayer(); g.innerHTML="";
+  if(sc.area){ const [x,y,w,h]=sc.area; el("rect",{x,y,width:w,height:h,fill:"rgba(255,255,255,.06)",stroke:"rgba(255,255,255,.85)","stroke-width":.25,"stroke-dasharray":"1 .8"},g);
+    [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([cx,cy])=>el("path",{d:`M${cx-.7},${cy+.6} L${cx},${cy-.7} L${cx+.7},${cy+.6} Z`,fill:"#ff9f1c"},g));
+    (sc.lanes||[]).forEach(lx=>el("line",{x1:lx,y1:y,x2:lx,y2:y+h,stroke:"rgba(255,255,255,.5)","stroke-width":.18,"stroke-dasharray":".6 .6"},g)); }
+  (sc.goals||[]).forEach(([x,y,w,h])=>el("rect",{x,y,width:w,height:h,fill:"rgba(255,255,255,.85)"},g));
+  el("g",{id:"demoTrails"},g);
+  Object.entries(sc.players).forEach(([pid,p])=>{
+    const pg=el("g",{class:"dplayer","data-pid":pid},g);
+    el("circle",{r:1.9,fill:p.lab==="GK"?(p.t==="m"?"url(#kitGM)":"url(#kitGO)"):p.t==="m"?"url(#kitM)":"url(#kitO)","fill-opacity":.9,stroke:"rgba(255,255,255,.95)","stroke-width":.28,filter:"url(#tok)"},pg);
+    const tx=el("text",{"text-anchor":"middle",y:.43,fill:p.lab==="GK"?"#1a1406":p.t==="m"?"var(--accent-ink)":"var(--opp-ink)"},pg); tx.textContent=p.lab;
+    if(p.ob){ const ob=el("g",{transform:"translate(1.6 1.4)"},pg); el("circle",{r:.85,fill:"#fff",stroke:"#111","stroke-width":.18},ob); }
+    pg.style.transform=`translate(${p.p[0]}px,${p.p[1]}px)`;
+  });
+  const bg=el("g",{class:"dball",id:"demoBall"},g);
+  el("circle",{r:1.15,fill:"#fff",stroke:"#111","stroke-width":.22},bg);
+  el("path",{d:"M0,-0.5 L0.48,-0.15 L0.3,0.42 L-0.3,0.42 L-0.48,-0.15 Z",fill:"#111"},bg);
+  document.getElementById("demoBar").hidden=false;
+  document.getElementById("demoTitle").textContent=dr.name;
+  g.getBoundingClientRect();
+  showFrame(0,true);
+  playDemo();
+  const board=document.querySelector(".board").getBoundingClientRect();
+  if(board.bottom<80||board.top>innerHeight-120) document.querySelector(".board").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function showFrame(i,instant){
+  const f=DM.frames[i]; if(!f) return; DM.i=i;
+  const g=demoLayer();
+  g.querySelectorAll(".dplayer").forEach(pg=>{ const p=f.pos[pg.dataset.pid]; if(instant) pg.style.transition="none"; pg.style.transform=`translate(${p[0]}px,${p[1]}px)`; if(instant){pg.getBoundingClientRect();pg.style.transition="";} });
+  const b=document.getElementById("demoBall");
+  if(f.ball){ b.style.display=""; const prev=i>0&&DM.frames[i-1].ball;
+    if(f.pass&&prev&&!instant){ const ln=el("line",{x1:prev[0],y1:prev[1],x2:f.ball[0],y2:f.ball[1],class:"trail"},document.getElementById("demoTrails")); setTimeout(()=>ln.remove(),2600); }
+    if(instant) b.style.transition="none"; b.style.transform=`translate(${f.ball[0]}px,${f.ball[1]}px)`; if(instant){b.getBoundingClientRect();b.style.transition="";} }
+  else b.style.display="none";
+  document.getElementById("demoCap").textContent=f.cap;
+  document.getElementById("demoStep").textContent=`${i+1} / ${DM.frames.length}`;
+}
+function playDemo(){
+  clearTimeout(DM.timer); DM.playing=true; document.getElementById("demoPlay").textContent="一時停止";
+  const tick=()=>{ if(!DM.playing) return;
+    if(DM.i>=DM.frames.length-1){ DM.timer=setTimeout(()=>{ showFrame(0,true); DM.timer=setTimeout(tick,1600); },1800); return; }
+    showFrame(DM.i+1); DM.timer=setTimeout(tick,2000); };
+  DM.timer=setTimeout(tick,1800);
+}
+function pauseDemo(){ DM.playing=false; clearTimeout(DM.timer); document.getElementById("demoPlay").textContent="再生"; }
+function stopDemo(keep){
+  clearTimeout(DM.timer); DM.playing=false; DM.id=null;
+  const g=document.getElementById("demoLayer"); if(g) g.innerHTML="";
+  if(!keep){ document.getElementById("demoBar").hidden=true; setBoardHidden(false); }
+}
+document.getElementById("demoPlay").addEventListener("click",()=>DM.playing?pauseDemo():playDemo());
+document.getElementById("demoPrev").addEventListener("click",()=>{ pauseDemo(); showFrame(Math.max(0,DM.i-1)); });
+document.getElementById("demoNext").addEventListener("click",()=>{ pauseDemo(); showFrame(Math.min(DM.frames.length-1,DM.i+1)); });
+document.getElementById("demoStop").addEventListener("click",()=>stopDemo(false));
+
+// ---------- Recording a custom drill's movement ----------
+const REC={id:null, steps:[], players:null};
+function boardSnapshot(){
+  const players={}, pos={};
+  F[S.mine].roles.forEach((r,i)=>{ const pl=playerById(R.lineup[i]); players["m"+i]={t:"m",lab:pl&&pl.num!==""?String(pl.num):r}; pos["m"+i]=S.pos.mine[i].map(v=>+v.toFixed(2)); });
+  if(S.showOpp) F[S.opp].roles.forEach((r,i)=>{ players["o"+i]={t:"o",lab:r}; pos["o"+i]=S.pos.opp[i].map(v=>+v.toFixed(2)); });
+  return {players,pos,ball:S.showBall?S.ball.map(v=>+v.toFixed(2)):null};
+}
+function startRecording(id){
+  const dr=T_(id); if(!dr) return;
+  stopDemo(false);
+  REC.id=id; REC.steps=[]; REC.players=null;
+  document.getElementById("recTitle").textContent=dr.name;
+  document.getElementById("recBar").hidden=false;
+  updateRecBar();
+  document.querySelector(".board").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function updateRecBar(){
+  document.getElementById("recCount").textContent=REC.steps.length?`${REC.steps.length}場面 記録済み`:"まだ記録していません";
+  document.getElementById("recSave").disabled=REC.steps.length<2;
+  document.getElementById("recUndo").disabled=!REC.steps.length;
+  document.getElementById("recList").innerHTML=REC.steps.map((st,k)=>`<li>${esc(st.cap||"（説明なし）")}</li>`).join("");
+}
+document.getElementById("recAdd").addEventListener("click",()=>{
+  if(REC.steps.length>=40){ showNotice("場面は40までです"); return; }
+  const snap=boardSnapshot();
+  if(!REC.players) REC.players=Object.fromEntries(Object.entries(snap.players).map(([id,p])=>[id,{...p,p:snap.pos[id]}]));
+  const mv={}; Object.keys(REC.players).forEach(id=>{ if(snap.pos[id]) mv[id]=snap.pos[id]; });
+  const cap=document.getElementById("recCap").value.trim();
+  REC.steps.push({cap, ball:snap.ball, mv});
+  document.getElementById("recCap").value="";
+  updateRecBar();
+});
+document.getElementById("recUndo").addEventListener("click",()=>{ REC.steps.pop(); if(!REC.steps.length) REC.players=null; updateRecBar(); });
+document.getElementById("recCancel").addEventListener("click",()=>{ REC.id=null; document.getElementById("recBar").hidden=true; });
+document.getElementById("recSave").addEventListener("click",async()=>{
+  const demo={players:REC.players, steps:REC.steps};
+  if(!validScript(demo)){ showNotice("記録した動きに読み込めない位置がありました。もう一度記録してください。"); return; }
+  const id=REC.id;
+  try{
+    if(Dx.ccol) await Dx.ccol.doc(id).update({demo});
+    else { Dx.custom=Dx.custom.map(d=>d.id===id?{...d,demo}:d); saveLocalDx(); }
+  }catch(e){ showNotice("保存できませんでした。通信を確認してもう一度押してください。"); return; }
+  REC.id=null; document.getElementById("recBar").hidden=true;
+  Dx.cmsg="動きを保存しました。「▶ 動きを見る」で再生できます。";
+  if(S.tab==="drill") renderPanel();
+  if(!Dx.ccol) startDemo(id); else setTimeout(()=>startDemo(id),600);
+});
+
+// ---------- Problems are shown, never swallowed ----------
+function showNotice(msg){
+  const n=document.getElementById("notice"); n.querySelector("span").textContent=msg; n.hidden=false;
+}
+document.getElementById("noticeClose").addEventListener("click",()=>{document.getElementById("notice").hidden=true;});
+window.addEventListener("error",e=>showNotice("うまく動かない部分がありました（"+(e.message||"不明なエラー")+"）。画面を再読み込みしてください。続く場合はこの文をそのまま教えてください。"));
+window.addEventListener("unhandledrejection",e=>showNotice("保存か読み込みで問題が起きました（"+((e.reason&&(e.reason.code||e.reason.message))||"不明")+"）。もう一度試してください。"));
+
+function renderPanel(){
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===S.tab)));
+  document.getElementById("tabbody").innerHTML = S.tab==="match"?renderMatch():S.tab==="mine"?renderFormation(S.mine,true):S.tab==="opp"?renderFormation(S.opp,false):S.tab==="pos"?renderPositions():S.tab==="style"?renderStyle():S.tab==="drill"?renderDrills():S.tab==="roster"?renderRoster():renderBoards();
+  if(S.tab==="pos") wirePositions();
+  if(S.tab==="drill") wireDrills();
+  if(S.tab==="roster") wireRoster();
+  if(S.tab==="boards") wireBoards();
+}
+function updateScorebar(){
+  const sb=document.getElementById("scorebar"); if(!sb) return;
+  const poss=S.auto?(S.possession==="mine"?"自チーム保持":"相手保持"):"手動";
+  sb.innerHTML=`<span class="t m"><small>自チーム</small>${esc(nameOf(S.mine))}</span><span class="vs">VS</span><span class="t o">${esc(nameOf(S.opp))}<small>相手</small></span><span class="meta">${S.auto?'<span class="live"></span>':''}${esc(S.grade)}・${poss}</span>`;
+}
+function renderAll(){ updateScorebar(); if(DM.id) stopDemo(false); drawZones(); drawTeam("opp"); drawTeam("mine"); drawBall(); drawStrokes(); drawSelection(); updateAutoHint(); renderPanel(); }
+
+// ---------- Wiring ----------
+const selMine=document.getElementById("mine"), selOpp=document.getElementById("opp");
+ORDER.forEach(id=>{[selMine,selOpp].forEach(s=>{const o=document.createElement("option");o.value=id;o.textContent=nameOf(id);s.appendChild(o);});});
+selMine.value=S.mine; selOpp.value=S.opp;
+selMine.addEventListener("change",()=>{S.mine=selMine.value;freshPositions();renderAll();});
+selOpp.addEventListener("change",()=>{S.opp=selOpp.value;freshPositions();renderAll();});
+document.getElementById("swap").addEventListener("click",()=>{[S.mine,S.opp]=[S.opp,S.mine];selMine.value=S.mine;selOpp.value=S.opp;freshPositions();renderAll();});
+document.querySelectorAll("[data-phase]").forEach(b=>b.addEventListener("click",()=>{
+  S.phase=b.dataset.phase; document.querySelectorAll("[data-phase]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  freshPositions(); renderAll();
+}));
+document.getElementById("showOpp").addEventListener("change",e=>{S.showOpp=e.target.checked;renderAll();});
+document.getElementById("reset").addEventListener("click",()=>{freshPositions();renderAll();});
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{S.tab=b.dataset.tab;renderPanel();}));
+
+document.getElementById("quickSave").addEventListener("click",async()=>{
+  const d=new Date(), name=`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")} の配置`;
+  await saveBoard(name,null);
+  const m=document.getElementById("quickMsg"); m.textContent=B.msg+"（「保存した配置」タブで開く・上書き・削除ができます）"; m.hidden=false;
+  setTimeout(()=>{m.hidden=true;},6000);
+});
+function setFs(on){
+  document.body.classList.toggle("fs",on);
+  const b=document.getElementById("fsBtn"); b.setAttribute("aria-pressed",String(on)); b.textContent=on?"✕ 全画面を閉じる":"⛶ 全画面";
+  // real full screen where the browser allows it (desktop); the CSS layout above works everywhere else
+  try{ if(on&&!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(()=>{}); else if(!on&&document.fullscreenElement) document.exitFullscreen?.().catch(()=>{}); }catch(e){}
+}
+document.getElementById("fsBtn").addEventListener("click",()=>setFs(!document.body.classList.contains("fs")));
+document.addEventListener("fullscreenchange",()=>{ if(!document.fullscreenElement&&document.body.classList.contains("fs")) setFs(false); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&document.body.classList.contains("fs")) setFs(false); });
+document.getElementById("ballCenter").addEventListener("click",()=>{S.ball=[25,34];S.showBall=true;document.getElementById("showBall").checked=true;drawBall();scheduleAuto();});
+document.querySelectorAll("[data-poss]").forEach(b=>b.addEventListener("click",()=>{
+  S.poss=b.dataset.poss;
+  document.querySelectorAll("[data-poss]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  if(S.gk){ setGk(true); return; }                                    // GK of the team that now has it
+  if(!S.auto){ S.auto=true; document.getElementById("autoSlide").checked=true; S.showBall=true; document.getElementById("showBall").checked=true; drawBall(); }
+  scheduleAuto();
+}));
+function setGk(on){
+  S.gk=on; document.getElementById("gkMode").checked=on;
+  if(on){
+    if(S.poss==="auto"){ S.poss="mine"; document.querySelectorAll("[data-poss]").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.poss==="mine"))); }
+    S.trans=false; document.getElementById("transMode").checked=false;
+    S.ball = S.poss==="opp" ? [25,4.2] : [25,63.8];               // ball in the GK's hands
+    S.auto=true; document.getElementById("autoSlide").checked=true; S.showBall=true; document.getElementById("showBall").checked=true; drawBall();
+  }
+  scheduleAuto();
+}
+document.getElementById("gkMode").addEventListener("change",e=>setGk(e.target.checked));
+document.getElementById("gradeSel").addEventListener("change",e=>{
+  S.grade=e.target.value; Dx.grade=S.grade;
+  if(S.auto) scheduleAuto(); else { freshPositions(); renderAll(); }
+  if(S.tab==="drill") renderPanel();
+  updateAutoHint();
+});
+document.getElementById("transMode").addEventListener("change",e=>{
+  S.trans=e.target.checked;
+  if(!S.auto){ S.auto=true; document.getElementById("autoSlide").checked=true; S.showBall=true; document.getElementById("showBall").checked=true; drawBall(); }
+  scheduleAuto();
+});
+document.getElementById("autoSlide").addEventListener("change",e=>{
+  S.auto=e.target.checked;
+  if(S.auto){ S.showBall=true; document.getElementById("showBall").checked=true; drawBall(); scheduleAuto(); }
+  else { freshPositions(); drawTeam("opp"); drawTeam("mine"); drawSelection(); updateAutoHint(); }
+});
+document.getElementById("showBall").addEventListener("change",e=>{S.showBall=e.target.checked;drawBall();});
+
+document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{
+  S.mode=b.dataset.mode;
+  document.querySelectorAll("[data-mode]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  svg.classList.toggle("penmode",S.mode==="pen");
+  document.getElementById("modeHint").textContent = S.mode==="pen" ? "ピッチの上を指やペンでなぞると、離したところに矢印の先が付きます" : "選手とボールはドラッグで動かせます";
+}));
+document.querySelectorAll(".sw").forEach(b=>b.addEventListener("click",()=>{
+  S.pen.color=b.dataset.color; document.querySelectorAll(".sw").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+}));
+document.querySelectorAll("[data-dash]").forEach(b=>b.addEventListener("click",()=>{
+  S.pen.dash=b.dataset.dash==="1"; document.querySelectorAll("[data-dash]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+}));
+document.getElementById("undo").addEventListener("click",()=>{S.draw.pop();drawStrokes();});
+document.getElementById("clearDraw").addEventListener("click",()=>{S.draw=[];drawStrokes();});
+
+loadLocal(); loadLocalBoards(); drawPitch(); freshPositions(); renderAll(); connectDb(); connectBoards(); connectDrills();
+</script>
+
+<script>
+if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script>
+</body></html>
