@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1310">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ドリル コーチ">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="8人制サッカーのポジション別戦術ドリル。レベル1〜10、全120問。">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+</head><body>
+<title>チームの準備｜ポジションドリル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Oswald:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: one column of numbered setup steps (the order matters), same night-stadium tokens as the drill */
+:root{
+  --bg:#0b1310; --surface:#121c18; --surface-2:#1a2620; --line:#26362e;
+  --fg:#eef5f0; --muted:#8fa498; --accent:#ff6b2c; --accent-ink:#1b0a03;
+  --good:#3ddc8c; --bad:#ff5f5f; --warn:#ffc53d; --good-bg:rgba(61,220,140,.14); --bad-bg:rgba(255,95,95,.14); --warn-bg:rgba(255,197,61,.14);
+  --display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+  --num:"Oswald","Dela Gothic One","Hiragino Sans",sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
+  --bg:#eef2ee; --surface:#ffffff; --surface-2:#f3f6f3; --line:#d8e0da; --fg:#101a15; --muted:#56685d; --accent:#e8551b; --accent-ink:#ffffff;
+  --good:#178a4e; --bad:#cc2f2f; --warn:#b97a00; --good-bg:#e1f4e9; --bad-bg:#fde3e1; --warn-bg:#fbf0d4; color-scheme:light}}
+:root[data-theme="light"]{
+  --bg:#eef2ee; --surface:#ffffff; --surface-2:#f3f6f3; --line:#d8e0da; --fg:#101a15; --muted:#56685d; --accent:#e8551b; --accent-ink:#ffffff;
+  --good:#178a4e; --bad:#cc2f2f; --warn:#b97a00; --good-bg:#e1f4e9; --bad-bg:#fde3e1; --warn-bg:#fbf0d4; color-scheme:light}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.7;padding-inline:16px;padding-block:18px 40px;margin:0}
+.wrap{max-width:760px;margin:0 auto;display:grid;gap:16px}
+h1{font-family:var(--display);font-weight:400;font-size:1.5rem;margin:0;line-height:1.3}
+h1 small{display:block;font-family:var(--body);font-size:.8rem;color:var(--muted);font-weight:500}
+h2{font-family:var(--display);font-weight:400;font-size:1.15rem;margin:0;display:flex;gap:10px;align-items:baseline;text-wrap:balance}
+h2 b{font-family:var(--num);font-weight:700;color:var(--accent);font-size:1.4rem}
+p{margin:0}
+.lead{color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:12px;min-width:0}
+ol{margin:0;padding-left:1.4em;display:grid;gap:6px}
+.k{display:inline-block;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:0 6px;font-weight:700;font-size:.92em}
+.note{font-size:.88rem;background:var(--warn-bg);border-radius:10px;padding:10px 12px}
+.ok{font-size:.92rem;background:var(--good-bg);border-radius:10px;padding:10px 12px}
+.ng{font-size:.92rem;background:var(--bad-bg);border-radius:10px;padding:10px 12px}
+a{color:var(--accent);font-weight:700}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;border-radius:12px;border:0;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:700;padding:10px 20px;text-decoration:none;cursor:pointer}
+.ghost{min-height:44px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--fg);font:inherit;font-weight:700;padding:8px 14px;cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+label{font-size:.8rem;color:var(--muted);font-weight:700;letter-spacing:.04em}
+input{width:100%;font:inherit;font-size:.95rem;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);min-height:46px}
+.field{display:grid;gap:4px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+pre{margin:0;max-height:260px;overflow:auto;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.75rem;line-height:1.5;white-space:pre}
+details summary{cursor:pointer;font-weight:700}
+.linkbox{word-break:break-all;font-size:.85rem;background:var(--surface-2);border-radius:10px;padding:10px 12px}
+.qr{background:#fff;border-radius:12px;padding:12px;width:min(260px,100%);justify-self:start}
+.qr svg{display:block;width:100%;height:auto}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>チームの準備<small>8人制 ポジションドリル ｜ コーチの方へ</small></h1>
+  </header>
+
+  <section class="card">
+    <p>選手がドリルを解くと、その成績が<b>コーチのGoogleスプレッドシートに自動で届く</b>ようにします。毎晩20時には、その日に解いた選手のまとめがメールで届きます。</p>
+    <p class="lead">必要なもの：個人のGoogleアカウント（Gmail）　かかる時間：5分くらい　費用：無料</p>
+    <p class="note">選手の名前と成績は、<b>コーチのGoogleドライブの中だけ</b>に保存されます。アプリの作者やほかのチームには届きません。学校やクラブで支給されたアカウントは、設定で公開できないことがあるので、個人のGmailがおすすめです。</p>
+  </section>
+
+  <section class="card">
+    <h2><b>1</b>スプレッドシートをコピーする</h2>
+    <div id="tpl-yes" hidden>
+      <p>下のボタンを押して「コピーを作成」を押します。自分のGoogleドライブに、成績受け取り用のスプレッドシートができます。</p>
+      <p style="margin-top:10px"><a class="btn" id="tpl-link" href="#" target="_blank" rel="noopener">ひな形をコピーする</a></p>
+    </div>
+    <details id="tpl-no">
+      <summary>ひな形のボタンが使えないとき（自分で作る方法）</summary>
+      <ol style="margin-top:10px">
+        <li><a href="https://sheets.new" target="_blank" rel="noopener">新しいスプレッドシート</a>を作る</li>
+        <li>メニューの <span class="k">拡張機能</span> → <span class="k">Apps Script</span> を開く</li>
+        <li>最初から入っている文字を全部消して、下のプログラムを貼り付ける</li>
+        <li>上の <span class="k">💾 保存</span> を押して、スプレッドシートのタブに戻り、ページを読み込み直す</li>
+      </ol>
+      <div class="row" style="margin-top:10px"><button class="ghost" id="copy-code" type="button">プログラムをコピー</button><span id="copy-msg" class="lead"></span></div>
+      <pre id="code"></pre>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2><b>2</b>はじめの設定をする</h2>
+    <ol>
+      <li>スプレッドシートの上のメニューに出る <span class="k">ドリル</span> → <span class="k">① はじめの設定</span> を押す（メニューが出ないときは、ページを読み込み直す）</li>
+      <li>「承認が必要です」と出たら <span class="k">続行</span> → 自分のアカウントを選ぶ</li>
+      <li>「<b>このアプリは Google で確認されていません</b>」と出たら、左下の <span class="k">詳細</span> → <span class="k">（安全ではないページ）に移動</span> を押す<br><span class="lead">自分のシートで自分のプログラムを動かすときに、いつも出る画面です。</span></li>
+      <li><span class="k">すべて選択</span> にチェックして <span class="k">続行</span></li>
+      <li>もう一度 <span class="k">ドリル</span> → <span class="k">① はじめの設定</span> を押して、チーム名を入れる</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2><b>3</b>受け取り口を公開する</h2>
+    <ol>
+      <li>メニューの <span class="k">拡張機能</span> → <span class="k">Apps Script</span> を開く</li>
+      <li>右上の <span class="k">デプロイ</span> → <span class="k">新しいデプロイ</span></li>
+      <li>「種類の選択」の歯車 ⚙ → <span class="k">ウェブアプリ</span></li>
+      <li>「次のユーザーとして実行」は <span class="k">自分</span>、「アクセスできるユーザー」は <span class="k">全員</span> にする</li>
+      <li><span class="k">デプロイ</span> を押して、出てきた <b>ウェブアプリのURL</b>（https://script.google.com/macros/s/…/exec）をコピーする</li>
+    </ol>
+    <p class="note">「全員」にしても、スプレッドシートの中身が見られるわけではありません。チームコードを知っている端末からの成績を受け取るだけです。</p>
+  </section>
+
+  <section class="card">
+    <h2><b>4</b>チームのリンクを作る</h2>
+    <div class="field"><label for="url">ウェブアプリのURL（手順3でコピーしたもの）</label><input id="url" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/…/exec"></div>
+    <div class="field"><label for="code-in">チームコード（スプレッドシートの <span class="k">ドリル</span> → <span class="k">② チームコードを表示</span>）</label><input id="code-in" autocomplete="off" placeholder="10文字の英数字"></div>
+    <div class="row"><button class="btn" id="check" type="button">つながるか確認して、リンクを作る</button></div>
+    <div id="result" aria-live="polite"></div>
+  </section>
+
+  <section class="card" id="share" hidden>
+    <h2><b>5</b>選手に配る</h2>
+    <p>このリンクかQRコードを、チームのLINEなどで選手（保護者）に送ってください。選手はリンクを開いて、名前と学年を入れるだけです。</p>
+    <div class="linkbox" id="teamlink"></div>
+    <div class="row"><button class="ghost" id="copy-link" type="button">リンクをコピー</button><span id="link-msg" class="lead"></span></div>
+    <div class="qr" id="qr" aria-label="チームのリンクのQRコード"></div>
+    <p class="lead">iPhoneでは、リンクをSafariで開いて、共有ボタン →「ホーム画面に追加」を押すと、アプリのように使えます。</p>
+  </section>
+
+  <section class="card">
+    <h2>よくある質問</h2>
+    <p><b>まとめメールを止めたい</b><br>スプレッドシートの「設定」シートで、「毎晩のまとめメール」を「しない」に変えてください。</p>
+    <p><b>チームコードを変えたい</b><br>「設定」シートのチームコードを消して、<span class="k">① はじめの設定</span> をやり直すと、新しいコードになります。そのあと、手順4でリンクを作り直して配り直してください。</p>
+    <p><b>プログラムを直したあと</b><br><span class="k">デプロイ</span> → <span class="k">デプロイを管理</span> → 鉛筆マーク → バージョン「新しいバージョン」→ <span class="k">デプロイ</span> を押すと、URLを変えずに更新できます。</p>
+    <p><a href="./">← ドリルにもどる</a></p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+const GAS_CODE = "/**\n * 8人制 ポジションドリル — 成績受け取り用スプレッドシートのプログラム\n * 各チームのコーチが、自分の Google スプレッドシートで使います。\n * 選手の成績はこのシートにだけ保存され、ほかの人には届きません。\n */\nconst SHEET_ANSWERS = \"回答\";\nconst SHEET_CLEARS = \"クリア\";\nconst SHEET_SUMMARY = \"選手ごとのまとめ\";\nconst SHEET_SETTINGS = \"設定\";\n\nfunction onOpen() {\n  SpreadsheetApp.getUi().createMenu(\"ドリル\")\n    .addItem(\"① はじめの設定\", \"setup\")\n    .addItem(\"② チームコードを表示\", \"showTeamCode\")\n    .addSeparator()\n    .addItem(\"今日のまとめメールを今すぐ送る\", \"sendSummaryNow\")\n    .addToUi();\n}\n\n// ① はじめの設定: シートを用意し、チームコードと毎晩のまとめメールを設定する\nfunction setup() {\n  const ui = SpreadsheetApp.getUi();\n  const ss = SpreadsheetApp.getActive();\n  ss.setSpreadsheetTimeZone(\"Asia/Tokyo\");\n\n  const res = ui.prompt(\"チーム名\", \"チーム名を入れてください（例：みはらFC U-11）\", ui.ButtonSet.OK_CANCEL);\n  if (res.getSelectedButton() !== ui.Button.OK) return;\n  const teamName = res.getResponseText().trim() || \"マイチーム\";\n\n  sheet_(SHEET_ANSWERS, [\"日時\", \"選手\", \"学年\", \"問題のしゅるい\", \"問題ID\", \"問題\", \"結果\", \"えらんだ答え\"]);\n  sheet_(SHEET_CLEARS, [\"日時\", \"選手\", \"学年\", \"レベル\", \"正解数\"]);\n  const sum = sheet_(SHEET_SUMMARY, []);\n  sum.clear();\n  sum.getRange(\"A1\").setFormula(\n    '=IFERROR(QUERY(\\'' + SHEET_ANSWERS + '\\'!A:I,\"select B, count(E), sum(I) where B is not null group by B label B \\'選手\\', count(E) \\'回答数\\', sum(I) \\'正解数\\'\",1),\"まだ回答がありません\")');\n  // helper column I on 回答 = 1 when correct, so the summary can sum it\n  const ans = ss.getSheetByName(SHEET_ANSWERS);\n  ans.getRange(\"I1\").setValue(\"正解=1\");\n  ans.getRange(\"I2\").setFormula('=ARRAYFORMULA(IF(G2:G=\"\",\"\",IF(G2:G=\"○\",1,0)))');\n  ans.hideColumns(9);\n\n  const set = sheet_(SHEET_SETTINGS, []);\n  const old = settings_();\n  const code = old.code || randomCode_();\n  set.clear();\n  set.getRange(\"A1:B4\").setValues([\n    [\"チーム名\", teamName],\n    [\"チームコード（ひみつ）\", code],\n    [\"毎晩のまとめメール（する／しない）\", old.mail || \"する\"],\n    [\"メールの送り先\", Session.getEffectiveUser().getEmail()]\n  ]);\n  set.setColumnWidth(1, 260); set.setColumnWidth(2, 320);\n\n  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === \"dailySummary\").forEach(t => ScriptApp.deleteTrigger(t));\n  ScriptApp.newTrigger(\"dailySummary\").timeBased().everyDays(1).atHour(20).inTimezone(\"Asia/Tokyo\").create();\n\n  ui.alert(\"設定できました\",\n    \"チーム名：\" + teamName + \"\\nチームコード：\" + code +\n    \"\\n\\nつぎは、上のメニュー「拡張機能」→「Apps Script」を開いて、右上の「デプロイ」→「新しいデプロイ」から公開してください（くわしくはコーチ用ページの手順③）。\",\n    ui.ButtonSet.OK);\n}\n\n// ② チームコードを表示（コーチ用ページに入れる）\nfunction showTeamCode() {\n  const s = settings_();\n  if (!s.code) { SpreadsheetApp.getUi().alert(\"先に「① はじめの設定」をしてください。\"); return; }\n  SpreadsheetApp.getUi().alert(\"チームコード\", \"チーム名：\" + s.team + \"\\nチームコード：\" + s.code +\n    \"\\n\\nコーチ用ページの「チームコード」の欄に入れてください。\", SpreadsheetApp.getUi().ButtonSet.OK);\n}\n\n// つながるかの確認（コーチ用ページから呼ばれる）\nfunction doGet(e) {\n  const s = settings_();\n  const c = e && e.parameter && e.parameter.c;\n  return json_({ ok: true, app: \"pd8\", team: s.team || \"\", codeOk: !!c && c === s.code });\n}\n\n// 選手の端末から成績が届く\nfunction doPost(e) {\n  let d;\n  try { d = JSON.parse(e.postData.contents); } catch (err) { return json_({ ok: false, error: \"bad_json\" }); }\n  const s = settings_();\n  if (!s.code || d.c !== s.code) return json_({ ok: false, error: \"bad_code\" });\n  const lock = LockService.getScriptLock();\n  lock.waitLock(10000);\n  try {\n    const ss = SpreadsheetApp.getActive();\n    const when = d.at ? new Date(d.at) : new Date();\n    const name = clean_(d.name, 20), grade = d.grade ? \"U-\" + Number(d.grade) : \"\";\n    if (d.type === \"answer\") {\n      ss.getSheetByName(SHEET_ANSWERS).appendRow([when, name, grade, clean_(d.mode, 20), clean_(d.qid, 10), clean_(d.q, 200), d.ok ? \"○\" : \"×\", clean_(d.choice, 200)]);\n    } else if (d.type === \"clear\") {\n      ss.getSheetByName(SHEET_CLEARS).appendRow([when, name, grade, \"Lv\" + Number(d.level), Number(d.score) + \"/\" + Number(d.of)]);\n    } else {\n      return json_({ ok: false, error: \"bad_type\" });\n    }\n  } finally {\n    lock.releaseLock();\n  }\n  return json_({ ok: true });\n}\n\n// 毎晩20時: その日に解いた選手のまとめをコーチにメール\nfunction dailySummary() {\n  const s = settings_();\n  if (s.mail === \"しない\") return;\n  summary_(false);\n}\nfunction sendSummaryNow() {\n  const sent = summary_(true);\n  SpreadsheetApp.getUi().alert(sent ? \"まとめメールを送りました。\" : \"今日はまだ回答がありません。\");\n}\n\nfunction summary_(force) {\n  const s = settings_();\n  const ss = SpreadsheetApp.getActive();\n  const tz = \"Asia/Tokyo\";\n  const today = Utilities.formatDate(new Date(), tz, \"yyyy/MM/dd\");\n  const isToday = v => v instanceof Date && Utilities.formatDate(v, tz, \"yyyy/MM/dd\") === today;\n  const ans = ss.getSheetByName(SHEET_ANSWERS).getDataRange().getValues().slice(1).filter(r => isToday(r[0]));\n  const clr = ss.getSheetByName(SHEET_CLEARS).getDataRange().getValues().slice(1).filter(r => isToday(r[0]));\n  if (!ans.length && !clr.length) return false;\n\n  const by = {};\n  ans.forEach(r => { const p = by[r[1]] = by[r[1]] || { n: 0, ok: 0, miss: [], clears: [] }; p.n++; if (r[6] === \"○\") p.ok++; else p.miss.push(r[5]); });\n  clr.forEach(r => { const p = by[r[1]] = by[r[1]] || { n: 0, ok: 0, miss: [], clears: [] }; p.clears.push(r[3]); });\n\n  const lines = Object.keys(by).sort().map(name => {\n    const p = by[name];\n    let t = \"■ \" + name + \"　\" + p.n + \"問中 \" + p.ok + \"問正解\";\n    if (p.clears.length) t += \"　クリア：\" + p.clears.join(\"・\");\n    if (p.miss.length) t += \"\\n　まちがえた問題：\\n\" + p.miss.slice(0, 5).map(q => \"　・\" + q).join(\"\\n\");\n    return t;\n  });\n  const body = s.team + \" の今日のドリル（\" + today + \"）\\n\\n\" + lines.join(\"\\n\\n\") +\n    \"\\n\\nくわしくはスプレッドシートを見てください：\\n\" + ss.getUrl();\n  MailApp.sendEmail(s.to || Session.getEffectiveUser().getEmail(), \"【ポジションドリル】\" + s.team + \" 今日のまとめ\", body);\n  return true;\n}\n\n// ---------- helpers ----------\nfunction sheet_(name, header) {\n  const ss = SpreadsheetApp.getActive();\n  let sh = ss.getSheetByName(name);\n  if (!sh) sh = ss.insertSheet(name);\n  if (header.length && sh.getLastRow() === 0) {\n    sh.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight(\"bold\");\n    sh.setFrozenRows(1);\n  }\n  return sh;\n}\nfunction settings_() {\n  const sh = SpreadsheetApp.getActive().getSheetByName(SHEET_SETTINGS);\n  if (!sh || sh.getLastRow() < 2) return {};\n  const v = sh.getRange(\"B1:B4\").getValues().map(r => String(r[0]).trim());\n  return { team: v[0], code: v[1], mail: v[2], to: v[3] };\n}\nfunction randomCode_() {\n  const chars = \"abcdefghjkmnpqrstuvwxyz23456789\";\n  let s = \"\";\n  for (let i = 0; i < 10; i++) s += chars[Math.floor(Math.random() * chars.length)];\n  return s;\n}\nfunction clean_(v, max) { return String(v == null ? \"\" : v).replace(/^[=+\\-@]/, \"'$&\").slice(0, max); }\nfunction json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }\n";
+const TEMPLATE_URL = "";
+const $ = id => document.getElementById(id);
+$("code").textContent = GAS_CODE;
+if(TEMPLATE_URL){ $("tpl-yes").hidden=false; $("tpl-link").href=TEMPLATE_URL; } else { $("tpl-no").open=true; }
+
+async function copy(text, msgEl){
+  try{ await navigator.clipboard.writeText(text); msgEl.textContent="コピーしました"; }
+  catch(e){ msgEl.textContent="長押しで選んでコピーしてください"; }
+  setTimeout(()=>msgEl.textContent="",2500);
+}
+$("copy-code").onclick = () => copy(GAS_CODE, $("copy-msg"));
+
+const b64url = s => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+let link = "";
+$("check").onclick = async () => {
+  const url = $("url").value.trim(), code = $("code-in").value.trim();
+  const out = $("result"); $("share").hidden = true;
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)){ out.innerHTML = `<p class="ng">URLの形がちがいます。「https://script.google.com/macros/s/」ではじまり「/exec」でおわるURLを入れてください（手順3の最後に出るもの）。</p>`; return; }
+  if(!code){ out.innerHTML = `<p class="ng">チームコードを入れてください。</p>`; return; }
+  out.innerHTML = `<p class="lead">確認しています…</p>`;
+  try{
+    const r = await fetch(url + "?c=" + encodeURIComponent(code));
+    const d = await r.json();
+    if(!d.ok || d.app !== "pd8") throw new Error("app");
+    if(!d.codeOk){ out.innerHTML = `<p class="ng">つながりましたが、チームコードがちがいます。スプレッドシートの <b>ドリル → ② チームコードを表示</b> で確認してください。</p>`; return; }
+    link = new URL("./", location.href).href + "?team=" + b64url(JSON.stringify({u:url, c:code, n:d.team}));
+    out.innerHTML = `<p class="ok">つながりました。チーム名：<b></b></p>`; out.querySelector("b").textContent = d.team;
+    $("teamlink").textContent = link;
+    const qr = qrcode(0, "M"); qr.addData(link); qr.make();
+    $("qr").innerHTML = qr.createSvgTag({cellSize:4, margin:2, scalable:true});
+    $("share").hidden = false;
+  }catch(e){
+    out.innerHTML = `<p class="ng">つながりませんでした。手順3で「アクセスできるユーザー」を<b>全員</b>にしたか、URLをまちがえていないか確認してください。</p>`;
+  }
+};
+$("copy-link").onclick = () => copy(link, $("link-msg"));
+</script>
+
+</body></html>
