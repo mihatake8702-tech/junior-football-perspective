@@ -1027,15 +1027,17 @@ const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.f
 const TEAM = (()=>{
   const get=k=>{ try{ return JSON.parse(localStorage.getItem(k)||"null"); }catch(e){ return null; } };
   const put=(k,v)=>{ try{ v==null?localStorage.removeItem(k):localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
-  let team=get("pd8_team");
+  let team=get("pd8_team"), coach=get("pd8_coach");
+  // ?team=… (players' link) / ?coach=… (coach's link: also shows the team results in せいせき)
+  const decode=t=>{
+    const b=atob(t.replace(/-/g,"+").replace(/_/g,"/")); const v=JSON.parse(new TextDecoder().decode(Uint8Array.from(b,ch=>ch.charCodeAt(0))));
+    return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(v.u) && v.c ? {u:v.u,c:String(v.c),n:String(v.n||"チーム").slice(0,30)} : null;
+  };
   try{
-    const t=new URLSearchParams(location.search).get("team");
-    if(t){
-      const b=atob(t.replace(/-/g,"+").replace(/_/g,"/")); const json=new TextDecoder().decode(Uint8Array.from(b,ch=>ch.charCodeAt(0)));
-      const v=JSON.parse(json);
-      if(/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(v.u) && v.c){ team={u:v.u,c:String(v.c),n:String(v.n||"チーム").slice(0,30)}; put("pd8_team",team); }
-      history.replaceState(null,"",location.pathname);
-    }
+    const ps=new URLSearchParams(location.search), t=ps.get("team"), c=ps.get("coach");
+    if(t){ const v=decode(t); if(v){ team=v; put("pd8_team",team); } }
+    if(c){ const v=decode(c); if(v){ coach=v; put("pd8_coach",coach); S.tab="coach"; } }
+    if(t||c) history.replaceState(null,"",location.pathname);
   }catch(e){}
   let busy=false;
   async function flush(){
@@ -1051,10 +1053,33 @@ const TEAM = (()=>{
   addEventListener("online",flush); setTimeout(flush,1500);
   return {
     get team(){ return team; },
+    get coach(){ return coach; },
+    leaveCoach(){ coach=null; put("pd8_coach",null); },
     send(rec){ if(!team) return; const box=get("pd8_outbox")||[]; box.push(rec); put("pd8_outbox",box.slice(-500)); flush(); },
     leave(){ team=null; put("pd8_team",null); }
   };
 })();
+// ---------- Team results (coach link) ----------
+// The team spreadsheet sends back every answer; shaped like the claude.ai database so the same せいせき screen can show it.
+const REMOTE = {loaded:false, loading:false, err:"", at:0, players:[], answers:[], clears:[]};
+async function loadRemote(){
+  const c=TEAM.coach; if(!c || REMOTE.loading) return;
+  REMOTE.loading=true; REMOTE.err=""; render();
+  try{
+    const d=await (await fetch(c.u+"?code="+encodeURIComponent(c.c)+"&results=1")).json();
+    if(!d.ok || !d.codeOk) throw new Error("code");
+    const gnum=g=>+String(g).replace("U-","")||null, pid=n=>"n:"+n, players={};
+    REMOTE.answers=d.answers.map(([at,name,grade,mode,qid,ok,choice])=>{
+      const p=players[name]=players[name]||{id:pid(name),name,grade:null,last:0};
+      if(at>=p.last){ p.last=at; p.grade=gnum(grade); }
+      return {pid:pid(name),name,grade:gnum(grade),pos:QBY[qid]?.pos,qid,ok,choiceText:choice,at};
+    }).filter(a=>a.pos).sort((a,b)=>b.at-a.at);
+    REMOTE.clears=d.clears.map(([at,name,grade,level])=>{ players[name]=players[name]||{id:pid(name),name,grade:gnum(grade),last:at}; return {pid:pid(name),level:+String(level).replace("Lv","")}; });
+    REMOTE.players=Object.values(players).sort((a,b)=>(a.grade||99)-(b.grade||99) || a.name.localeCompare(b.name,"ja"));
+    REMOTE.loaded=true; REMOTE.at=Date.now();
+  }catch(e){ REMOTE.err = e.message==="code" ? "code" : "net"; }
+  REMOTE.loading=false; render();
+}
 // ---------- Database ----------
 // Inside claude.ai the shared artifact database is used. Opened as a web app (or signed out), records stay on this device.
 function LocalDB(){
@@ -1098,9 +1123,9 @@ function saveAnswer(q, ok, choiceIdx){
   if(!store.db) return;
   store.db.collection("answers").add({pid:S.player.id, name:S.player.name, grade:S.grade, pos:q.pos, qid:q.id, ok, choice:choiceIdx, at:Date.now()}).catch(()=>{});
 }
-function answersOf(pid){ return store.answers.filter(a=>a.pid===pid); }
+function answersOf(pid, src=store){ return src.answers.filter(a=>a.pid===pid); }
 // latest answer per question for one player
-function latestBy(pid){ const m={}; for(const a of answersOf(pid)){ if(!(a.qid in m)) m[a.qid]=a; } return m; }
+function latestBy(pid, src=store){ const m={}; for(const a of answersOf(pid, src)){ if(!(a.qid in m)) m[a.qid]=a; } return m; }
 
 // ---------- Pitch ----------
 function pitchSVG(q, reveal){
@@ -1189,8 +1214,8 @@ function startLevel(n){
   S.pos="LV"+n; S.level=n; S.set=draw(LEVELS[n-1].ids.map(id=>QBY[id]), PER_ROUND); S.i=0; S.results=[]; S.step="quiz"; newQuestion();
 }
 function levelOk(pid,n){ const last=latestBy(pid); return LEVELS[n-1].ids.filter(id=>last[id]?.ok).length; }
-const levelCleared = (pid,n) => pid==="guest" ? S.guestClears.has(n) : store.clears.some(c=>c.pid===pid && c.level===n);
-function bestLevel(pid){ let b=0; for(const L of LEVELS) if(levelCleared(pid,L.n)) b=L.n; return b; }
+const levelCleared = (pid,n,src=store) => pid==="guest" ? S.guestClears.has(n) : src.clears.some(c=>c.pid===pid && c.level===n);
+function bestLevel(pid, src=store){ let b=0; for(const L of LEVELS) if(levelCleared(pid,L.n,src)) b=L.n; return b; }
 function recordClear(){
   const n=S.results.filter(r=>r.ok).length;
   if(!S.pos.startsWith("LV") || n < S.results.length-1) return;
@@ -1303,54 +1328,63 @@ function pctCell(arr){
   return `<span class="pct ${p>=80?"p-hi":p>=50?"p-mid":"p-lo"}">${p}%</span>`;
 }
 function renderCoach(){
-  if(!store.db) return `<section class="card"><h2>せいせき</h2><p class="note">成績を見るには、claude.aiにログインしてこのページを開いてください。</p></section>`;
-  const players = store.players;
+  // coach link: results come from the team spreadsheet
+  const remote = !!TEAM.coach, src = remote ? REMOTE : store;
+  if(remote && !REMOTE.loaded){
+    if(!REMOTE.loading && !REMOTE.err) setTimeout(loadRemote);
+    return `<section class="card"><h2>${esc(TEAM.coach.n)} のせいせき</h2>${REMOTE.err?`<p class="note">${REMOTE.err==="code"?"チームコードがちがうため、成績を読めませんでした。コーチ用ページで、コーチ用リンクを作り直してください。":"成績を読めませんでした。インターネットにつながっているか確認してください。"}</p><div class="row"><button class="ghost" id="reload">もう一度読みこむ</button></div>`:`<p class="muted" style="margin:0">スプレッドシートから成績を読みこんでいます…</p>`}</section>`;
+  }
+  if(!remote && !store.db) return `<section class="card"><h2>せいせき</h2><p class="note">成績を見るには、claude.aiにログインしてこのページを開いてください。</p></section>`;
+  const players = src.players;
   const posKeys = ["MIN", ...Object.keys(POS)];
   // per player: use each question's latest answer → "いまの理解度"
   const rows = players.map(p=>{
-    const last = latestBy(p.id); const all = Object.values(last);
-    const tries = answersOf(p.id).length;
+    const last = latestBy(p.id, src); const all = Object.values(last);
+    const tries = answersOf(p.id, src).length;
     return `<tr><td><button class="link" data-cp="${esc(p.id)}">${esc(p.name)}</button></td>
-      <td><select class="gsel" data-gp="${esc(p.id)}" aria-label="${esc(p.name)}の学年"><option value="">—</option>${[9,10,11,12].map(g=>`<option value="${g}" ${g===p.grade?"selected":""}>${GLABEL(g)}</option>`).join("")}</select></td>
+      <td>${remote ? (p.grade?GLABEL(p.grade):"—") : `<select class="gsel" data-gp="${esc(p.id)}" aria-label="${esc(p.name)}の学年"><option value="">—</option>${[9,10,11,12].map(g=>`<option value="${g}" ${g===p.grade?"selected":""}>${GLABEL(g)}</option>`).join("")}</select>`}</td>
       ${posKeys.map(k=>`<td>${pctCell(all.filter(a=>a.pos===k))}</td>`).join("")}
-      <td>${pctCell(all)}</td><td><b style="font-family:var(--num)">${bestLevel(p.id)?"Lv"+bestLevel(p.id):"—"}</b></td><td>${tries}</td></tr>`;
+      <td>${pctCell(all)}</td><td><b style="font-family:var(--num)">${bestLevel(p.id,src)?"Lv"+bestLevel(p.id,src):"—"}</b></td><td>${tries}</td></tr>`;
   }).join("");
   // most-missed questions (team, latest per player)
   const miss={}, seen={};
-  for(const p of players){ for(const a of Object.values(latestBy(p.id))){ seen[a.qid]=(seen[a.qid]||0)+1; if(!a.ok) miss[a.qid]=(miss[a.qid]||0)+1; } }
+  for(const p of players){ for(const a of Object.values(latestBy(p.id, src))){ seen[a.qid]=(seen[a.qid]||0)+1; if(!a.ok) miss[a.qid]=(miss[a.qid]||0)+1; } }
   const missed = Object.entries(miss).sort((a,b)=>b[1]-a[1]).slice(0,6);
   let detail="";
   if(S.coachPlayer){
     const p = players.find(x=>x.id===S.coachPlayer);
     if(p){
-      const last=latestBy(p.id);
+      const last=latestBy(p.id, src);
       const wrong = Q.filter(q=>last[q.id] && !last[q.id].ok);
       const untried = Q.filter(q=>!last[q.id]).length;
-      detail = `<section class="card"><div class="row"><h2>${esc(p.name)} のまちがえた問題</h2><button class="del" id="delp" data-pid="${esc(p.id)}" style="margin-left:auto">選手を一覧からはずす</button></div>
-        ${wrong.length?`<div class="missed">${wrong.map(q=>`<div><span class="tag">${q.pos==="MIN"?"みんな":q.pos}</span><span>${esc(K(q.situ+" "+q.q,12))}<br><small class="muted">えらんだ：${esc(K(q.choices[last[q.id].choice]?.t||"",12))}</small></span><span class="muted" style="font-size:.8rem">${q.phase}</span></div>`).join("")}</div>`:`<p class="muted" style="margin:0">いま、まちがえたままの問題はありません。</p>`}
+      detail = `<section class="card"><div class="row"><h2>${esc(p.name)} のまちがえた問題</h2>${remote?"":`<button class="del" id="delp" data-pid="${esc(p.id)}" style="margin-left:auto">選手を一覧からはずす</button>`}</div>
+        ${wrong.length?`<div class="missed">${wrong.map(q=>`<div><span class="tag">${q.pos==="MIN"?"みんな":q.pos}</span><span>${esc(K(q.situ+" "+q.q,12))}<br><small class="muted">えらんだ：${esc(last[q.id].choiceText ?? K(q.choices[last[q.id].choice]?.t||"",12))}</small></span><span class="muted" style="font-size:.8rem">${q.phase}</span></div>`).join("")}</div>`:`<p class="muted" style="margin:0">いま、まちがえたままの問題はありません。</p>`}
         <p class="muted" style="margin:0;font-size:.85rem">まだといていない問題：${untried} / ${Q.length}</p>
         <div id="delconfirm"></div></section>`;
     }
   }
   return `<section class="card">
-    <h2>ポジション別の理解度</h2>
-    ${store.local?`<p class="note">この端末で答えた分の成績です。ほかのスマホやタブレットの成績は、ここには出ません。</p>`:""}
-    <p class="muted" style="margin:0;font-size:.88rem">それぞれの問題の「さいごの答え」で計算しています。くり返して正かいすれば上がります。名前を押すと、まちがえた問題が見られます。学年はここで変えられます（その学年の問題が出ます）。</p>
+    <h2>${remote?esc(TEAM.coach.n)+" の":""}ポジション別の理解度</h2>
+    ${remote?`<div class="row"><span class="muted" style="font-size:.85rem">スプレッドシートの成績（${new Date(REMOTE.at).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} に読みこみ）</span><button class="ghost" id="reload" style="margin-left:auto">${REMOTE.loading?"読みこみ中…":"↻ 最新にする"}</button></div>`:""}
+    ${!remote&&store.local?`<p class="note">この端末で答えた分の成績です。ほかのスマホやタブレットの成績は、ここには出ません。</p>`:""}
+    <p class="muted" style="margin:0;font-size:.88rem">それぞれの問題の「さいごの答え」で計算しています。くり返して正かいすれば上がります。名前を押すと、まちがえた問題が見られます。${remote?"学年は、その選手がさいごに答えたときの学年です。":"学年はここで変えられます（その学年の問題が出ます）。"}</p>
     ${players.length?`<div class="tablewrap"><table><thead><tr><th>選手</th><th>学年</th>${posKeys.map(k=>`<th>${k==="MIN"?"みんな":k}</th>`).join("")}<th>ぜんたい</th><th>クリア</th><th>回答数</th></tr></thead><tbody>${rows}</tbody></table></div>`
-      :`<p class="note">まだ選手がいません。「ドリル」タブで名前を追加すると、ここに成績が並びます。</p>`}
+      :`<p class="note">${remote?"まだ成績がとどいていません。選手がチームのリンクでドリルを解くと、ここに並びます。":"まだ選手がいません。「ドリル」タブで名前を追加すると、ここに成績が並びます。"}</p>`}
   </section>
   ${detail}
   <section class="card">
     <h2>チームでよくまちがえる問題</h2>
     ${missed.length?`<div class="missed">${missed.map(([id,n])=>{const q=QBY[id];return `<div><span class="tag">${q.pos==="MIN"?"みんな":q.pos}</span><span>${esc(K(q.situ+" "+q.q,12))}<br><small class="muted">${esc(K(q.point,12))}</small></span><span class="n">${n}/${seen[id]}人</span></div>`;}).join("")}</div>`
       :`<p class="muted" style="margin:0">まだデータがありません。</p>`}
-  </section>`;
+  </section>
+  ${remote?`<p class="muted" style="font-size:.8rem;margin:0">この端末はコーチ用リンクで開かれています。<button class="del" id="leavecoach">この端末からコーチ用をはずす</button></p>`:""}`;
 }
 
 // ---------- Render + events ----------
 function render(){
   // with a team link the coach reads results in the team spreadsheet, so the on-device coach tab is hidden
-  document.getElementById("tab-coach").hidden = !!TEAM.team; if(TEAM.team && S.tab==="coach") S.tab="drill";
+  const coachOk = !TEAM.team || !!TEAM.coach;
+  document.getElementById("tab-coach").hidden = !coachOk; if(!coachOk && S.tab==="coach") S.tab="drill";
   document.getElementById("tab-drill").setAttribute("aria-selected", S.tab==="drill");
   document.getElementById("tab-coach").setAttribute("aria-selected", S.tab==="coach");
   if(S.tab==="coach"){ view.innerHTML=renderCoach(); return; }
@@ -1390,6 +1424,8 @@ view.addEventListener("click", e=>{
     if(S.player){ S.grade = S.player.grade || S.grade || 10; S.step="pos"; render(); } return;
   }
   if(t.id==="leaveteam"){ TEAM.leave(); render(); return; }
+  if(t.id==="reload"){ REMOTE.err=""; loadRemote(); return; }
+  if(t.id==="leavecoach"){ TEAM.leaveCoach(); Object.assign(REMOTE,{loaded:false,err:""}); S.tab="drill"; render(); return; }
   if(t.id==="back-name"){ S.step="name"; render(); return; }
   if(t.dataset.pos){ startSet(t.dataset.pos); return; }
   if(t.dataset.ci!==undefined && S.picked===null){
@@ -1403,7 +1439,7 @@ view.addEventListener("click", e=>{
   if(t.id==="again"){ S.pos.startsWith("LV") ? startLevel(S.level) : startSet(S.pos); return; }
   if(t.id==="other"){ S.step="pos"; render(); return; }
   if(t.id==="done"){ S.player=null; S.step="name"; render(); return; }
-  if(t.dataset.cp){ S.coachPlayer=t.dataset.cp; render(); return; }
+  if(t.dataset.cp){ S.coachPlayer=t.dataset.cp; render(); document.querySelector(".missed")?.closest("section")?.scrollIntoView({behavior:"smooth"}); return; }
   if(t.id==="delp"){ document.getElementById("delconfirm").innerHTML=`<div class="row"><span>一覧からはずしますか？（成績のきろくは残ります）</span><button class="del" id="delyes" data-pid="${esc(t.dataset.pid)}">はずす</button><button class="del" id="delno">やめる</button></div>`; return; }
   if(t.id==="delno"){ document.getElementById("delconfirm").innerHTML=""; return; }
   if(t.id==="delyes" && store.db){ store.db.collection("players").doc(t.dataset.pid).delete().catch(()=>{}); S.coachPlayer=null; return; }
