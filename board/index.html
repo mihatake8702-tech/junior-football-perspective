@@ -658,7 +658,7 @@ function attackTeam(fid,bx,by,offL,trans,gk){
   roles.forEach((r,i)=>{
     const c=cls[i], bs=ballSide(i); let X,D;
     switch(c){
-      case "GK": if(zone===0){D=nCD===2?clamp(d-12,2,10):clamp(d-14,2,4);X=25+(bx-25)*.3;} else {D=clamp(d-30,4,22);X=25+(bx-25)*.2;} break;
+      case "GK": if(zone===0){D=nCD===2?clamp(d-12,2,10):clamp(d-14,2,4);X=25+(bx-25)*.3;} else {D=clamp(d-24,7,24);X=25+(bx-25)*.25;} break;   // our ball upfield: GK steps out as sweeper and back-pass option
       case "CD":
         if(nCD===1){X=25+(bx-25)*.25;D=clamp(d-16,9,36);}
         else if(nCD===2){X=25+Math.sign(off[i])*(zone===0?10:8)+(bx-25)*.2;D=zone===0?clamp(d-4,4,14):clamp(d-18,10,36);}
