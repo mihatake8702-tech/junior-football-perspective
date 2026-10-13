@@ -2187,7 +2187,7 @@ document.getElementById("transMode").addEventListener("change",e=>{
 document.getElementById("autoSlide").addEventListener("change",e=>{
   S.auto=e.target.checked;
   if(S.auto){ S.showBall=true; document.getElementById("showBall").checked=true; drawBall(); scheduleAuto(); }
-  else { freshPositions(); drawTeam("opp"); drawTeam("mine"); drawSelection(); updateAutoHint(); }
+  else { S.gk=false; document.getElementById("gkMode").checked=false; updateAutoHint(); }   // keep everyone where they are; from here players are moved by hand
 });
 document.getElementById("showBall").addEventListener("change",e=>{S.showBall=e.target.checked;drawBall();});
 
