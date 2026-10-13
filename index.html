@@ -1009,7 +1009,8 @@ const GRADES = {gk1:[10,12],gk2:[10,12],gk3:[11,12],gk4:[10,12],gk5:[11,12],
   cf1:[11,12],cf2:[12,12],cf3:[10,12],cf4:[10,12],cf5:[11,12]};
 const XG = {4:[10,12],5:[10,12],6:[10,12],7:[11,12],8:[11,12],9:[11,12],10:[12,12]};
 Q.forEach(q=>{ q.g = q.pos==="MIN" ? [9,10] : XLV[q.id] ? XG[XLV[q.id]] : GRADES[q.id] || (["n9","n10","n11","n12","n13","n14"].includes(q.id)?[11,12]:[12,12]); });
-const inGrade = (q,g) => q.g[0]<=g && g<=q.g[1];
+// U-9 also gets the position questions: the easiest (U-10) ones, shown at U-9 reading level
+const inGrade = (q,g) => { const gg = g===9 && q.pos!=="MIN" ? 10 : g; return q.g[0]<=gg && gg<=q.g[1]; };
 const GLABEL = g => "U-"+g;
 const QBY = Object.fromEntries(Q.map(q=>[q.id,q]));
 const PHASE_ORDER = ["こうげき","しゅび","きりかえ"];
@@ -1225,8 +1226,7 @@ function posStars(pos){
 function renderPos(){
   const g=S.grade, canPick = S.player.guest || !S.player.grade;
   const minCard = g<=10 ? `<button class="pos all" data-pos="MIN"><b>みんな</b><span>みんなのやくそく</span><small>どのポジションでも大事なこと。2たくで5もん</small>${posStars("MIN")}</button>` : "";
-  const cards = g===9 ? minCard
-    : Object.entries(POS).map(([k,v])=>`<button class="pos" data-pos="${k}"><b>${k}</b><span>${v.name}</span><small>${esc(K(v.desc))}</small>${posStars(k)}</button>`).join("")
+  const cards = Object.entries(POS).map(([k,v])=>`<button class="pos" data-pos="${k}"><b>${k}</b><span>${v.name}</span><small>${esc(K(v.desc))}</small>${posStars(k)}</button>`).join("")
       + `<button class="pos all" data-pos="ALL"><b>MIX</b><span>ぜんぶから</span><small>いろんな問題から5もん</small></button>` + minCard;
   const rec = START_LEVEL[g], real = !S.player.guest;
   const lv = LEVELS.map(L=>{
@@ -1241,7 +1241,7 @@ function renderPos(){
     <h2>${esc(S.player.name)}さん、どれをやる？</h2>
     <div class="step">レベル（12もんから6もん出る・5もん正かいでクリア）</div>
     <div class="lvgrid">${lv}</div>
-    <div class="step">${g===9?"みんなのやくそく":"ポジションべつ"}</div>
+    <div class="step">ポジションべつ</div>
     <div class="posgrid">${cards}</div>
     <p class="muted" style="margin:0;font-size:.85rem">★は、さいごにといたとき正かいだった問題の数。まちがえた問題から先に出ます。</p>
   </section>`;
