@@ -1235,6 +1235,15 @@ function answersOf(pid, src=store){ return src.answers.filter(a=>a.pid===pid); }
 function latestBy(pid, src=store){ const m={}; for(const a of answersOf(pid, src)){ if(!(a.qid in m)) m[a.qid]=a; } return m; }
 
 // ---------- Pitch ----------
+// soccer ball: white ball, black centre pentagon with seams, edge patches clipped to the circle
+function soccerBall(cx,cy,r){
+  const pt=(x,y,rad,deg)=>[x+rad*Math.cos(deg*Math.PI/180), y+rad*Math.sin(deg*Math.PI/180)];
+  const pent=(x,y,rad,rot)=>[0,1,2,3,4].map(k=>pt(x,y,rad,rot+72*k).map(v=>v.toFixed(3)).join(",")).join(" ");
+  const seams=[0,1,2,3,4].map(k=>{ const a=-90+72*k, [x1,y1]=pt(cx,cy,r*.36,a), [x2,y2]=pt(cx,cy,r*.8,a); return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`; }).join("");
+  const patches=[0,1,2,3,4].map(k=>{ const a=-54+72*k, [x,y]=pt(cx,cy,r*1.08,a); return `<polygon points="${pent(x,y,r*.3,a+180)}"/>`; }).join("");
+  const id="bc"+(soccerBall.n=(soccerBall.n||0)+1);
+  return `<clipPath id="${id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath><g clip-path="url(#${id})"><circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff"/><g fill="#141414" stroke="#141414" stroke-width="${r*.06}" stroke-linejoin="round">${patches}<polygon points="${pent(cx,cy,r*.36,-90)}"/>${seams}</g></g><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#141414" stroke-width="${r*.12}"/>`;
+}
 function pitchSVG(q, reveal){
   const sc=q.scene, me=sc.me;
   const arrowsDef = `
@@ -1280,7 +1289,7 @@ function pitchSVG(q, reveal){
   const cur=S.cur||{me:[0,0],ball:[0,0],mates:{}};
   const mates = sc.mates.map((m,i)=>{ const v=(cur.mates||{})[i]||[0,0]; return `<g class="mover" id="mvT${i}" style="transform:translate(${v[0]}px,${v[1]}px);transition:none">${mate(m[0],m[1],m[2])}</g>`; }).join("");
   const st = v => `style="transform:translate(${v[0]}px,${v[1]}px);transition:none"`;
-  const ballC = `<circle cx="${bp[0]}" cy="${bp[1]}" r=".95" style="fill:#fff;stroke:#111" stroke-width=".2"/>`;
+  const ballC = soccerBall(bp[0], bp[1], 1.15);
   const meAll = `<g class="mover" id="mvMe" ${st(cur.me)}><circle class="me-ring" cx="${me[1]}" cy="${me[2]}" r="3" style="fill:none;stroke:var(--fg)" stroke-width=".35"/>${mate(me[0],me[1],me[2])}
      <rect x="${me[1]-2.6}" y="${me[2]-5.6}" width="5.2" height="2.4" rx="1.2" style="fill:var(--fg)"/>
      <text x="${me[1]}" y="${me[2]-3.85}" text-anchor="middle" font-size="1.55" font-weight="700" style="fill:var(--bg)">きみ</text>${tgt.ride?ballC:""}</g>`;
@@ -1398,7 +1407,7 @@ function renderQuiz(){
   }).join("");
   return `<div class="quiz">
     <div class="pitchwrap">${pitchSVG(q,reveal)}
-      <div class="legend"><span><i class="dot" style="background:var(--mate)"></i>みかた</span><span><i class="dot" style="background:var(--opp)"></i>あいて</span><span><i class="dot" style="background:#fff;border:1px solid #111"></i>ボール</span><span><i class="dot" style="background:var(--pick)"></i>こたえの場所</span></div>
+      <div class="legend"><span><i class="dot" style="background:var(--mate)"></i>みかた</span><span><i class="dot" style="background:var(--opp)"></i>あいて</span><span><svg viewBox="-1.3 -1.3 2.6 2.6" width="12" height="12" aria-hidden="true" style="vertical-align:-1px;margin-right:4px">${soccerBall(0,0,1.15)}</svg>ボール</span><span><i class="dot" style="background:var(--pick)"></i>こたえの場所</span></div>
     </div>
     <section class="card">
       <div class="qhead"><span class="tag me">${posLabel}</span><span class="tag">${q.phase}</span><div class="progress" aria-label="${S.i+1}もんめ / ${S.set.length}もん">${prog}</div></div>
