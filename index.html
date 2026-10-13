@@ -168,11 +168,118 @@ td button.link{border:0;background:none;font-weight:700;text-decoration:underlin
 .missed div{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;font-size:.9rem;background:var(--surface-2);border-radius:10px;padding:10px 12px}
 .missed .n{font-family:var(--num);font-weight:600;color:var(--bad)}
 .del{border:1px solid var(--line);background:transparent;border-radius:8px;padding:4px 10px;font-size:.8rem;color:var(--muted)}
+
+/* ---------- matchday look: floodlit pitch, kit-number type, player cards, scoreboard results ---------- */
+:root{ --gold:#ffcf4a; --gold-ink:#2b1d00; --stripe:rgba(255,255,255,.018); --glow:color-mix(in srgb,var(--accent) 40%,transparent); }
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){ --gold:#d99a00; --gold-ink:#ffffff; --stripe:rgba(16,26,21,.025); }}
+:root[data-theme="light"]{ --gold:#d99a00; --gold-ink:#ffffff; --stripe:rgba(16,26,21,.025); }
+body{background:
+  radial-gradient(900px 380px at 15% -8%, color-mix(in srgb,var(--good) 10%,transparent), transparent 65%),
+  radial-gradient(700px 320px at 100% 0%, color-mix(in srgb,var(--opp) 9%,transparent), transparent 60%),
+  repeating-linear-gradient(90deg, transparent 0 64px, var(--stripe) 64px 128px), var(--bg);
+  background-attachment:fixed;min-height:100vh}
+html{background:var(--bg)}
+header{padding:10px 14px;border-radius:18px;background:linear-gradient(100deg,var(--surface),var(--surface-2));border:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand svg{width:44px;height:44px;flex:0 0 auto}
+h1{font-size:1.45rem;letter-spacing:.04em}
+h1 small{letter-spacing:.12em}
+.tabs{border-radius:999px;padding:3px;gap:3px}
+.tabs button{border-radius:999px}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);box-shadow:0 4px 14px var(--glow)}
+.card{border-radius:20px;box-shadow:0 14px 34px color-mix(in srgb,#000 22%,transparent)}
+h2{font-size:1.45rem;letter-spacing:.02em}
+
+/* stepper: where the kid is in name → choose → play */
+.stepper{display:flex;align-items:center;gap:8px;font-family:"Oswald","Zen Kaku Gothic New",sans-serif;font-weight:600;font-size:.78rem;letter-spacing:.14em;color:var(--muted)}
+.stepper i{display:block;width:34px;height:6px;border-radius:3px;background:var(--line)}
+.stepper i.on{background:var(--accent);box-shadow:0 0 10px var(--glow)}
+.stepper b{color:var(--fg);font-weight:700}
+.sect{font-family:"Oswald","Zen Kaku Gothic New",sans-serif;font-weight:600;letter-spacing:.16em;font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:10px}
+.sect::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* name chips as kit badges */
+.chips{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.chip{display:flex;align-items:center;gap:10px;text-align:left;min-height:66px;border-radius:16px;transition:transform .12s,border-color .12s}
+.chip:hover{transform:translateY(-2px);border-color:var(--accent)}
+.chip .av{flex:0 0 auto;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:1.05rem;background:var(--accent);color:var(--accent-ink)}
+.chip.guest .av{background:var(--surface);color:var(--muted);border:1px dashed var(--line)}
+.chip .nm{display:grid;line-height:1.25;min-width:0}
+.chip .nm small{font-weight:500}
+
+/* level medals */
+.lvgrid{gap:10px}
+.lv{position:relative;overflow:hidden;min-height:112px;border-radius:16px;padding:12px;gap:4px;transition:transform .12s,border-color .12s}
+.lv:hover{transform:translateY(-2px);border-color:var(--fg)}
+.lv b{font-size:1.7rem;letter-spacing:.02em}
+.lv b em{font-style:normal;font-size:.55em;color:var(--muted);margin-right:2px;letter-spacing:.1em}
+.lv .bar{display:block;height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:auto}
+.lv .bar i{display:block;height:100%;background:var(--good)}
+.lv.rec{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
+.lv.rec small{color:var(--accent)}
+.lv.done{border-color:var(--gold);background:linear-gradient(160deg,color-mix(in srgb,var(--gold) 16%,var(--surface-2)),var(--surface-2) 70%)}
+.lv.done small{color:var(--gold)}
+.lv .medal{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:.8rem;font-weight:700;background:var(--gold);color:var(--gold-ink);box-shadow:0 2px 8px color-mix(in srgb,var(--gold) 50%,transparent)}
+
+/* position player cards with a mini 3-3-1 pitch */
+.posgrid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.pos{position:relative;overflow:hidden;border-radius:18px;padding:12px 12px 12px 14px;grid-template-columns:minmax(0,1fr) 46px;column-gap:10px;align-content:start;min-height:118px;
+  background:linear-gradient(155deg,color-mix(in srgb,var(--accent) 13%,var(--surface-2)) 0%,var(--surface-2) 55%);transition:transform .12s,border-color .12s}
+.pos:hover{transform:translateY(-3px);border-color:var(--accent)}
+.pos > *{grid-column:1 / -1}
+.pos b{grid-column:1;grid-row:1;align-self:center}
+.pos .mini{grid-column:2;grid-row:1;width:46px;height:60px;align-self:start}
+.pos .stars{font-size:.78rem;letter-spacing:0;overflow-wrap:anywhere;line-height:1.3}
+.pos b{font-size:2rem}
+.pos.all{background:var(--surface-2)}
+.pos.all b{color:var(--gold)}
+
+/* quiz */
+.progress i{width:30px;height:9px;border-radius:5px}
+.progress i.now{background:var(--accent);box-shadow:0 0 8px var(--glow)}
+.qtext{font-size:1.35rem}
+.choice{border-radius:16px;transition:transform .1s,border-color .12s}
+.choice:hover:not([disabled]){transform:translateX(3px)}
+.choice .L{border-radius:12px;font-size:1.25rem}
+.verdict{position:relative;overflow:hidden;border-radius:16px;padding:16px 18px}
+.verdict .mark{font-size:2.6rem}
+.verdict .stamp{font-family:var(--display);font-size:1.9rem;letter-spacing:.04em;line-height:1}
+.verdict.ok .stamp{color:var(--good)} .verdict.ng .stamp{color:var(--bad)}
+.verdict p{font-size:.98rem}
+.verdict.ok.pop{animation:goal .55s cubic-bezier(.2,1.4,.4,1)}
+@keyframes goal{0%{transform:scale(.7) rotate(-3deg);opacity:0}60%{transform:scale(1.04) rotate(1deg);opacity:1}100%{transform:none}}
+.verdict.ok::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,transparent 0 22px,color-mix(in srgb,var(--good) 10%,transparent) 22px 30px);pointer-events:none}
+
+/* result scoreboard */
+.board{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center;padding:16px 18px;border-radius:18px;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--line)}
+.board .sc{display:flex;align-items:baseline;gap:8px;font-family:var(--num);font-weight:700;line-height:.9}
+.board .sc .n{font-size:4.6rem;color:var(--fg)}
+.board .sc .of{font-size:1.8rem;color:var(--muted)}
+.board .lbl{font-family:var(--num);letter-spacing:.18em;font-size:.75rem;color:var(--muted)}
+.board .starsbig{font-size:1.8rem;letter-spacing:.08em;color:var(--gold)}
+.clear{display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:16px;background:linear-gradient(100deg,color-mix(in srgb,var(--gold) 22%,var(--surface-2)),var(--surface-2));border:1px solid var(--gold)}
+.clear b{font-family:var(--display);font-weight:400;font-size:1.5rem;color:var(--gold);letter-spacing:.04em}
+.clear.pop{animation:goal .6s cubic-bezier(.2,1.4,.4,1)}
+@media (max-width:520px){.board{grid-template-columns:1fr}.board .sc .n{font-size:3.8rem}}
+
+/* coach: summary strip before the table */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-radius:14px;padding:10px 14px;background:var(--surface-2);display:grid;gap:2px;min-width:0}
+.kpi span{font-size:.75rem;color:var(--muted);font-weight:700;letter-spacing:.06em}
+.kpi b{font-family:var(--num);font-weight:700;font-size:1.6rem;line-height:1.15;font-variant-numeric:tabular-nums}
+.kpi small{font-size:.8rem;color:var(--muted)}
+.kpi.hi b{color:var(--good)} .kpi.lo b{color:var(--bad)}
+table th{position:sticky;top:0;background:var(--surface)}
+table td:first-child,table th:first-child{position:sticky;left:0;background:var(--surface);z-index:1}
+tbody tr:hover td{background:var(--surface-2)}
+td .pct{min-width:58px;border-radius:999px}
+@media (prefers-reduced-motion:reduce){.verdict.ok.pop,.clear.pop{animation:none}.chip,.lv,.pos,.choice{transition:none}}
 </style>
 
 <div class="app">
   <header>
-    <h1>ポジションドリル<small>8人制・3-3-1でかんがえよう</small></h1>
+    <div class="brand"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" rx="11" fill="var(--grass)"/><rect x="8" y="6" width="28" height="32" rx="1.5" fill="none" stroke="var(--chalk)" stroke-width="1.4"/><line x1="8" y1="22" x2="36" y2="22" stroke="var(--chalk)" stroke-width="1.4"/><circle cx="22" cy="22" r="4.5" fill="none" stroke="var(--chalk)" stroke-width="1.4"/><circle cx="16" cy="30" r="2.6" fill="var(--accent)"/><circle cx="28" cy="30" r="2.6" fill="var(--accent)"/><circle cx="22" cy="14" r="2.6" fill="var(--accent)"/></svg>
+    <h1>ポジションドリル<small>8人制・3-3-1でかんがえよう</small></h1></div>
     <div class="tabs" role="tablist">
       <button role="tab" id="tab-drill" aria-selected="true">ドリル</button>
       <button role="tab" id="tab-coach" aria-selected="false">せいせき（コーチ）</button>
@@ -1226,16 +1333,23 @@ function recordClear(){
 function newQuestion(){ S.picked=null; S.preview=null; S.cur={me:[0,0],ball:[0,0],mates:{}}; S.tgt=null; S.order=shuffle(S.set[S.i].choices.map((_,i)=>i)); render(); window.scrollTo({top:0,behavior:"smooth"}); }
 const gradeSelect = (id,val) => `<select id="${id}" aria-label="学年">${[9,10,11,12].map(g=>`<option value="${g}" ${g===val?"selected":""}>${GLABEL(g)}</option>`).join("")}</select>`;
 
+const stepper = (n,label) => `<div class="stepper" aria-label="ステップ ${n} / 3">${[1,2,3].map(k=>`<i class="${k<=n?"on":""}"></i>`).join("")}<span><b>STEP ${n}</b> / 3　${label}</span></div>`;
+const SPOTS = {GK:[[25,64]],CB:[[25,52]],SB:[[10,50],[40,50]],CH:[[25,38]],SH:[[10,34],[40,34]],CF:[[25,22]]};
+function miniPitch(pos){
+  const all = Object.values(SPOTS).flat(), on = SPOTS[pos] || (pos==="MIN"||pos==="ALL" ? all : []);
+  const dot = ([x,y],hi) => `<circle cx="${x}" cy="${y}" r="${hi?4.6:3}" fill="${hi?"var(--accent)":"var(--chalk)"}" opacity="${hi?1:.35}"/>`;
+  return `<svg class="mini" viewBox="0 0 50 68" aria-hidden="true"><rect x="0" y="0" width="50" height="68" rx="4" fill="var(--grass)"/><rect x="3" y="3" width="44" height="62" fill="none" stroke="var(--chalk)" stroke-width="1" opacity=".7"/><line x1="3" y1="34" x2="47" y2="34" stroke="var(--chalk)" stroke-width="1" opacity=".7"/><circle cx="25" cy="34" r="6" fill="none" stroke="var(--chalk)" stroke-width="1" opacity=".7"/><rect x="15" y="57" width="20" height="8" fill="none" stroke="var(--chalk)" stroke-width="1" opacity=".7"/>${all.filter(p=>!on.includes(p)).map(p=>dot(p,false)).join("")}${on.map(p=>dot(p,true)).join("")}</svg>`;
+}
 function renderName(){
   const list = store.players;
   const dbNote = store.err==="nodb" ? `<p class="note">この画面では成績を保存できません（claude.aiにログインして開くと保存されます）。「ゲスト」で遊べます。</p>` : "";
   return `<section class="card">
-    <div class="step">1 / 3</div>
+    ${stepper(1,"なまえ")}
     ${TEAM.team?`<p class="teamline"><b>${esc(TEAM.team.n)}</b> のドリル。せいせきはコーチにとどきます。<button class="del" id="leaveteam">チームからはずれる</button></p>`:""}
     <h2>きみはだれ？</h2>
     <div class="chips">
-      ${list.map(p=>`<button class="chip" data-pid="${esc(p.id)}">${esc(p.name)}<br><small class="muted">${p.grade?GLABEL(p.grade):"学年なし"}</small></button>`).join("")}
-      <button class="chip guest" data-pid="__guest">ゲスト<br><small>（きろくしない）</small></button>
+      ${list.map(p=>`<button class="chip" data-pid="${esc(p.id)}"><span class="av" aria-hidden="true">${esc([...p.name][0]||"?")}</span><span class="nm">${esc(p.name)}<small class="muted">${p.grade?GLABEL(p.grade):"学年なし"}</small></span></button>`).join("")}
+      <button class="chip guest" data-pid="__guest"><span class="av" aria-hidden="true">?</span><span class="nm">ゲスト<small class="muted">きろくしない</small></span></button>
     </div>
     ${store.db ? `<form class="addrow" id="addform"><input id="newname" maxlength="16" placeholder="なまえを追加（例：ゆうと）" autocomplete="off" aria-label="選手のなまえ">${gradeSelect("newgrade",10)}<button class="ghost" type="submit">＋ 追加</button></form>
       ${list.length? "" : `<p class="note">まだ選手が登録されていません。上の欄に、下の名前かニックネームと学年を入れて「追加」を押してください。</p>`}` : ""}
@@ -1250,23 +1364,24 @@ function posStars(pos){
 }
 function renderPos(){
   const g=S.grade, canPick = S.player.guest || !S.player.grade;
-  const minCard = g<=10 ? `<button class="pos all" data-pos="MIN"><b>みんな</b><span>みんなのやくそく</span><small>どのポジションでも大事なこと。2たくで5もん</small>${posStars("MIN")}</button>` : "";
-  const cards = Object.entries(POS).map(([k,v])=>`<button class="pos" data-pos="${k}"><b>${k}</b><span>${v.name}</span><small>${esc(K(v.desc))}</small>${posStars(k)}</button>`).join("")
-      + `<button class="pos all" data-pos="ALL"><b>MIX</b><span>ぜんぶから</span><small>いろんな問題から5もん</small></button>` + minCard;
+  const minCard = g<=10 ? `<button class="pos all" data-pos="MIN">${miniPitch("MIN")}<b>みんな</b><span>みんなのやくそく</span><small>どのポジションでも大事なこと。2たくで5もん</small>${posStars("MIN")}</button>` : "";
+  const cards = Object.entries(POS).map(([k,v])=>`<button class="pos" data-pos="${k}">${miniPitch(k)}<b>${k}</b><span>${v.name}</span><small>${esc(K(v.desc))}</small>${posStars(k)}</button>`).join("")
+      + `<button class="pos all" data-pos="ALL">${miniPitch("ALL")}<b>MIX</b><span>ぜんぶから</span><small>いろんな問題から5もん</small></button>` + minCard;
   const rec = START_LEVEL[g], real = !S.player.guest;
   const lv = LEVELS.map(L=>{
     const ok = real ? levelOk(S.player.id,L.n) : 0, cleared = levelCleared(S.player.id,L.n);
     return `<button class="lv${cleared?" done":""}${L.n===rec?" rec":""}" data-lv="${L.n}">
-      <b>Lv${L.n}</b><span>${esc(K(L.name))}</span>
-      <small>${cleared?"✓ クリア":L.n===rec?"おすすめ":"&nbsp;"}</small>
-      ${real?`<i class="stars">とけた ${ok}/${L.ids.length}</i>`:""}</button>`;
+      ${cleared?`<span class="medal" aria-hidden="true">★</span>`:""}
+      <b><em>Lv</em>${L.n}</b><span>${esc(K(L.name))}</span>
+      <small>${cleared?"クリア":L.n===rec?"おすすめ":"&nbsp;"}</small>
+      ${real?`<i class="stars">とけた ${ok}/${L.ids.length}</i><span class="bar" aria-hidden="true"><i style="width:${Math.round(100*ok/L.ids.length)}%"></i></span>`:""}</button>`;
   }).join("");
   return `<section class="card">
-    <div class="row"><div class="step">2 / 3</div><span class="tag me">${GLABEL(g)}</span>${canPick?gradeSelect("pickgrade",g):""}<button class="ghost" id="back-name" style="margin-left:auto">← なまえをえらびなおす</button></div>
+    <div class="row">${stepper(2,"えらぶ")}<span class="tag me">${GLABEL(g)}</span>${canPick?gradeSelect("pickgrade",g):""}<button class="ghost" id="back-name" style="margin-left:auto">← なまえをえらびなおす</button></div>
     <h2>${esc(S.player.name)}さん、どれをやる？</h2>
-    <div class="step">レベル（12もんから6もん出る・5もん正かいでクリア）</div>
+    <div class="sect">LEVEL　12もんから6もん・5もん正かいでクリア</div>
     <div class="lvgrid">${lv}</div>
-    <div class="step">ポジションべつ</div>
+    <div class="sect">POSITION　ポジションべつ</div>
     <div class="posgrid">${cards}</div>
     <p class="muted" style="margin:0;font-size:.85rem">★は、さいごにといたとき正かいだった問題の数。まちがえた問題から先に出ます。</p>
   </section>`;
@@ -1291,7 +1406,7 @@ function renderQuiz(){
       <p class="qtext">${esc(K(q.q))}</p>
       ${reveal?"":`<p class="taphint">1回タップすると、ピッチで動きが見られるよ。同じこたえをもう1回タップで けってい。</p>`}
       <div class="choices">${choices}</div>
-      ${reveal?`<div class="verdict ${ok?"ok":"ng"} pop"><span class="mark">${ok?"◯":"✕"}</span><p>${ok?"せいかい！":"ざんねん。せいかいはみどりのこたえ。"}</p></div>
+      ${reveal?`<div class="verdict ${ok?"ok":"ng"} pop"><span class="mark">${ok?"◯":"✕"}</span><div><div class="stamp">${ok?"ナイス！":"おしい！"}</div><p>${ok?"せいかい！":"せいかいは みどりの こたえ。"}</p></div></div>
       <div class="point"><small>ポイント</small>${esc(K(q.point))}</div>
       <div class="row"><button class="big" id="next">${S.i+1<S.set.length?"つぎの問題へ →":"けっかを見る →"}</button></div>`:""}
     </section>
@@ -1302,13 +1417,13 @@ function renderResult(){
   const msg = n===tot?"パーフェクト！ 試合でもやってみよう。":n>=tot-1?"すごい！ あと少しで全問せいかい。":n>=Math.ceil(tot/2)?"いいね！ まちがえた問題をもう1回やってみよう。":"まちがえたところが、のびしろ。もう1回チャレンジ！";
   const isLv = S.pos.startsWith("LV"), need = tot-1;
   const lvMsg = !isLv ? "" : n>=need
-    ? `<div class="verdict ok pop"><span class="mark">✓</span><p>Lv${S.level} クリア！${S.level<10?` つぎは Lv${S.level+1}「${LEVELS[S.level].name}」`:" ぜんぶのレベルをクリア！"}</p></div>`
+    ? `<div class="clear pop"><span class="medal" style="position:static;width:44px;height:44px;font-size:1.3rem;display:grid;place-items:center;border-radius:50%;background:var(--gold);color:var(--gold-ink)" aria-hidden="true">★</span><div><b>Lv${S.level} CLEAR!</b><p style="margin:0;font-weight:700">${S.level<10?`つぎは Lv${S.level+1}「${esc(K(LEVELS[S.level].name))}」`:"ぜんぶのレベルをクリア！"}</p></div></div>`
     : `<div class="verdict ng"><span class="mark">!</span><p>あと${need-n}もんでクリア。もう1回やってみよう。</p></div>`;
   const saved = S.player.guest ?"ゲストなので、きろくはしていません。" : store.db ? (store.local ? "けっかはこの端末に保存されました。" : "けっかはコーチに保存されました。") : "";
   return `<section class="card">
-    <div class="step">けっか</div>
-    <div class="row" style="gap:20px"><div class="score">${n}<small> / ${tot}</small></div><div class="starsbig" aria-hidden="true">${"★".repeat(n)}${"☆".repeat(tot-n)}</div></div>
-    <h2>${esc(msg)}</h2>
+    ${stepper(3,"けっか")}
+    <div class="board"><div><div class="lbl">SCORE</div><div class="sc"><span class="n">${n}</span><span class="of">/ ${tot}</span></div></div>
+      <div style="display:grid;gap:6px;min-width:0"><div class="starsbig" aria-hidden="true">${"★".repeat(n)}${"☆".repeat(tot-n)}</div><h2 style="margin:0">${esc(msg)}</h2></div></div>
     ${lvMsg}
     <div class="review">${S.results.map(r=>{const q=QBY[r.qid];return `<div><b style="color:${r.ok?"var(--good)":"var(--bad)"}">${r.ok?"◯":"✕"}</b><span><b style="font-family:var(--num)">${q.pos==="MIN"?"みんな":q.pos}</b>　${esc(K(q.q))}<br><span class="muted">${esc(K(q.point))}</span></span></div>`;}).join("")}</div>
     ${saved?`<p class="muted" style="margin:0;font-size:.85rem">${saved}</p>`:""}
@@ -1350,6 +1465,17 @@ function renderCoach(){
   const miss={}, seen={};
   for(const p of players){ for(const a of Object.values(latestBy(p.id, src))){ seen[a.qid]=(seen[a.qid]||0)+1; if(!a.ok) miss[a.qid]=(miss[a.qid]||0)+1; } }
   const missed = Object.entries(miss).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  // team summary: latest answer per player per question, then by position
+  const teamLast = players.flatMap(p=>Object.values(latestBy(p.id, src)));
+  const pc = arr => arr.length ? Math.round(100*arr.filter(a=>a.ok).length/arr.length) : null;
+  const byPos = posKeys.map(k=>({k, n:teamLast.filter(a=>a.pos===k).length, p:pc(teamLast.filter(a=>a.pos===k))})).filter(x=>x.n>=3).sort((a,b)=>b.p-a.p);
+  const pname = k => k==="MIN"?"みんな":k;
+  const kpis = teamLast.length ? `<div class="kpis">
+      <div class="kpi"><span>選手</span><b>${players.length}<small> 人</small></b><small>回答 ${players.reduce((t,p)=>t+answersOf(p.id,src).length,0)} 問</small></div>
+      <div class="kpi"><span>チームの正解率</span><b>${pc(teamLast)}%</b><small>それぞれの さいごの答え</small></div>
+      ${byPos.length?`<div class="kpi hi"><span>とくいなポジション</span><b>${pname(byPos[0].k)}</b><small>${byPos[0].p}%</small></div>`:""}
+      ${byPos.length>1?`<div class="kpi lo"><span>練習したいポジション</span><b>${pname(byPos.at(-1).k)}</b><small>${byPos.at(-1).p}%</small></div>`:""}
+    </div>` : "";
   let detail="";
   if(S.coachPlayer){
     const p = players.find(x=>x.id===S.coachPlayer);
@@ -1368,6 +1494,7 @@ function renderCoach(){
     ${remote?`<div class="row"><span class="muted" style="font-size:.85rem">スプレッドシートの成績（${new Date(REMOTE.at).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} に読みこみ）</span><button class="ghost" id="reload" style="margin-left:auto">${REMOTE.loading?"読みこみ中…":"↻ 最新にする"}</button></div>`:""}
     ${!remote&&store.local?`<p class="note">この端末で答えた分の成績です。ほかのスマホやタブレットの成績は、ここには出ません。</p>`:""}
     <p class="muted" style="margin:0;font-size:.88rem">それぞれの問題の「さいごの答え」で計算しています。くり返して正かいすれば上がります。名前を押すと、まちがえた問題が見られます。${remote?"学年は、その選手がさいごに答えたときの学年です。":"学年はここで変えられます（その学年の問題が出ます）。"}</p>
+    ${kpis}
     ${players.length?`<div class="tablewrap"><table><thead><tr><th>選手</th><th>学年</th>${posKeys.map(k=>`<th>${k==="MIN"?"みんな":k}</th>`).join("")}<th>ぜんたい</th><th>クリア</th><th>回答数</th></tr></thead><tbody>${rows}</tbody></table></div>`
       :`<p class="note">${remote?"まだ成績がとどいていません。選手がチームのリンクでドリルを解くと、ここに並びます。":"まだ選手がいません。「ドリル」タブで名前を追加すると、ここに成績が並びます。"}</p>`}
   </section>
