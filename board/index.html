@@ -665,7 +665,7 @@ function attackTeam(fid,bx,by,offL,trans,gk){
         else {X=25+Math.sign(off[i])*7+(bx-25)*.2;D=clamp(d-18,8,34);}
         break;
       case "SD": case "FB":
-        if(zone===0){ if(bs||!wide){X=off[i]<0?8:42;D=clamp(d-2,6,40);} else {X=25-side*11;D=clamp(d-4,6,40);} }   // own third, ball on the other side: tuck in (cover the middle, short option)
+        if(zone===0){ if(bs||Math.abs(bx-25)<=5){X=off[i]<0?8:42;D=clamp(d-2,6,40);} else {X=25-side*6;D=clamp(d-2,6,40);} }   // own third, ball on the other half: far-side back tucks in next to the CB, level with the ball   // own third, ball on the other side: tuck in (cover the middle, short option)
         else if(bs&&!hasWideWM&&!wide){X=Tt-side*5;D=d-3;}                              // no wide midfielders (3-2-2): the back gives the width
         else if(bs&&zone===1){ if(wide){X=bx-side*3;D=d-8;} else {X=Tt-side*6;D=d-6;} }   // middle third: behind the ball (wide ball) / keep width (central ball)
         else if(bs){                                                                     // final third
