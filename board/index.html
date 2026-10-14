@@ -799,7 +799,7 @@ function pressMarks(fid,D,A,bx,by,presser){
   const d=68-by; if(d<=48) return D;
   const cls=teamSetup(fid,bx).cls;
   let holder=-1,hb=1e9; A.forEach((p,i)=>{ if(i===0)return; const dd=Math.hypot(p[0]-bx,p[1]-by); if(dd<hb){hb=dd;holder=i;} });
-  const threats=A.map((p,i)=>({i,p,dist:Math.hypot(p[0]-bx,p[1]-by)})).filter(t=>t.i!==0&&t.i!==holder&&t.dist<22).sort((a,b)=>a.dist-b.dist).slice(0,3);
+  const threats=A.map((p,i)=>({i,p,dist:Math.hypot(p[0]-bx,p[1]-by)})).filter(t=>t.i!==0&&t.i!==holder&&t.dist<18&&t.p[1]>by-1).sort((a,b)=>a.dist-b.dist).slice(0,3);   // only forward/level outlets: the back pass is allowed (that's a win for the press)
   const free=D.map((_,i)=>i).filter(i=>i!==0&&i!==presser&&["WM","WF","PV","IM","AM","CM","ST"].includes(cls[i]));
   // assign markers so that the total running distance is smallest and nobody crosses to the other flank
   const off=F[fid].base.map(p=>p[0]-25), n=Math.min(threats.length,free.length);
@@ -813,7 +813,7 @@ function pressMarks(fid,D,A,bx,by,presser){
   perm(new Set(),0,[],0);
   (best||[]).forEach((i,k)=>{ const t=threats[k];
     const vx=25-t.p[0], vy=68-t.p[1], l=Math.hypot(vx,vy)||1;           // toward our own goal
-    D[i]=[clamp(t.p[0]+vx/l*5,1.5,48.5), clamp(t.p[1]+vy/l*5,1,67)];    // ~5m goal-side: intercept the forward pass, not beaten by a turn
+    D[i]=[clamp(t.p[0]+vx/l*3.5,1.5,48.5), clamp(t.p[1]+vy/l*3.5,1,67)];  // ~3.5m goal-side: intercept the forward pass, not beaten by a turn
   });
   spread(D,[0,presser],4); D.forEach(p=>{ p[0]=clamp(p[0],1,49); p[1]=clamp(p[1],.5,67.5); });
   return D;
