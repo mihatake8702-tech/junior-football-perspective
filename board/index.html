@@ -789,6 +789,33 @@ function markBox(fid,D,A,bx,by,presser){
     const vx=25-t.p[0], vy=68-t.p[1], l=Math.hypot(vx,vy)||1;
     D[best]=[t.p[0]+vx/l*1.6, t.p[1]+vy/l*1.6];
   });
+  spread(D,[0,presser],3);                                         // two markers never stand on the same spot
+  D.forEach(p=>{ p[0]=clamp(p[0],1,49); p[1]=clamp(p[1],.5,67.5); });
+  return D;
+}
+// high press near the attackers' goal: midfielders/forwards pick up the nearest outlets, standing goal-side and a bit inside
+// (D, A, ball all in the defending team's frame: own goal at y=68)
+function pressMarks(fid,D,A,bx,by,presser){
+  const d=68-by; if(d<=48) return D;
+  const cls=teamSetup(fid,bx).cls;
+  let holder=-1,hb=1e9; A.forEach((p,i)=>{ if(i===0)return; const dd=Math.hypot(p[0]-bx,p[1]-by); if(dd<hb){hb=dd;holder=i;} });
+  const threats=A.map((p,i)=>({i,p,dist:Math.hypot(p[0]-bx,p[1]-by)})).filter(t=>t.i!==0&&t.i!==holder&&t.dist<22).sort((a,b)=>a.dist-b.dist).slice(0,3);
+  const free=D.map((_,i)=>i).filter(i=>i!==0&&i!==presser&&["WM","WF","PV","IM","AM","CM","ST"].includes(cls[i]));
+  // assign markers so that the total running distance is smallest and nobody crosses to the other flank
+  const off=F[fid].base.map(p=>p[0]-25), n=Math.min(threats.length,free.length);
+  const wideRole=i=>cls[i]==="WM"||cls[i]==="WF";
+  const cost=(i,t)=>Math.hypot(D[i][0]-t.p[0],D[i][1]-t.p[1])
+    +((off[i]>6&&t.p[0]<20)||(off[i]<-6&&t.p[0]>30)?15:0)              // never cross to the other flank
+    +(wideRole(i)!==(Math.abs(t.p[0]-25)>12)?12:0);                      // wide players take the wide outlets, central players the central ones
+  let best=null,bc=1e9;
+  const perm=(used,k,acc,sum)=>{ if(sum>=bc) return; if(k===n){ bc=sum; best=acc.slice(); return; }
+    free.forEach(i=>{ if(used.has(i)) return; used.add(i); acc.push(i); perm(used,k+1,acc,sum+cost(i,threats[k])); acc.pop(); used.delete(i); }); };
+  perm(new Set(),0,[],0);
+  (best||[]).forEach((i,k)=>{ const t=threats[k];
+    const vx=25-t.p[0], vy=68-t.p[1], l=Math.hypot(vx,vy)||1;           // toward our own goal
+    D[i]=[clamp(t.p[0]+vx/l*5,1.5,48.5), clamp(t.p[1]+vy/l*5,1,67)];    // ~5m goal-side: intercept the forward pass, not beaten by a turn
+  });
+  spread(D,[0,presser],4); D.forEach(p=>{ p[0]=clamp(p[0],1,49); p[1]=clamp(p[1],.5,67.5); });
   return D;
 }
 function markOwnBox(fid,P,Opp,bx,by,holder){
@@ -830,12 +857,14 @@ function computeAuto(){
     const o=defendTeam(S.opp,50-bx,68-by,S.trans);
     const m=attackTeam(S.mine,bx,by,offLine(o.P),S.trans);
     o.P=markBox(S.opp,o.P,m.P.map(mir),50-bx,68-by,o.near);
+    if(!S.trans) o.P=pressMarks(S.opp,o.P,m.P.map(mir),50-bx,68-by,o.near);
     m.P=markOwnBox(S.mine,m.P,o.P.map(mir),bx,by,m.near);
     S.pos.mine=m.P; S.pos.opp=o.P.map(mir);
   } else {
     const m=defendTeam(S.mine,bx,by,S.trans);
     const o=attackTeam(S.opp,50-bx,68-by,offLine(m.P),S.trans);
     m.P=markBox(S.mine,m.P,o.P.map(mir),bx,by,m.near);
+    if(!S.trans) m.P=pressMarks(S.mine,m.P,o.P.map(mir),bx,by,m.near);
     o.P=markOwnBox(S.opp,o.P,m.P.map(mir),50-bx,68-by,o.near);
     S.pos.mine=m.P; S.pos.opp=o.P.map(mir);
   }
@@ -1943,8 +1972,8 @@ Object.assign(DEMOS,{
 function positionsFor(bx,by,mineAtt,trans){
   bx=clamp(bx,.5,49.5); by=clamp(by,.5,67.5);
   const mir=([x,y])=>[50-x,68-y], offLine=P=>{ const ys=P.map(p=>p[1]).sort((a,b)=>b-a); return ys[1]; };
-  if(mineAtt){ const od=defendTeam(S.opp,50-bx,68-by,trans), md=attackTeam(S.mine,bx,by,offLine(od.P),trans); od.P=markBox(S.opp,od.P,md.P.map(mir),50-bx,68-by,od.near); return {mine:md.P,opp:od.P.map(mir)}; }
-  const md=defendTeam(S.mine,bx,by,trans), od=attackTeam(S.opp,50-bx,68-by,offLine(md.P),trans); md.P=markBox(S.mine,md.P,od.P.map(mir),bx,by,md.near); return {mine:md.P,opp:od.P.map(mir)};
+  if(mineAtt){ const od=defendTeam(S.opp,50-bx,68-by,trans), md=attackTeam(S.mine,bx,by,offLine(od.P),trans); od.P=markBox(S.opp,od.P,md.P.map(mir),50-bx,68-by,od.near); if(!trans) od.P=pressMarks(S.opp,od.P,md.P.map(mir),50-bx,68-by,od.near); return {mine:md.P,opp:od.P.map(mir)}; }
+  const md=defendTeam(S.mine,bx,by,trans), od=attackTeam(S.opp,50-bx,68-by,offLine(md.P),trans); md.P=markBox(S.mine,md.P,od.P.map(mir),bx,by,md.near); if(!trans) md.P=pressMarks(S.mine,md.P,od.P.map(mir),bx,by,md.near); return {mine:md.P,opp:od.P.map(mir)};
 }
 function autoScript(kind){
   const path = kind==="slide"
