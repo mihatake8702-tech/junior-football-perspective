@@ -621,7 +621,12 @@ function defendTeam(fid,bx,by,trans,gk){
     const keepIn = crossD && (["CD","SD","FB","PV"].includes(cls[i]));
     const dd=Math.hypot(T[i][0]-bx,T[i][1]-d)+(keepIn?10:0); if(dd<bd){bd=dd;first=i;} });
   const ux=25-bx, uy=0-d, ul=Math.hypot(ux,uy)||1;
-  T[first]=[bx+ux/ul*1.5-(wide?side*.5:0), d+uy/ul*1.5];
+  // centre: goal side, showing the ball outside. Wide (not defending the cross): cut off the line (縦切り) —
+  // stand goal side on the touchline side so the ball goes inside, where the covering player waits
+  // (footballhack『８人制サッカーの戦術』3-3-1 / 小澤『サッカー戦術の教科書』サイドの守備)
+  // (pressing high in their half is the opposite: the forward curves in and blocks the switch — 円弧アプローチ)
+  if(wide&&!crossD&&!high) T[first]=[bx+side*1.1, d-1.2];
+  else T[first]=[bx+ux/ul*1.5-(wide?side*.5:0), d+uy/ul*1.5];
   // second defender: covers 3-5m behind at an angle, inside
   let second=-1; bd=1e9;
   roles.forEach((r,i)=>{ if(r==="GK"||i===first)return; if(!crossD&&(cls[i]==="WM"||cls[i]==="WF")&&ballSide(i)&&Math.abs(off[i])>5)return;   // ball-side SH stays in his lane
@@ -937,7 +942,10 @@ function updateAutoHint(){
     : "自チーム：幅と三角形でボールを動かす。FWは相手DFの背後を狙い続ける（スペイン流＋イングランド流）";
   else t = S.trans ? "自チーム：奪われた瞬間。近い3人で囲んですぐ奪い返す（スペイン流の即時奪回）"
     : dMine<22.7 ? "自チーム：自陣ゴール前。コンパクトに固め、ニアとファーを埋める。マイナスの折り返しに入ってくる相手も必ずゴール側でつかむ"
-    : dMine>45.3 ? "自チーム：相手陣でボールを奪いに行く前からのプレス（イングランド流）" : "自チーム：コンパクトなゾーンで、ボール側に寄せて逆は絞る（スペイン流）";
+    : (dMine>45.3 ? "自チーム：相手陣でボールを奪いに行く前からのプレス（イングランド流）" : "自チーム：コンパクトなゾーンで、ボール側に寄せて逆は絞る（スペイン流）")
+      + (Math.abs(S.ball[0]-25)<=12 ? "。真ん中ではサイドへ追い出す"
+         : dMine>45.3 ? "。サイドではカーブして寄せ、逆サイドへのパスを切る"
+         : "。サイドでは縦を切って中へ追い込み、中で待つ味方が奪う");
   h.textContent = t + (S.poss==="auto"?"　※ボールに近いチームを保持側と判定":"");
 }
 
