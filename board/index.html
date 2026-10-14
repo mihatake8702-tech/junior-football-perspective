@@ -665,7 +665,7 @@ function attackTeam(fid,bx,by,offL,trans,gk){
         else {X=25+Math.sign(off[i])*7+(bx-25)*.2;D=clamp(d-18,8,34);}
         break;
       case "SD": case "FB":
-        if(zone===0){X=off[i]<0?8:42;D=clamp(d-2,6,40);}
+        if(zone===0){ if(bs||!wide){X=off[i]<0?8:42;D=clamp(d-2,6,40);} else {X=25-side*11;D=clamp(d-4,6,40);} }   // own third, ball on the other side: tuck in (cover the middle, short option)
         else if(bs&&!hasWideWM&&!wide){X=Tt-side*5;D=d-3;}                              // no wide midfielders (3-2-2): the back gives the width
         else if(bs&&zone===1){ if(wide){X=bx-side*3;D=d-8;} else {X=Tt-side*6;D=d-6;} }   // middle third: behind the ball (wide ball) / keep width (central ball)
         else if(bs){                                                                     // final third
@@ -690,6 +690,7 @@ function attackTeam(fid,bx,by,offL,trans,gk){
       case "WM": case "WF":
         if(bs&&Math.abs(off[i])>=5){X=Tt-side*byAge(6,5,4);D=clamp(d+byAge(6,7,7),15,lim);}                   // ball side: width, ~7m ahead of the ball
         else if(zone===2&&d>48){D=63;X=25-side*4;}                                      // far side: attack the far post
+        else if(zone===0&&wide){X=side>0?11:39;D=d+2;}                                   // own third: no risky switch across our goal, stay connected
         else {X=side>0?byAge(10,6,4):50-byAge(10,6,4);D=d+2;}                          // U-11/12: full width for a switch, U-9/10: within a kid's pass                                                     // far side: width for a switch, but within a kid's pass (7m inside)
         break;
       case "ST": {
