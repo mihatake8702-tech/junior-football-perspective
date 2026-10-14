@@ -297,7 +297,7 @@ td .pct{min-width:58px;border-radius:999px}
 .th{position:relative;overflow:hidden;display:grid;gap:4px;align-content:start;text-align:left;border-radius:16px;border:2px solid var(--line);background:var(--surface-2);padding:12px;min-height:96px;transition:transform .12s,border-color .12s}
 .th:hover:not([disabled]){transform:translateY(-2px);border-color:var(--fg)}
 .th[disabled]{opacity:.45;cursor:default}
-.th b{font-size:1rem;line-height:1.35;padding-right:26px}
+.th b{font-size:1.02rem;line-height:1.35;grid-column:1}
 .th small{font-size:.75rem;color:var(--muted);font-weight:700}
 .th .bar{display:block;height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:auto}
 .th .bar i{display:block;height:100%;background:var(--good)}
@@ -346,6 +346,19 @@ svg.pitch.hideplayers .actors{opacity:0}
 .thstats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px}
 .thstats div{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;background:var(--surface-2);font-size:.85rem;font-weight:700}
 @media (prefers-reduced-motion:reduce){svg.pitch .actors{transition:none}.mix,.th{transition:none}}
+
+/* theme cards: a little pitch drawing of the idea, tinted by the moment of the game */
+.thgrid{grid-template-columns:repeat(auto-fill,minmax(178px,1fr))}
+.th{grid-template-columns:minmax(0,1fr) 44px;column-gap:10px;min-height:118px;padding:12px 12px 12px 14px;--ph:var(--accent);
+  background:linear-gradient(155deg,color-mix(in srgb,var(--ph) 16%,var(--surface-2)) 0%,var(--surface-2) 60%)}
+.th > *{grid-column:1 / -1}
+.th b{grid-column:1;grid-row:1;align-self:center}
+.th .ticon{grid-column:2;grid-row:1 / span 2;width:44px;height:60px;align-self:start;border-radius:6px;box-shadow:0 4px 10px rgba(0,0,0,.25)}
+.th small{grid-column:1;grid-row:2}
+.th.ph-def{--ph:var(--opp)} .th.ph-lost{--ph:var(--bad)} .th.ph-won{--ph:var(--good)}
+.th:hover:not([disabled]){border-color:var(--ph)}
+.th .medal{top:auto;bottom:8px;right:10px}
+.th.done{border-color:var(--gold)}
 </style>
 
 <div class="app">
@@ -4835,6 +4848,32 @@ function renderName(){
     ${dbNote}
   </section>`;
 }
+// a small pitch drawing for each theme (yellow = us, blue = them, white = ball, arrows = movement)
+function themeIcon(id){
+  const Y="var(--mate)", B="var(--opp)", W="#fff";
+  const dot=(x,y,c,r=3.4)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="rgba(0,0,0,.35)" stroke-width=".6"/>`;
+  const arr=(x1,y1,x2,y2,c,dash)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="1.6" ${dash?'stroke-dasharray="2.4 1.6"':""} marker-end="url(#ti-${c===B?"b":c===W?"w":"y"})"/>`;
+  const txt=(x,y,t)=>`<text x="${x}" y="${y+1.6}" text-anchor="middle" font-size="4.6" font-weight="700" fill="var(--mate-ink)" font-family="var(--num)">${t}</text>`;
+  const art = {
+    goal:  dot(25,30,Y)+arr(25,26,25,8,W),
+    pos123:dot(25,48,Y,2.8)+dot(32,40,Y)+txt(32,40,"1")+dot(22,26,Y)+txt(22,26,"2")+dot(44,30,Y)+txt(44,30,"3")+dot(17,32,B,2.8)+dot(31,26,B,2.8),
+    lane:  `<g stroke="var(--chalk)" stroke-width=".5" stroke-dasharray="1.5 1.5" opacity=".6"><line x1="10" y1="3" x2="10" y2="65"/><line x1="20" y1="3" x2="20" y2="65"/><line x1="30" y1="3" x2="30" y2="65"/><line x1="40" y1="3" x2="40" y2="65"/></g>`+dot(15,44,Y)+dot(25,30,Y)+dot(35,44,Y)+dot(20,36,B,2.8)+dot(30,36,B,2.8),
+    body:  dot(25,40,Y)+arr(25,36,25,24,Y)+`<path d="M14 22 Q25 12 36 22" fill="none" stroke="var(--chalk)" stroke-width="1.2" opacity=".8"/>`+dot(15,22,B,2.8)+dot(36,18,Y,2.8),
+    break: dot(25,44,Y)+dot(25,30,B)+`<path d="M25 40 Q35 32 27 20" fill="none" stroke="${Y}" stroke-width="1.6" stroke-dasharray="2.4 1.6" marker-end="url(#ti-y)"/>`+dot(14,32,Y,2.8)+arr(23,42,15,34,W),
+    carry: dot(25,50,Y)+arr(25,46,25,30,Y,1)+dot(14,28,B,2.8)+dot(36,28,B,2.8)+dot(40,40,Y,2.8),
+    order: dot(25,22,B)+dot(25,40,Y)+`<rect x="20" y="62" width="10" height="3" fill="none" stroke="var(--chalk)" stroke-width=".8"/>`+`<line x1="25" y1="26" x2="25" y2="61" stroke="var(--chalk)" stroke-width=".6" stroke-dasharray="1.2 1.2" opacity=".7"/>`,
+    cover: dot(20,30,B)+dot(22,36,Y)+dot(30,44,Y)+`<line x1="22" y1="36" x2="30" y2="44" stroke="${Y}" stroke-width="1" opacity=".7"/>`,
+    slide: dot(14,30,B)+dot(18,38,Y)+dot(28,40,Y)+dot(38,40,Y)+arr(34,48,24,48,Y)+arr(44,48,36,48,Y),
+    box:   `<rect x="12" y="50" width="26" height="15" fill="none" stroke="var(--chalk)" stroke-width=".8"/>`+dot(25,63,Y,2.8)+dot(22,56,Y)+dot(29,54,B)+dot(40,48,B,2.8)+arr(38,49,31,54,W),
+    lost:  dot(25,24,B)+dot(25,30,Y)+arr(23,30,23,48,Y)+arr(27,26,26,25,"var(--bad)"),
+    won:   dot(25,44,Y)+dot(30,26,Y,2.8)+arr(25,40,29,30,W)+arr(30,22,30,8,Y,1)+dot(18,46,B,2.8)
+  }[id]||"";
+  return `<svg class="ticon" viewBox="0 0 50 68" aria-hidden="true"><defs>
+    <marker id="ti-y" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="3" markerHeight="3" orient="auto"><path d="M0,0L6,3L0,6z" fill="var(--mate)"/></marker>
+    <marker id="ti-b" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="3" markerHeight="3" orient="auto"><path d="M0,0L6,3L0,6z" fill="var(--opp)"/></marker>
+    <marker id="ti-w" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="3" markerHeight="3" orient="auto"><path d="M0,0L6,3L0,6z" fill="#fff"/></marker></defs>
+    <rect x="0" y="0" width="50" height="68" rx="5" fill="var(--grass)"/><rect x="3" y="3" width="44" height="62" fill="none" stroke="var(--chalk)" stroke-width=".8" opacity=".55"/><line x1="3" y1="34" x2="47" y2="34" stroke="var(--chalk)" stroke-width=".8" opacity=".55"/><rect x="15" y="3" width="20" height="8" fill="none" stroke="var(--chalk)" stroke-width=".8" opacity=".55"/>${art}</svg>`;
+}
 // ◎ count (latest answer per question) out of the questions this player can see
 function progress(qs){
   if(!S.player || S.player.guest) return null;
@@ -4847,8 +4886,8 @@ function renderPick(){
   const forms = ["all", ...FORMS.filter(f=>Q.some(q=>q.scene.f===f && inGrade(q,g)))];
   const themeCard = t => {
     const qs = base.filter(q=>q.th===t.id), pr = progress(qs), cleared = themeCleared(pid,t.id);
-    return `<button class="th${cleared?" done":""}" data-mode="${t.id}" ${qs.length?"":"disabled"}>
-      ${cleared?`<span class="medal" aria-hidden="true">★</span>`:""}
+    return `<button class="th ph-${t.ph}${cleared?" done":""}" data-mode="${t.id}" ${qs.length?"":"disabled"}>
+      ${themeIcon(t.id)}${cleared?`<span class="medal" aria-hidden="true">★</span>`:""}
       <b>${esc(K(t.name))}</b><small>${qs.length}もん${qs.some(q=>q.type==="tap")?"・タップあり":""}</small>
       ${pr?`<span class="bar" aria-hidden="true"><i style="width:${pr.n?Math.round(100*pr.done/pr.n):0}%"></i></span><i class="stars">◎ ${pr.done}/${pr.n}</i>`:""}</button>`;
   };
