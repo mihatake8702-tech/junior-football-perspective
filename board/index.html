@@ -610,7 +610,8 @@ function defendTeam(fid,bx,by,trans,gk){
   T[first]=[bx+ux/ul*1.5-(wide?side*.5:0), d+uy/ul*1.5];
   // second defender: covers 3-5m behind at an angle, inside
   let second=-1; bd=1e9;
-  roles.forEach((r,i)=>{ if(r==="GK"||i===first)return; const dd=Math.hypot(T[i][0]-bx,T[i][1]-d); if(dd<bd){bd=dd;second=i;} });
+  roles.forEach((r,i)=>{ if(r==="GK"||i===first)return; if(!crossD&&(cls[i]==="WM"||cls[i]==="WF")&&ballSide(i)&&Math.abs(off[i])>5)return;   // ball-side SH stays in his lane
+    const dd=Math.hypot(T[i][0]-bx,T[i][1]-d); if(dd<bd){bd=dd;second=i;} });
   if(second>=0 && !crossD){
     const cd=d<23?4:d>45?6:5, inward=Math.sign(25-bx)||0;
     if(d<12){ const lat=T[second][0]>=T[first][0]?1:-1; T[second]=[T[first][0]+lat*4.5, Math.max(1.5,T[first][1]-1)]; }   // no room behind near our goal: cover from the side
@@ -796,11 +797,16 @@ function markBox(fid,D,A,bx,by,presser){
 // high press near the attackers' goal: midfielders/forwards pick up the nearest outlets, standing goal-side and a bit inside
 // (D, A, ball all in the defending team's frame: own goal at y=68)
 function pressMarks(fid,D,A,bx,by,presser){
-  const d=68-by; if(d<=48) return D;
+  const d=68-by; if(d<=25) return D;
+  const high=d>48, side=bx>=25?1:-1;
   const cls=teamSetup(fid,bx).cls;
   let holder=-1,hb=1e9; A.forEach((p,i)=>{ if(i===0)return; const dd=Math.hypot(p[0]-bx,p[1]-by); if(dd<hb){hb=dd;holder=i;} });
-  const threats=A.map((p,i)=>({i,p,dist:Math.hypot(p[0]-bx,p[1]-by)})).filter(t=>t.i!==0&&t.i!==holder&&t.dist<18&&t.p[1]>by-1).sort((a,b)=>a.dist-b.dist).slice(0,3);   // only forward/level outlets: the back pass is allowed (that's a win for the press)
-  const free=D.map((_,i)=>i).filter(i=>i!==0&&i!==presser&&["WM","WF","PV","IM","AM","CM","ST"].includes(cls[i]));
+  // high press: up to three forward/level outlets (the back pass is allowed — that's a win for the press)
+  // mid block: only the wide outlet on the ball side, picked up by our wide midfielder on that side
+  const threats=A.map((p,i)=>({i,p,dist:Math.hypot(p[0]-bx,p[1]-by)}))
+    .filter(t=>t.i!==0&&t.i!==holder&&t.p[1]>by-1&&(high? t.dist<18 : t.dist<16&&Math.abs(t.p[0]-25)>12&&Math.sign(t.p[0]-25)===side))
+    .sort((a,b)=>a.dist-b.dist).slice(0,high?3:1);
+  const free=D.map((_,i)=>i).filter(i=>i!==0&&i!==presser&&(high? ["WM","WF","PV","IM","AM","CM","ST"].includes(cls[i]) : (cls[i]==="WM"||cls[i]==="WF")));
   // assign markers so that the total running distance is smallest and nobody crosses to the other flank
   const off=F[fid].base.map(p=>p[0]-25), n=Math.min(threats.length,free.length);
   const wideRole=i=>cls[i]==="WM"||cls[i]==="WF";
