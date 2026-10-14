@@ -381,7 +381,7 @@ const F = {
   base:[[25,65],[10,54],[25,56],[40,54],[8,44],[25,45],[42,44],[25,38]],
   atk:[[25,61],[6,40],[25,50],[40,50],[8,28],[22,34],[44,30],[26,22]],
   def:[[25,65],[11,58],[25,59],[39,58],[9,50],[25,50],[41,50],[25,42]],
-  tag:"主流のバランス型。守備の原則を教えやすい",
+  tag:"主流のバランス型。初めてのチームでも守備の原則を考えやすい",
   grade:["U-9","U-10","U-11","U-12"],
   strengths:["初期配置のまま守備ブロックになる（プレス・カバー・スライドを教えやすい）","3バックで幅50mを分けるのでビルドアップが楽","中盤3人が戻れば実質4バック"],
   weaknesses:["1トップが孤立しやすい","斜めのパスラインが少なく、個人頼みになりやすい（点が取りにくい）","SHの運動量が多い"],
@@ -395,14 +395,14 @@ const F = {
   base:[[25,65],[17,55],[33,55],[8,45],[25,46],[42,45],[18,38],[32,38]],
   atk:[[25,60],[15,48],[35,48],[6,32],[25,38],[44,32],[19,22],[31,26]],
   def:[[25,65],[13,58],[37,58],[9,50],[25,58],[41,50],[25,49],[25,41]],
-  tag:"2-3-2同士なら全員が1対1。個を伸ばす攻撃型",
-  grade:["U-10","U-11"],
+  tag:"JFAが勧める形。最終ラインを余らせず、1人が攻めもカバーもする力が育つ",
+  grade:["U-11","U-12"],
   strengths:["最初から三角形ができていてパスコースが多い","2トップで前からプレスをかけやすい","1対1の経験が増える"],
   weaknesses:["CBの横と背後のスペース","2トップが守備をしないと押し込まれる","中盤中央で数的不利になりやすい"],
   attack:["2トップは「1人が降りる・1人が裏」","相手1トップのプレスが間に合わない側へ横に動かしてから前進","相手が1枚で来たらCBが運ぶ／2枚で来たらGKから逆SHへ、またはCHが落ちる","スローイン：自陣ではSH、敵陣ではCBが投げてFWを中に残す"],
   defense:["2トップは左右に分かれてコースを限定（同じ側に寄らない）","CB横のスペースは逆SHかCHが下がって埋める","相手スローイン時は3-3-1に戻してゾーンで守る"],
-  rule:"ボールを取られたらCHがDFラインに入る",
-  defNote:"守備時はCHが下がり、FWが1人戻って3-3-1",
+  rule:"守るときは後ろを3人に：ボールがサイドなら逆のSH、中央ならCHが下りる",
+  defNote:"ボールがサイド：逆サイドのSHがDFラインに下りて3バック。ボールが中央：CHが2人の間に下りる",
   suits:"1対1を経験させたい、前からのプレスを鍛えたい。対人とカバーに強いCB2人が必要"},
  "2-4-1":{df:2,mf:4,fw:1,
   roles:["GK","CB","CB","LH","CM","CM","RH","CF"],
@@ -415,8 +415,8 @@ const F = {
   weaknesses:["DF2枚の両脇のスペース","裏へのロングボール","カウンター時の数的不利"],
   attack:["2CMは縦関係（1人が低め）で段差を作る","サイドが起点。SHが幅、CFが深さ、CMがライン間で受ける","パスを回せるGKが必要"],
   defense:["ボールを失った瞬間にプレス（奪い返す）","低い方のCMが2バックの前を必ず埋める","プレスが弱いとSHがDFラインに吸収されて重心が下がる"],
-  rule:"失ったら低い方のCMがDFの間に下りる",
-  defNote:"守備時はCMが1人下りて3-3-1（攻撃2-4-1／守備3-3-1は高学年の定番）",
+  rule:"守るときは後ろを3人に：ボールがサイドなら逆のSH、中央なら低い方のCMが下りる",
+  defNote:"ボールがサイド：逆サイドのSHがDFラインに下りて3バック。ボールが中央：低い方のCMが2人の間に下りる",
   suits:"パスワークで崩したい、小柄で技術のある子が多い。走れるSHが必要"},
  "2-1-2-1":{df:2,mf:4,fw:1,
   roles:["GK","CB","CB","DM","LH","RH","OH","CF"],
@@ -429,8 +429,8 @@ const F = {
   weaknesses:["DF2枚の両脇","DMの横のスペース","カウンター時の数的不利"],
   attack:["トップ下をDFとMFのライン間に置く（守備側が混乱する）","トップ下がFWを追い越す・裏へ出る","SHは大外の高い位置で幅を取る"],
   defense:["DMは2バックの前を空けない","CFも中盤まで戻る","失った瞬間のプレスが前提"],
-  rule:"失ったらDMがDFの間に下りる",
-  defNote:"守備時はDMが下りて3-3-1",
+  rule:"守るときは後ろを3人に：ボールがサイドなら逆のSH、中央ならDMが下りる",
+  defNote:"ボールがサイド：逆サイドのSHがDFラインに下りて3バック。ボールが中央：DMが2人の間に下りる",
   suits:"技術のある子が多い高学年。DM役に判断力のある子"},
  "3-2-2":{df:3,mf:2,fw:2,
   roles:["GK","LB","CB","RB","CM","CM","FW","FW"],
@@ -621,6 +621,13 @@ function defendTeam(fid,bx,by,trans,gk){
       T[farCB]=[25+side*1, lineX];
       T[dropper]=[25-side*byAge(8,9,10), lineX-1];
     }
+  } else if(dfIdx.length===2 && !high && !gk){
+    // ball central: the holding midfielder drops between the two CBs (3 at the back), CBs widen
+    const pv=cls.indexOf("PV");
+    if(pv>0){
+      const [l,r]=dfIdx.slice().sort((a,b)=>T[a][0]-T[b][0]), sh=(bx-25)*.2;
+      T[l]=[25-9+sh, lineX]; T[r]=[25+9+sh, lineX]; T[pv]=[25+sh, lineX+1.5];
+    }
   }
   const crossD = d<16 && wide;                                    // defending a cross / cut-back
   if(crossD){
@@ -809,6 +816,13 @@ function attackTeam(fid,bx,by,offL,trans,gk){
     const deep=zone===0&&d<14;                                     // deep in our third the ball-side back has it, SH goes forward
     const dd=Math.hypot(T[i][0]-bx,T[i][1]-d)+(isDF&&zone>0?4:0)+(deep&&!isDF?8:0); if(dd<bd){bd=dd;near=i;} });
   T[near]=[bx,d-1.8];
+  // just won it (ball not yet secure): one team-mate gives the "1" position — a safe option close by,
+  // diagonally behind toward the middle (内藤『8人制サッカーの教科書』1・2・3の位置: 不安定なときは1から)
+  if(trans){
+    let one=-1,b1=1e9;
+    roles.forEach((r,i)=>{ if(i===0||i===near||cls[i]==="ST") return; const dd=Math.hypot(T[i][0]-bx,T[i][1]-d); if(dd<b1){b1=dd;one=i;} });
+    if(one>0){ const inward=Math.sign(25-bx)||(T[one][0]>=bx?1:-1); T[one]=[clamp(bx+inward*5,2,48), Math.max(2,d-4)]; }
+  }
   // at least two options within 10m of the ball
   const within=()=>T.filter((p,i)=>i!==near&&i!==0&&Math.hypot(p[0]-bx,p[1]-d)<byAge(10,11,12)).length;
   let guard=0;
@@ -903,12 +917,13 @@ function markOwnBox(fid,P,Opp,bx,by,holder){
   const d=68-by; if(d>=14) return P;
   const cls=teamSetup(fid,bx).cls;
   let presser=-1,bd=1e9; Opp.forEach((p,i)=>{ if(i===0)return; const dd=Math.hypot(p[0]-bx,p[1]-by); if(dd<bd){bd=dd;presser=i;} });
-  const threats=Opp.map((p,i)=>({i,p,dist:Math.hypot(p[0]-25,68-p[1])})).filter(t=>t.i!==0&&t.i!==presser&&(68-t.p[1])<13).sort((a,b)=>a.dist-b.dist);   // only players in/at our box
+  const threats=Opp.map((p,i)=>({i,p,dist:Math.hypot(p[0]-25,68-p[1])})).filter(t=>t.i!==0&&t.i!==presser&&(68-t.p[1])<13&&Math.hypot(t.p[0]-bx,t.p[1]-by)>5)   // only players in/at our box, not the ones already on our ball carrier.sort((a,b)=>a.dist-b.dist);   // only players in/at our box
   const free=P.map((_,i)=>i).filter(i=>i!==holder&&["CD","SD","FB"].includes(cls[i]));
   threats.forEach(t=>{ if(!free.length) return;
     let best=-1,b2=1e9; free.forEach(i=>{ const dd=Math.hypot(P[i][0]-t.p[0],P[i][1]-t.p[1]); if(dd<b2){b2=dd;best=i;} });
     free.splice(free.indexOf(best),1);
     const vx=25-t.p[0], vy=68-t.p[1], l=Math.hypot(vx,vy)||1; P[best]=[t.p[0]+vx/l*1.6, t.p[1]+vy/l*1.6]; });
+  spread(P,[0,holder],3); P.forEach(p=>{ p[0]=clamp(p[0],1,49); p[1]=clamp(p[1],.5,67.5); });   // markers never stand on a team-mate
   return P;
 }
 function computeAuto(){
@@ -1253,7 +1268,7 @@ const PRINCIPLES = [
   app:"自動スライドでは、相手陣ではラインを上げて前からプレス、自陣ではコンパクトにまとまって、寄せる人とカバーする人を自動で決めます。"},
  {phase:"攻撃から守備への切り替え（奪われた瞬間）",
   es:["即時奪回：奪われたら5秒間、近い3人で囲んで奪い返す","ふだんから近い距離でパスをつないでいるから、すぐ囲める"],
-  en:["奪い返せなければ、すぐに全力で戻って守備の形を作る","ファウルで止める判断（危険な位置以外）"],
+  en:["奪い返せなければ、すぐに全力で戻って守備の形を作る","奪えないときは飛び込まずに遅らせ、味方が戻る時間をかせぐ"],
   kid:"「取られたら、すぐ取り返す。ダメならすぐ戻る」",
   book:["相手が前を向いていたら囲まずに戻る。前を向かせていなければ囲む","自陣ゴール近くで失ったら、囲まずにふだんの守備へ","高く上がったSBの背中は、CHがカバーする"],
   app:"「切り替えの瞬間」にチェックを入れて相手ボールにすると、近い3人がボールを囲み、ラインは下がらずに高いまま保ちます。"},
@@ -1310,9 +1325,9 @@ const POS_BOOK = {
 };
 const POS_EXTRA = {
  "3-3-1":{LB:"相手がサイドに2人来たら、SHと2対2で対応",CF:"前線は1対3。2列目（SH・CH）の飛び出しを待つ判断も"},
- "2-3-2":{CH:"ボールを取られたら、DFラインに入って3バックにする",LH:"相手スローインのときは下がって3-3-1",RH:"相手スローインのときは下がって3-3-1"},
- "2-4-1":{CM:"取られたら、低い方のCMがDFの間に下りて3バックに",LH:"プレスが弱いとDFラインに吸収される。高い位置を保つ",RH:"プレスが弱いとDFラインに吸収される。高い位置を保つ"},
- "2-1-2-1":{DM:"取られたらDFの間に下りて3バックに",OH:"守備時はSHと横に並んで3-3-1の中盤に"},
+ "2-3-2":{CH:"ボールが中央のときは、DFの間に入って3バックにする",LH:"ボールが逆サイドにあるときはDFラインまで下りて3人目のDFに",RH:"ボールが逆サイドにあるときはDFラインまで下りて3人目のDFに"},
+ "2-4-1":{CM:"取られたら、低い方のCMがDFの間に下りて3バックに",LH:"ボールが逆サイドにあるときはDFラインまで下りて3人目のDFに。ボールが自分の側に来たら前へ",RH:"ボールが逆サイドにあるときはDFラインまで下りて3人目のDFに。ボールが自分の側に来たら前へ"},
+ "2-1-2-1":{DM:"ボールが中央のときは、DFの間に下りて3バックに",LH:"ボールが逆サイドにあるときはDFラインまで下りて3人目のDFに",RH:"ボールが逆サイドにあるときはDFラインまで下りて3人目のDFに",OH:"守備時はSHと横に並んで3-3-1の中盤に"},
  "3-2-2":{CM:"2人の負担が一番大きい。中盤で数的不利になりやすいので、サイドDFが1人押し上げて助ける",FW:"奪いに行くより、コースを限定。奪うのは2列目"},
  "3-1-2-1":{LB:"右SBが攻めているときは、左SBは上がらない",RB:"左SBが攻めているときは、右SBは上がらない",LH:"守備時は外に開いて3-3-1",RH:"守備時は外に開いて3-3-1"},
  "3-1-3":{DM:"中盤に1人だけ。WGが戻るまで、ボールに飛び込まず遅らせる",LW:"守備時は中盤まで戻って3-3-1",RW:"守備時は中盤まで戻って3-3-1"},
@@ -1731,6 +1746,9 @@ function recommendDrills(){
   if(m.mid<0) add("pass-turn","中盤で不利 → 首を振って前を向く技術");
   if(B.df===2) add("switch64","相手は2バック → 寄せてから逆サイドへ");
   if(B.fw>=2) add("def32","相手の前線が多い → 数的不利でも時間をかせぐ守備");
+  if(B.df===3) add("nearzone","相手3バック → CBとSBの間（ニアゾーン）を狙う");
+  if(F[S.mine].fw===2) add("twotop","2トップ → 外へ流れる・入れ替わる");
+  add("pos123","1・2・3の位置（内藤『8人制サッカーの教科書』の考え方の基本）");
   add("regain5","奪われた瞬間の即時奪回（スペイン流）");
   return out;
 }
