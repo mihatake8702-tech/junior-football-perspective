@@ -703,11 +703,20 @@ function attackTeam(fid,bx,by,offL,trans,gk){
     T[i]=[X,D];
   });
   // just won the ball: counter-attack. Forwards and wide players sprint forward, one runs in behind
+  // run order (小澤一郎『サッカー戦術の教科書』ポジトラ): 1) behind the centre back, 2) behind the full-back.
+  // Won it in our own third (long counter): the forward drifts behind the ball-side full-back to be the target.
+  // Far-side wide player runs diagonally toward the far post = the second attacker in the box.
   if(trans){
     roles.forEach((r,i)=>{
-      const c=cls[i];
-      if(c==="ST"){ T[i]=[25+(bx-25)*.2+(nST===2?(ballSide(i)?side*5:-side*6):0), lim]; }
-      else if(c==="WM"||c==="WF"){ T[i]=[off[i]<0?7:43, Math.min(lim,Math.max(T[i][1],d+14))]; }
+      const c=cls[i], bs=ballSide(i)&&Math.abs(off[i])>=5;
+      if(c==="ST"){
+        let X;
+        if(nST===2) X = ballSide(i) ? 25+side*10 : 25-side*3;             // one behind the SB (channel), one behind the CB
+        else X = zone===0 ? 25+side*11 : 25+(bx-25)*.2;                   // long counter: behind the SB / otherwise behind the CB
+        T[i]=[X, lim]; }
+      else if(c==="WM"||c==="WF"){
+        T[i] = bs ? [off[i]<0?7:43, Math.min(lim,Math.max(T[i][1],d+14))]                 // ball side: wide outlet ahead of the ball
+                  : [25-side*byAge(10,9,8), Math.min(lim,Math.max(T[i][1],d+16))]; }      // far side: diagonal run toward the far post
       else if(c==="IM"||c==="AM"){ T[i]=[25+side*4, Math.min(lim-2,d+10)]; }
       else if(c==="PV"){ T[i]=[25+(bx-25)*.4, d-5]; }
     });
@@ -773,6 +782,7 @@ function attackTeam(fid,bx,by,offL,trans,gk){
   const maxD=Math.max(offL-.4,d,34);
   T.forEach((p,i)=>{ if(i!==near&&i!==0) p[1]=Math.min(p[1],maxD); });
   spread(T,[0,near],byAge(6,6.5,7));
+  T.forEach((p,i)=>{ if(i!==near&&i!==0) p[1]=Math.min(p[1],maxD); });   // spreading must not push anyone offside
   return {P:toScreen(T),near};
 }
 // near our box (cross / cut-back): every attacker in or around the box gets a defender on his goal side
@@ -903,13 +913,14 @@ function updateAutoHint(){
     return; }
   const mineAtt=S.possession==="mine", dMine=68-S.ball[1];
   let t;
-  if(mineAtt) t = S.trans ? "自チーム：奪った瞬間のカウンター。前の選手は一気に相手の背後へ（イングランド流）"
+  if(mineAtt) t = S.trans ? (dMine<22.7 ? "自チーム：自陣で奪った（ロングカウンター）。FWは相手SBの裏へ流れて起点に。蹴るなら相手SBの裏へ。前が詰まっていたら無理せず失わない"
+      : "自チーム：奪った瞬間のカウンター。FWはまず相手CBの裏、次にSBの裏へ。逆サイドのSHはファーへ斜めに入って2人目。前が詰まっていたら失わずに味方が広がるのを待つ")
     : dMine<14 ? (kickSafe() ? "自チーム（"+S.grade+"）：自陣深く。無理につながず大きく蹴る（タッチに出してもOK）。CHはエリアの外でこぼれ球"
                            : "自チーム：自陣深くでボール保持。RH・CHが空いていればつなぐ、囲まれたら大きく。DFはゴール前の相手をマーク、CHはエリアの外でこぼれ球")
     : dMine>45.3 ? "自チーム：ゴール前。ニア・ファー・折り返しの3か所に入る（イングランド流のクロス＋スペイン流の折り返し）"
     : "自チーム：幅と三角形でボールを動かす。FWは相手DFの背後を狙い続ける（スペイン流＋イングランド流）";
   else t = S.trans ? "自チーム：奪われた瞬間。近い3人で囲んですぐ奪い返す（スペイン流の即時奪回）"
-    : dMine<22.7 ? "自チーム：自陣ゴール前。コンパクトに固め、ニアとファーを埋める"
+    : dMine<22.7 ? "自チーム：自陣ゴール前。コンパクトに固め、ニアとファーを埋める。マイナスの折り返しに入ってくる相手も必ずゴール側でつかむ"
     : dMine>45.3 ? "自チーム：相手陣でボールを奪いに行く前からのプレス（イングランド流）" : "自チーム：コンパクトなゾーンで、ボール側に寄せて逆は絞る（スペイン流）";
   h.textContent = t + (S.poss==="auto"?"　※ボールに近いチームを保持側と判定":"");
 }
