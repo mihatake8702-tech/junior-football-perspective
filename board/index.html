@@ -589,15 +589,29 @@ function defendTeam(fid,bx,by,trans,gk){
     if(Math.abs(bx-25)>8) X = side>0 ? Math.min(X,bx+1) : Math.max(X,bx-1);  // nobody outside the ball
     T[i]=[X,D];
   });
+  // 2-back teams (2-3-2, 2-4-1, 2-1-2-1): the far-side wide player drops into the back line -> 3 at the back,
+  // so the two CBs can slide toward the ball (内藤『8人制サッカーの教科書』/ footballhack『８人制サッカーの戦術』)
+  let dropper=-1;
+  const dfIdx=roles.map((_,i)=>i).filter(i=>["CD","SD","FB"].includes(cls[i]));
+  if(dfIdx.length===2 && !high && !gk && Math.abs(bx-25)>5){
+    const cand=roles.map((_,i)=>i).filter(i=>(cls[i]==="WM"||cls[i]==="WF")&&!ballSide(i));
+    if(cand.length){
+      dropper=cand[0];
+      const [farCB,nearCB]=dfIdx.slice().sort((a,b)=>(T[a][0]-T[b][0])*side);
+      T[nearCB]=[25+side*Math.min(13,Math.abs(bx-25)*.7), lineX];
+      T[farCB]=[25+side*1, lineX];
+      T[dropper]=[25-side*byAge(8,9,10), lineX-1];
+    }
+  }
   const crossD = d<16 && wide;                                    // defending a cross / cut-back
   if(crossD){
     // defenders stay in the box: ball-side back tucks in to the near post, CB centre, far-side back far post
-    const dfs=roles.map((_,i)=>i).filter(i=>["CD","SD","FB"].includes(cls[i])).sort((a,b)=>(T[b][0]-T[a][0])*side);
+    const dfs=roles.map((_,i)=>i).filter(i=>["CD","SD","FB"].includes(cls[i])||i===dropper).sort((a,b)=>(T[b][0]-T[a][0])*side);
     const spots=[25+side*4,25,25-side*4.5,25-side*8];            // near post -> far post
     dfs.forEach((i,k)=>{ T[i]=[spots[Math.min(k,spots.length-1)],4+k*1.2]; });
     roles.forEach((_,i)=>{
       if(cls[i]==="PV") T[i]=[25+side*1.5,13.5];                   // steps up to the edge of the box: wins the clearance, blocks the shot
-      if((cls[i]==="WM"||cls[i]==="WF")&&!ballSide(i)) T[i]=[25-side*7,13];   // far side: edge of the box for the second ball
+      if((cls[i]==="WM"||cls[i]==="WF")&&!ballSide(i)&&i!==dropper) T[i]=[25-side*7,13];   // far side: edge of the box for the second ball
     });
   }
   // first defender: goal side of the ball, showing it outside
@@ -816,9 +830,11 @@ function pressMarks(fid,D,A,bx,by,presser){
   const threats=A.map((p,i)=>({i,p,dist:Math.hypot(p[0]-bx,p[1]-by)}))
     .filter(t=>t.i!==0&&t.i!==holder&&(high? t.dist<18&&t.p[1]>by-1 : t.dist<16&&t.p[1]>by-8&&Math.abs(t.p[0]-25)>12&&Math.sign(t.p[0]-25)===side))
     .sort((a,b)=>a.dist-b.dist).slice(0,high?3:1);
-  const free=D.map((_,i)=>i).filter(i=>i!==0&&i!==presser&&(high? ["WM","WF","PV","IM","AM","CM","ST"].includes(cls[i]) : (cls[i]==="WM"||cls[i]==="WF")));
+  const off=F[fid].base.map(p=>p[0]-25);
+  const free=D.map((_,i)=>i).filter(i=>i!==0&&i!==presser&&(high? ["WM","WF","PV","IM","AM","CM","ST"].includes(cls[i])
+    : (cls[i]==="WM"||cls[i]==="WF")&&Math.sign(off[i])===side));   // mid block: only the ball-side wide player (far side stays in the back line)
   // assign markers so that the total running distance is smallest and nobody crosses to the other flank
-  const off=F[fid].base.map(p=>p[0]-25), n=Math.min(threats.length,free.length);
+  const n=Math.min(threats.length,free.length);
   const wideRole=i=>cls[i]==="WM"||cls[i]==="WF";
   const cost=(i,t)=>Math.hypot(D[i][0]-t.p[0],D[i][1]-t.p[1])
     +((off[i]>6&&t.p[0]<20)||(off[i]<-6&&t.p[0]>30)?15:0)              // never cross to the other flank
