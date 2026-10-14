@@ -54,6 +54,12 @@
   color-scheme:light}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
+.pttable{display:grid;gap:6px;margin-top:10px}
+.ptrow{display:grid;grid-template-columns:34px 1fr 90px 52px 70px;gap:8px;align-items:center;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.03)}
+.ptrow.on{background:rgba(255,159,28,.12)}
+.ptbar{height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+.ptbar i{display:block;height:100%;background:var(--accent)}
+.ptrow .pt{font-variant-numeric:tabular-nums;font-weight:700;text-align:right}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:14px 28px}
 .app{max-width:1280px;margin:0 auto;display:grid;gap:16px}
 header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
@@ -318,6 +324,22 @@ select#mine{box-shadow:inset 5px 0 0 var(--accent)} select#opp{box-shadow:inset 
         <label class="check"><input type="checkbox" id="transMode">切り替えの瞬間（奪った・奪われた直後）</label>
         <label class="check"><input type="checkbox" id="gkMode">GKがボールを持っている（ゴールキック・キャッチ）</label>
       </div>
+      <div class="board-tools">
+        <span class="label">守り方</span>
+        <div class="seg" role="group" aria-label="守り方">
+          <button data-press="high" aria-pressed="false">前から行く</button>
+          <button data-press="normal" aria-pressed="true">ふつう</button>
+          <button data-press="low" aria-pressed="false">引いて守る</button>
+        </div>
+        <span class="label">セットプレー</span>
+        <select id="setPiece" aria-label="セットプレー・キックオフの配置">
+          <option value="">（えらぶ）</option>
+          <option value="ckDef">相手のコーナーキック（守備）</option>
+          <option value="fkDef">相手のフリーキック（守備）</option>
+          <option value="koMine">キックオフ（自チームボール）</option>
+          <option value="koOpp">キックオフ（相手ボール）</option>
+        </select>
+      </div>
       <p class="toast" id="quickMsg" role="status" style="text-align:center;margin:0" hidden></p>
       <p class="hint" id="autoHint" aria-live="polite"></p>
       <div class="recbar" id="recBar" hidden>
@@ -528,7 +550,7 @@ const groupOf = id => id==="2-1-2-1" ? "2-4-1" : id==="3-1-2-1" ? "3-3-1" : id;
 
 // ---------- State ----------
 const S = {mine:"3-3-1", opp:"2-4-1", phase:"base", showOpp:true, showBall:true, ball:[25,34], tab:"match", pos:{mine:null, opp:null},
-  selPos:null, auto:false, poss:"mine", trans:false, gk:false, grade:"U-11", possession:"mine", mode:"move", pen:{color:"#ffffff", dash:false}, draw:[]};
+  selPos:null, auto:false, press:"normal", poss:"mine", trans:false, gk:false, grade:"U-11", possession:"mine", mode:"move", pen:{color:"#ffffff", dash:false}, draw:[]};
 const oppPhase = p => p==="atk" ? "def" : p==="def" ? "atk" : "base";
 function freshPositions(){
   S.pos.mine = F[S.mine][S.phase].map(p=>[...p]);
@@ -579,14 +601,16 @@ function spread(T,fixed,gap){
   }
 }
 // ----- Out of possession -----
-function defendTeam(fid,bx,by,trans,gk){
+function defendTeam(fid,bx,by,trans,gk,press){
   if(trans && 68-by<25) trans=false;                              // lost it near our own goal: defend normally, no swarm
   const {roles,cls,off,side,ballSide}=teamSetup(fid,bx);
   const d=68-by, wide=Math.abs(bx-25)>12;
   // England: press high when the ball is in the opponents' third. Spain: compact zonal block elsewhere.
   // Just lost the ball (trans): don't drop, the nearest three swarm the ball (即時奪回).
-  const high=(lowAge()?d>50:d>45)||trans;                        // younger: press high only deep in their half
-  const lineX=high?clamp(d-14,8,32):clamp(d-14,8,28);
+  // coach's choice (守り方): "high" = go from the front from midfield on (e.g. the first 5 minutes),
+  // "low" = drop off and defend from our half, "normal" = by the ball's zone
+  const high = press==="high" ? (d>30||trans) : press==="low" ? false : (lowAge()?d>50:d>45)||trans;   // younger: press high only deep in their half
+  const lineX = press==="low" ? clamp(d-18,6,18) : press==="high" ? clamp(d-11,10,34) : high?clamp(d-14,8,32):clamp(d-14,8,28);
   // pressing high: the back line stops around halfway (offside), but midfield and forwards keep pushing
   // so the whole block stays within ~14m of the ball and the short passes are covered
   const midX=high?Math.max(lineX+9,d-14):lineX+10, fwX=high?Math.max(lineX+18,d-5):lineX+20;
@@ -872,9 +896,9 @@ function markBox(fid,D,A,bx,by,presser){
 }
 // high press near the attackers' goal: midfielders/forwards pick up the nearest outlets, standing goal-side and a bit inside
 // (D, A, ball all in the defending team's frame: own goal at y=68)
-function pressMarks(fid,D,A,bx,by,presser){
+function pressMarks(fid,D,A,bx,by,presser,press){
   const d=68-by; if(d<=25) return D;
-  const high=d>48, side=bx>=25?1:-1;
+  const high=press==="high"?d>30:press==="low"?false:d>48, side=bx>=25?1:-1;
   const cls=teamSetup(fid,bx).cls;
   let holder=-1,hb=1e9; A.forEach((p,i)=>{ if(i===0)return; const dd=Math.hypot(p[0]-bx,p[1]-by); if(dd<hb){hb=dd;holder=i;} });
   // high press: up to three forward/level outlets (the back pass is allowed — that's a win for the press)
@@ -945,7 +969,7 @@ function computeAuto(){
     S.pos.mine=m.P; S.pos.opp=o.P.map(mir); S.possession="mine"; return;
   }
   if(!mineAtt && gk){
-    const m=defendTeam(S.mine,bx,by,false,true);
+    const m=defendTeam(S.mine,bx,by,false,true,S.press);
     const o=attackTeam(S.opp,50-bx,68-by,offLine(m.P),false,true);
     S.pos.mine=m.P; S.pos.opp=o.P.map(mir); S.possession="opp"; return;
   }
@@ -957,10 +981,10 @@ function computeAuto(){
     m.P=markOwnBox(S.mine,m.P,o.P.map(mir),bx,by,m.near);
     S.pos.mine=m.P; S.pos.opp=o.P.map(mir);
   } else {
-    const m=defendTeam(S.mine,bx,by,S.trans);
+    const m=defendTeam(S.mine,bx,by,S.trans,false,S.press);
     const o=attackTeam(S.opp,50-bx,68-by,offLine(m.P),S.trans);
     m.P=markBox(S.mine,m.P,o.P.map(mir),bx,by,m.near);
-    if(!S.trans) m.P=pressMarks(S.mine,m.P,o.P.map(mir),bx,by,m.near);
+    if(!S.trans) m.P=pressMarks(S.mine,m.P,o.P.map(mir),bx,by,m.near,S.press);
     o.P=markOwnBox(S.opp,o.P,m.P.map(mir),50-bx,68-by,o.near);
     S.pos.mine=m.P; S.pos.opp=o.P.map(mir);
   }
@@ -997,6 +1021,7 @@ function updateAutoHint(){
   // team length (front player to last outfield player) — the first thing to watch in a match (内藤『8人制サッカーの教科書』)
   const len=P=>{ if(!P) return null; const ys=P.slice(1).map(p=>p[1]); return Math.round(Math.max(...ys)-Math.min(...ys)); };
   const lm=len(S.pos.mine), lo=len(S.pos.opp);
+  if(!mineAtt && S.press!=="normal") t += "　"+(S.press==="high" ? "【守り方：前から行く】ハーフウェー付近から前で奪いに行く（最初の5分だけ、など時間を決めて）" : "【守り方：引いて守る】自陣でブロックを作り、無理に前へ出ない");
   h.textContent = t + (S.poss==="auto"?"　※ボールに近いチームを保持側と判定":"")
     + (lm!=null&&lo!=null ? `　｜ チームの縦の長さ：自 ${lm}m・相手 ${lo}m（守備では短く、攻撃では長く）` : "");
 }
@@ -1290,7 +1315,7 @@ function renderStyle(){
         <div><span class="chip en">イングランド流</span>${list(pr.en)}</div>
       </div>
       <div class="kid"><b>子どもへの一言：</b>${esc(pr.kid)}</div>
-      ${pr.book?`<div><span class="chip note">本から</span>${list(pr.book)}</div>`:""}
+      ${pr.book?`<div><span class="chip note">ポイント</span>${list(pr.book)}</div>`:""}
       <p class="foot"><b>アプリでは：</b>${esc(pr.app)}</p>
     </div>`).join("")}
   </div>`;
@@ -1349,7 +1374,7 @@ function renderPositions(){
       </div>
       <div><h3><span class="chip warnchip">注意</span>気をつけること</h3>${list(p.care)}</div>
       <div class="kid"><b>子どもへの一言：</b>「${esc(p.kid)}」</div>
-      ${POS_BOOK[k]?`<div class="extra"><b>本から：</b>${esc(POS_BOOK[k])}</div>`:""}
+      ${POS_BOOK[k]?`<div class="extra"><b>ポイント：</b>${esc(POS_BOOK[k])}</div>`:""}
       ${STYLE[k]?`<div class="styletips"><div><span class="chip es">スペイン流</span>${esc(STYLE[k].es)}</div><div><span class="chip en">イングランド流</span>${esc(STYLE[k].en)}</div></div>`:""}`
       :`<p class="foot">${ex[r]?`<b>${esc(nameOf(S.mine))}では：</b>${esc(ex[r])}　`:""}内容は上の同じポジションと共通です。</p>`}
     </div>`;
@@ -1376,14 +1401,13 @@ function renderMatch(){
       ${meter("中盤",`自MF${A.mf} − 相手MF${B.mf}`,m.mid,rateMid(m.mid))}
       ${meter("前線",`自FW${A.fw} − 相手DF${B.df}`,m.front,rateFront(m.front))}
     </div>
-    ${a.notes?`<div><h3><span class="chip note">研究メモ</span>この組み合わせのポイント</h3>${list(a.notes)}</div>`:""}
-    ${a.book?`<div><h3><span class="chip note">本から</span>読んだ本のポイント</h3>${list(a.book)}</div>`:""}
+    ${a.notes||a.book?`<div><h3><span class="chip note">ポイント</span>この組み合わせのポイント</h3>${list([...(a.notes||[]),...(a.book||[])])}</div>`:""}
     <div class="grid2">
       <div><h3><span class="chip atk">攻撃</span>こう攻める</h3>${list(a.atk)}</div>
       <div><h3><span class="chip def">守備</span>こう守る</h3>${list(a.def)}</div>
     </div>
     <div class="kid"><b>ハーフタイムの一言：</b>「${m.back>=2?"後ろで余っている人はだれ？ 空いていたらドリブルで運ぼう":m.mid<0?"相手のあまりの人はだれ？ だれがつくか決めよう":m.front<=-2?"FWをひとりにしない。SHはFWの横まで行こう":"パスの道を背中で隠そう。取られたらすぐ奪い返そう"}」</div>
-    <p class="foot">数字はフォーメーションの人数から計算（ドラッグした位置は反映されません）。人数カウントからの導出に、読んだ本（『８人制サッカーの戦術』『8人制サッカーの教科書』）のポイントを加えています。</p>
+    <p class="foot">数字はフォーメーションの人数から計算（ドラッグした位置は反映されません）。人数カウントからの導出です。</p>
   </div>`;
 }
 function renderFormation(id,isMine){
@@ -1396,7 +1420,7 @@ function renderFormation(id,isMine){
       <div><h3>強み</h3>${list(f.strengths)}</div>
       <div><h3>弱み</h3>${list(f.weaknesses)}</div>
     </div>
-    ${BOOK[id]?`<div><h3><span class="chip note">本から</span>読んだ本の視点</h3>${list(BOOK[id])}</div>`:""}
+    ${BOOK[id]?`<div><h3><span class="chip note">ポイント</span>このシステムのポイント</h3>${list(BOOK[id])}</div>`:""}
     <div class="grid2">
       <div><h3><span class="chip atk">攻撃</span>攻め方</h3>${list(f.attack)}</div>
       <div><h3><span class="chip def">守備</span>守り方</h3>${list(f.defense)}</div>
@@ -1421,6 +1445,8 @@ async function connectDb(){
     const db = await window.claude?.use?.("db");
     if(!db) return;
     rosterDoc = db.doc("team/roster"); saveMode="db";
+    ptDoc = db.doc("team/playtime");
+    ptDoc.onSnapshot(snap=>{ if(!snap.exists||PT.running) return; const d=snap.data(); PT.sec=d.sec||{}; PT.games=d.games||[]; PT.period=d.period||1; if(S.tab==="roster") renderPanel(); });
     rosterDoc.onSnapshot(snap=>{
       if(!snap.exists){ if(R.players.length) saveRoster(); return; }
       const d=snap.data();
@@ -1445,8 +1471,57 @@ function renderRoster(){
     <div><h3>スタメン（${esc(nameOf(S.mine))}）</h3><p class="foot">ポジションに選手を割り当てると、ピッチに背番号と名前が出ます。割り当てはフォーメーションを変えても順番どおりに引き継がれます。</p></div>
     <div class="lineup">${roles.map((r,i)=>`<label class="slot"><b>${r}</b><select data-slot="${i}" id="slot${i}">${opts(R.lineup[i])}</select></label>`).join("")}</div>
     <p class="status">${saveMode==="db"?"保存先：このアプリ（どの端末から開いても同じ選手リスト）":"保存先：この端末のブラウザのみ"}</p>
+  </div>
+  ${renderPlaytime()}`;
+}
+// ---------- Playing time (出場時間の記録) ----------
+// The players in the line-up (スタメン) collect time while the clock runs. Change the line-up for a substitution.
+const PT={running:false, t0:0, period:1, sec:{}, games:[], confirmReset:false};
+let ptDoc=null;
+try{ const v=JSON.parse(localStorage.getItem("playtime8")||"null"); if(v){ PT.sec=v.sec||{}; PT.games=v.games||[]; PT.period=v.period||1; } }catch(e){}
+const ptBody=()=>({sec:PT.sec, games:PT.games, period:PT.period});
+function savePT(){ try{localStorage.setItem("playtime8",JSON.stringify(ptBody()));}catch(e){} if(ptDoc) ptDoc.set(ptBody()).catch(()=>{}); }
+function ptFlush(){                       // add the time since the last flush to everyone on the pitch
+  if(!PT.running) return;
+  const now=Date.now(), dt=(now-PT.t0)/1000; PT.t0=now;
+  R.lineup.forEach(id=>{ if(id) PT.sec[id]=(PT.sec[id]||0)+dt; });
+}
+const mmss=sec=>{ sec=Math.round(sec||0); return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0"); };
+function renderPlaytime(){
+  ptFlush();
+  const onField=new Set(R.lineup.filter(Boolean));
+  const season=id=>PT.games.reduce((a,g)=>a+(g.sec[id]||0),0);
+  const rows=R.players.map(p=>({p,now:PT.sec[p.id]||0,tot:season(p.id)+(PT.sec[p.id]||0)}));
+  const max=Math.max(1,...rows.map(r=>r.now));
+  return `<div class="card">
+    <div><h3>試合の出場時間</h3><p class="foot">「スタメン」に入っている選手の時間が進みます。交代はスタメンの割り当てを変えるだけ。3ピリオド制のように、全員が試合に出られるように使ってください。</p></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="primary" id="ptStart">${PT.running?"一時停止":"開始"}</button>
+      <button class="ghost" id="ptPeriod">ピリオド ${PT.period} → ${PT.period+1}</button>
+      <button class="ghost" id="ptSave">この試合を記録して次へ</button>
+      <button class="ghost" id="ptReset">${PT.confirmReset?"もう一度押すと消えます":"この試合の時間を0に"}</button>
+      <span class="dmeta" id="ptState">${PT.running?"計測中":"停止中"}・ピリオド${PT.period}</span>
+    </div>
+    ${R.players.length?`<div class="pttable">${rows.map(r=>`<div class="ptrow${onField.has(r.p.id)?" on":""}">
+      <span class="no">${r.p.num!==""?esc(r.p.num):"-"}</span><span class="nm">${esc(r.p.name)}${onField.has(r.p.id)?" ●":""}</span>
+      <span class="ptbar"><i data-ptbar="${esc(r.p.id)}" style="width:${Math.round(r.now/max*100)}%"></i></span>
+      <span class="pt" data-pt="${esc(r.p.id)}">${mmss(r.now)}</span><span class="foot">通算 ${Math.round(r.tot/60)}分</span></div>`).join("")}</div>`
+      :`<p class="foot">先に上で選手を登録してください。</p>`}
+    <p class="foot">記録した試合：${PT.games.length}試合</p>
   </div>`;
 }
+function wirePlaytime(){
+  const b=id=>document.getElementById(id);
+  if(!b("ptStart")) return;
+  b("ptStart").onclick=()=>{ if(PT.running){ ptFlush(); PT.running=false; } else { PT.running=true; PT.t0=Date.now(); } savePT(); renderPanel(); };
+  b("ptPeriod").onclick=()=>{ ptFlush(); PT.running=false; PT.period++; savePT(); renderPanel(); };
+  b("ptSave").onclick=()=>{ ptFlush(); PT.running=false; const d=new Date();
+    PT.games.push({date:`${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`, sec:PT.sec, periods:PT.period}); PT.sec={}; PT.period=1; savePT(); renderPanel(); };
+  b("ptReset").onclick=()=>{ if(!PT.confirmReset){ PT.confirmReset=true; renderPanel(); setTimeout(()=>{PT.confirmReset=false; if(S.tab==="roster") renderPanel();},4000); return; }
+    PT.confirmReset=false; PT.running=false; PT.sec={}; PT.period=1; savePT(); renderPanel(); };
+}
+setInterval(()=>{ if(!PT.running||S.tab!=="roster") return; ptFlush(); document.querySelectorAll("[data-pt]").forEach(e=>e.textContent=mmss(PT.sec[e.dataset.pt]));
+  const max=Math.max(1,...Object.values(PT.sec)); document.querySelectorAll("[data-ptbar]").forEach(e=>e.style.width=Math.round((PT.sec[e.dataset.ptbar]||0)/max*100)+"%"); },1000);
 function wireRoster(){
   const f=document.getElementById("addForm"); if(!f) return;
   f.addEventListener("submit",e=>{
@@ -1462,6 +1537,7 @@ function wireRoster(){
     saveRoster(); renderPanel(); drawTeam("mine");
   }));
   document.querySelectorAll("[data-slot]").forEach(s=>s.addEventListener("change",()=>{
+    ptFlush();                                    // time so far belongs to the players who were on
     const i=+s.dataset.slot, v=s.value||null;
     if(v) R.lineup=R.lineup.map((x,j)=>x===v&&j!==i?null:x); // one player, one slot
     R.lineup[i]=v; saveRoster(); renderPanel(); drawTeam("mine");
@@ -1748,7 +1824,7 @@ function recommendDrills(){
   if(B.fw>=2) add("def32","相手の前線が多い → 数的不利でも時間をかせぐ守備");
   if(B.df===3) add("nearzone","相手3バック → CBとSBの間（ニアゾーン）を狙う");
   if(F[S.mine].fw===2) add("twotop","2トップ → 外へ流れる・入れ替わる");
-  add("pos123","1・2・3の位置（内藤『8人制サッカーの教科書』の考え方の基本）");
+  add("pos123","1・2・3の位置（受ける場所の基本）");
   add("regain5","奪われた瞬間の即時奪回（スペイン流）");
   return out;
 }
@@ -1783,7 +1859,6 @@ function drillCard(dr,why){
       ${dr.how&&dr.how.length?`<div><h3>やり方</h3>${list(dr.how)}</div>`:""}
       ${dr.points&&dr.points.length?`<div><h3><span class="chip warnchip">ポイント</span>コーチングポイント</h3>${list(dr.points)}</div>`:""}
       ${dr.kid?`<div class="kid"><b>子どもへの一言：</b>「${esc(dr.kid)}」</div>`:""}
-      ${dr.src?`<p class="foot">参考：${esc(dr.src)}</p>`:""}
       ${dr.custom?`<div class="row" style="gap:8px"><button class="primary" data-rec="${esc(dr.id)}">${dr.demo?"動きを作り直す":"動きを作る"}</button><button class="ghost" data-cdel="${esc(dr.id)}">このドリルを削除</button></div>`:""}
     </div></details>`;
 }
@@ -2185,7 +2260,7 @@ function positionsFor(bx,by,mineAtt,trans){
   bx=clamp(bx,.5,49.5); by=clamp(by,.5,67.5);
   const mir=([x,y])=>[50-x,68-y], offLine=P=>{ const ys=P.map(p=>p[1]).sort((a,b)=>b-a); return ys[1]; };
   if(mineAtt){ const od=defendTeam(S.opp,50-bx,68-by,trans), md=attackTeam(S.mine,bx,by,offLine(od.P),trans); od.P=markBox(S.opp,od.P,md.P.map(mir),50-bx,68-by,od.near); if(!trans) od.P=pressMarks(S.opp,od.P,md.P.map(mir),50-bx,68-by,od.near); return {mine:md.P,opp:od.P.map(mir)}; }
-  const md=defendTeam(S.mine,bx,by,trans), od=attackTeam(S.opp,50-bx,68-by,offLine(md.P),trans); md.P=markBox(S.mine,md.P,od.P.map(mir),bx,by,md.near); if(!trans) md.P=pressMarks(S.mine,md.P,od.P.map(mir),bx,by,md.near); return {mine:md.P,opp:od.P.map(mir)};
+  const md=defendTeam(S.mine,bx,by,trans,false,S.press), od=attackTeam(S.opp,50-bx,68-by,offLine(md.P),trans); md.P=markBox(S.mine,md.P,od.P.map(mir),bx,by,md.near); if(!trans) md.P=pressMarks(S.mine,md.P,od.P.map(mir),bx,by,md.near,S.press); return {mine:md.P,opp:od.P.map(mir)};
 }
 function autoScript(kind){
   const path = kind==="slide"
@@ -2356,7 +2431,7 @@ function renderPanel(){
   document.getElementById("tabbody").innerHTML = S.tab==="match"?renderMatch():S.tab==="mine"?renderFormation(S.mine,true):S.tab==="opp"?renderFormation(S.opp,false):S.tab==="pos"?renderPositions():S.tab==="style"?renderStyle():S.tab==="drill"?renderDrills():S.tab==="roster"?renderRoster():renderBoards();
   if(S.tab==="pos") wirePositions();
   if(S.tab==="drill") wireDrills();
-  if(S.tab==="roster") wireRoster();
+  if(S.tab==="roster"){ wireRoster(); wirePlaytime(); }
   if(S.tab==="boards") wireBoards();
 }
 function updateScorebar(){
@@ -2397,6 +2472,82 @@ document.getElementById("fsBtn").addEventListener("click",()=>setFs(!document.bo
 document.addEventListener("fullscreenchange",()=>{ if(!document.fullscreenElement&&document.body.classList.contains("fs")) setFs(false); });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&document.body.classList.contains("fs")) setFs(false); });
 document.getElementById("ballCenter").addEventListener("click",()=>{S.ball=[25,34];S.showBall=true;document.getElementById("showBall").checked=true;drawBall();scheduleAuto();});
+// 守り方 (press mode): coach switches during the game, e.g. "前から" for the first 5 minutes
+document.querySelectorAll("[data-press]").forEach(b=>b.addEventListener("click",()=>{
+  S.press=b.dataset.press;
+  document.querySelectorAll("[data-press]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  if(S.auto) scheduleAuto(); else updateAutoHint();
+}));
+// ---------- Set pieces & kick-off layouts ----------
+// mine: own goal at y=68. Returns screen positions for both teams + ball + a short note.
+function setPieceLayout(kind){
+  const cm=teamSetup(S.mine,25).cls, co=teamSetup(S.opp,25).cls;
+  const outfield=c=>c.map((x,i)=>i).filter(i=>i>0);
+  const mine=Array(8), opp=Array(8);
+  mine[0]=[25,66.5]; opp[0]=[25,1.5];
+  const isDF=c=>["CD","SD","FB"].includes(c);
+  if(kind==="ckDef"||kind==="fkDef"){
+    // attackers (opp, attacking down toward y=68)
+    const ball = kind==="ckDef" ? [49.3,67.4] : [23,47];
+    const atkSpots = kind==="ckDef"
+      ? [[48.6,66.6],[27.5,59.5],[22,58.5],[31,57],[18.5,61.5],[26,52],[22,34]]       // kicker, 4 in the box, edge, 1 back
+      : [[23.5,46.5],[26.5,46],[19,57.5],[31,57.5],[25,59],[35,52],[25,34]];           // kicker, 2nd, 3 on the line, wide, 1 back
+    outfield(co).forEach((i,k)=>opp[i]=atkSpots[k]);
+    // defenders (mine)
+    const ids=outfield(cm), st=ids.filter(i=>cm[i]==="ST"), rest=ids.filter(i=>cm[i]!=="ST");
+    rest.sort((a,b)=>(isDF(cm[b])?1:0)-(isDF(cm[a])?1:0));                             // defenders first
+    let spots;
+    if(kind==="ckDef"){
+      const threats=[[27.5,59.5],[22,58.5],[31,57],[18.5,61.5]].map(([x,y])=>[x,y+1.6]);  // goal side of the runners
+      spots=[[30.5,63],[25,62],...threats,[25,53.5]];      // ストーン(near post), centre zone, man-markers, edge of the box
+    } else {
+      spots=[[22.5,53.5],[24,53.5],[20.5,59],[30.5,59],[25,60.5],[34,53.5],[27,55]];   // 2-man wall, markers on the runners, wide, second ball
+    }
+    rest.forEach((i,k)=>mine[i]=spots[Math.min(k,spots.length-1)]);
+    st.forEach((i,k)=>mine[i]=[25+(k?6:0),38]);                                          // forward stays up for the counter
+    const note = kind==="ckDef"
+      ? "相手のコーナーキック：ニアにストーン1人、ゴール前の真ん中に1人、ほかは相手の前（ゴール側）でマーク。エリアの外にこぼれ球係。FWは前に残ってカウンターの準備。競り合いは相手より先に跳ぶ"
+      : "相手のフリーキック：壁は2人（ボールとニアポストを結ぶ線上）。ほかは走り込む相手のゴール側に立つ。こぼれ球係を1人。8人制は相手との距離7m";
+    return {mine,opp,ball,note};
+  }
+  // kick-off: base shape, each team in its own half and the defending team outside the centre circle (7m)
+  const mineKick = kind==="koMine";
+  const place=(fid,cls,arr,own)=>{               // own: "bottom" (mine) or "top" (opp)
+    const base=F[fid].base;
+    outfield(cls).forEach(i=>{ let [x,y]=base[i]; if(own==="top"){ x=50-x; y=68-y; }
+      y = own==="bottom" ? Math.max(y,35.5) : Math.min(y,32.5);
+      arr[i]=[x,y]; });
+  };
+  place(S.mine,cm,mine,"bottom"); place(S.opp,co,opp,"top");
+  const kicker=(cls,arr,own)=>{ const ids=outfield(cls), st=ids.filter(i=>cls[i]==="ST"), mid=ids.filter(i=>["PV","IM","AM","CM"].includes(cls[i]));
+    const k=st[0]??mid[0]??ids[ids.length-1], sup=st[1]??mid[0]??ids[ids.length-2];
+    arr[k]=[25,own==="bottom"?34.3:33.7]; if(sup!==k) arr[sup]=[27.5,own==="bottom"?36:32]; return k; };
+  const pushOut=(arr,own,skip)=>arr.forEach((p,i)=>{ if(i===0||i===skip) return; const dx=p[0]-25, dy=p[1]-34, r=Math.hypot(dx,dy); if(r<7.5){ const s=7.5/(r||1); p[0]=25+dx*s; p[1]=own==="bottom"?Math.max(34+Math.abs(dy*s),35.5):Math.min(34-Math.abs(dy*s),32.5); } });
+  let kMine=-1,kOpp=-1;
+  if(mineKick){ kMine=kicker(cm,mine,"bottom"); pushOut(opp,"top",-1); } else { kOpp=kicker(co,opp,"top"); pushOut(mine,"bottom",-1); }
+  // keep team-mates apart and in their own half
+  [[mine,"bottom",kMine],[opp,"top",kOpp]].forEach(([arr,own,k])=>{ spread(arr,[0,k].filter(i=>i>=0),4);
+    arr.forEach((p,i)=>{ if(i===0||i===k) return; p[0]=clamp(p[0],2,48); p[1]= own==="bottom"?clamp(p[1],35.5,66):clamp(p[1],2,32.5);
+      if(i!==k && Math.hypot(p[0]-25,p[1]-34)<7.5 && (own==="bottom"?!mineKick:mineKick)) p[0]=p[0]<25?17:33; }); });
+  const ball=[25,34];
+  const note = mineKick
+    ? "キックオフ（自チーム）：最初の1本をどうするか決めておく。①後ろに下げてGK・CBからつなぐ ②相手のSBの裏へ蹴って押し込む。ペンで矢印を書いて約束にしよう"
+    : "キックオフ（相手）：FWはボールと相手CBの間に立って前へのパスを切る。全員がすぐ自分の場所へ。相手の最初のロングボールに備えて、DFは少し下がって始める";
+  return {mine,opp,ball,note};
+}
+function applySetPiece(kind){
+  if(!kind) return;
+  const L=setPieceLayout(kind);
+  if(DM.id) stopDemo(false);
+  S.auto=false; document.getElementById("autoSlide").checked=false;
+  S.gk=false; document.getElementById("gkMode").checked=false;
+  S.trans=false; document.getElementById("transMode").checked=false;
+  S.pos.mine=L.mine.map(p=>[...p]); S.pos.opp=L.opp.map(p=>[...p]); S.ball=[...L.ball];
+  S.showBall=true; document.getElementById("showBall").checked=true; S.showOpp=true;
+  drawTeam("opp"); drawTeam("mine"); drawBall(); drawSelection(); updateAutoHint();
+  const h=document.getElementById("autoHint"); if(h) h.textContent=L.note+"　（選手はドラッグで調整できます）";
+}
+document.getElementById("setPiece").addEventListener("change",e=>{ applySetPiece(e.target.value); e.target.value=""; });
 document.querySelectorAll("[data-poss]").forEach(b=>b.addEventListener("click",()=>{
   S.poss=b.dataset.poss;
   document.querySelectorAll("[data-poss]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
