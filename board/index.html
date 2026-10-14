@@ -567,7 +567,7 @@ function defendTeam(fid,bx,by,trans,gk){
   // England: press high when the ball is in the opponents' third. Spain: compact zonal block elsewhere.
   // Just lost the ball (trans): don't drop, the nearest three swarm the ball (即時奪回).
   const high=(lowAge()?d>50:d>45)||trans;                        // younger: press high only deep in their half
-  const lineX=high?clamp(d-14,8,32):clamp(d-12,8,28);
+  const lineX=high?clamp(d-14,8,32):clamp(d-14,8,28);
   // pressing high: the back line stops around halfway (offside), but midfield and forwards keep pushing
   // so the whole block stays within ~14m of the ball and the short passes are covered
   const midX=high?Math.max(lineX+9,d-14):lineX+10, fwX=high?Math.max(lineX+18,d-5):lineX+20;
@@ -753,7 +753,7 @@ function attackTeam(fid,bx,by,offL,trans,gk){
   }
   // far-side back players hold the same height as the centre backs (rest defence)
   const cdD=T.filter((p,i)=>cls[i]==="CD").map(p=>p[1]); const restD=cdD.length?Math.min(...cdD):d-16;
-  T.forEach((p,i)=>{ if(p[1]===null) p[1]=restD+4; });             // far-side back: a little ahead of the CB, still insurance
+  T.forEach((p,i)=>{ if(p[1]===null) p[1]=zone===1?Math.max(restD+4,d-8):restD+4; });   // far-side back: ahead of the CB (middle third: pushes up with the play), still insurance
   // ball carrier: the player whose spot is closest to the ball
   let near=-1,bd=1e9;
   roles.forEach((r,i)=>{ if(r==="GK")return; const isDF=["CD","SD","FB"].includes(cls[i]);
@@ -804,7 +804,7 @@ function pressMarks(fid,D,A,bx,by,presser){
   // high press: up to three forward/level outlets (the back pass is allowed — that's a win for the press)
   // mid block: only the wide outlet on the ball side, picked up by our wide midfielder on that side
   const threats=A.map((p,i)=>({i,p,dist:Math.hypot(p[0]-bx,p[1]-by)}))
-    .filter(t=>t.i!==0&&t.i!==holder&&t.p[1]>by-1&&(high? t.dist<18 : t.dist<16&&Math.abs(t.p[0]-25)>12&&Math.sign(t.p[0]-25)===side))
+    .filter(t=>t.i!==0&&t.i!==holder&&(high? t.dist<18&&t.p[1]>by-1 : t.dist<16&&t.p[1]>by-8&&Math.abs(t.p[0]-25)>12&&Math.sign(t.p[0]-25)===side))
     .sort((a,b)=>a.dist-b.dist).slice(0,high?3:1);
   const free=D.map((_,i)=>i).filter(i=>i!==0&&i!==presser&&(high? ["WM","WF","PV","IM","AM","CM","ST"].includes(cls[i]) : (cls[i]==="WM"||cls[i]==="WF")));
   // assign markers so that the total running distance is smallest and nobody crosses to the other flank
@@ -821,6 +821,17 @@ function pressMarks(fid,D,A,bx,by,presser){
     const vx=25-t.p[0], vy=68-t.p[1], l=Math.hypot(vx,vy)||1;           // toward our own goal
     D[i]=[clamp(t.p[0]+vx/l*3.5,1.5,48.5), clamp(t.p[1]+vy/l*3.5,1,67)];  // ~3.5m goal-side: intercept the forward pass, not beaten by a turn
   });
+  // mid block trap: a forward drops behind the ball and stands in the pass back to the nearest central supporter
+  if(!high){
+    const marked=new Set((best||[]).map((_,k)=>threats[k].i));
+    const backs=A.map((p,i)=>({i,p})).filter(t=>t.i!==0&&t.i!==holder&&!marked.has(t.i)&&t.p[1]<by&&t.p[1]>by-14&&Math.abs(t.p[0]-bx)<14&&Math.hypot(t.p[0]-bx,t.p[1]-by)<14);
+    const st=D.map((_,i)=>i).filter(i=>cls[i]==="ST"&&i!==presser&&!(best||[]).includes(i));
+    if(backs.length&&st.length){
+      const t=backs.sort((a,b)=>Math.hypot(a.p[0]-bx,a.p[1]-by)-Math.hypot(b.p[0]-bx,b.p[1]-by))[0];
+      let s0=st[0],sd=1e9; st.forEach(i=>{ const dd=Math.hypot(D[i][0]-t.p[0],D[i][1]-t.p[1]); if(dd<sd){sd=dd;s0=i;} });
+      D[s0]=[bx+(t.p[0]-bx)*.6, by+(t.p[1]-by)*.6];
+    }
+  }
   spread(D,[0,presser],4); D.forEach(p=>{ p[0]=clamp(p[0],1,49); p[1]=clamp(p[1],.5,67.5); });
   return D;
 }
