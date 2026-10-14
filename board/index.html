@@ -611,7 +611,9 @@ function defendTeam(fid,bx,by,trans,gk){
     dfs.forEach((i,k)=>{ T[i]=[spots[Math.min(k,spots.length-1)],4+k*1.2]; });
     roles.forEach((_,i)=>{
       if(cls[i]==="PV") T[i]=[25+side*1.5,13.5];                   // steps up to the edge of the box: wins the clearance, blocks the shot
-      if((cls[i]==="WM"||cls[i]==="WF")&&!ballSide(i)&&i!==dropper) T[i]=[25-side*7,13];   // far side: edge of the box for the second ball
+      // far-side SH: tucked in a little but kept higher, in front of the box on the far side (攻撃準備ポジション) —
+      // picks up the clearance (it usually drops toward the far side) and starts the counter
+      if((cls[i]==="WM"||cls[i]==="WF")&&!ballSide(i)&&i!==dropper) T[i]=[25-side*byAge(9,10,11),byAge(18,19,20)];
     });
   }
   // first defender: goal side of the ball, showing it outside
@@ -941,7 +943,7 @@ function updateAutoHint(){
     : dMine>45.3 ? "自チーム：ゴール前。ニア・ファー・折り返しの3か所に入る（イングランド流のクロス＋スペイン流の折り返し）"
     : "自チーム：幅と三角形でボールを動かす。FWは相手DFの背後を狙い続ける（スペイン流＋イングランド流）";
   else t = S.trans ? "自チーム：奪われた瞬間。近い3人で囲んですぐ奪い返す（スペイン流の即時奪回）"
-    : dMine<22.7 ? "自チーム：自陣ゴール前。コンパクトに固め、ニアとファーを埋める。マイナスの折り返しに入ってくる相手も必ずゴール側でつかむ"
+    : dMine<22.7 ? "自チーム：自陣ゴール前。コンパクトに固め、ニアとファーを埋める。マイナスの折り返しに入ってくる相手も必ずゴール側でつかむ。逆サイドのSHは少し絞りつつ、エリアの前でクリアを拾ってカウンターの起点に"
     : (dMine>45.3 ? "自チーム：相手陣でボールを奪いに行く前からのプレス（イングランド流）" : "自チーム：コンパクトなゾーンで、ボール側に寄せて逆は絞る（スペイン流）")
       + (Math.abs(S.ball[0]-25)<=12 ? "。真ん中ではサイドへ追い出す"
          : dMine>45.3 ? "。サイドではカーブして寄せ、逆サイドへのパスを切る"
