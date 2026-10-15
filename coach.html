@@ -114,7 +114,7 @@ details summary{cursor:pointer;font-weight:700}
     <p><b>まとめメールを止めたい</b><br>まとめメールのいちばん下にある「このメールを止める」のリンクを押してください。</p>
     <p><b>チームをやめたい・データを消したい</b><br>コーチ用リンクを開いて、せいせきタブのいちばん下の「チームのデータをすべて消す」を押すと、そのチームの成績はすべて消えます。</p>
     <p><b>コーチ用リンクをなくした</b><br>新しくチームを作り直して、選手にリンクを配り直してください（前のチームの成績は引きつげません）。</p>
-    <p><a href="./">← ドリルにもどる</a></p>
+    <p><a href="./">← アプリの一覧にもどる</a></p>
   </section>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
@@ -139,7 +139,7 @@ $("signup").onsubmit = async e => {
     const r = await fetch(API + "/api/teams", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name, email, agree})});
     const d = await r.json();
     if(!d.ok) throw new Error(d.error || "net");
-    const u = API + "/api/t/" + d.id, base = new URL("./", location.href).href;
+    const u = API + "/api/t/" + d.id, base = new URL("./drill/", location.href).href;
     teamName = d.team;
     link = base + "?team=" + b64url(JSON.stringify({u, c:d.pk, n:d.team}));
     coachLink = base + "?coach=" + b64url(JSON.stringify({u, c:d.ck, n:d.team}));
