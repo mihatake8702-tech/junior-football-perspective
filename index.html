@@ -9134,7 +9134,10 @@ const TEAM = (()=>{
   // ?team=… (players' link) / ?coach=… (coach's link: also shows the team results in せいせき)
   const decode=t=>{
     const b=atob(t.replace(/-/g,"+").replace(/_/g,"/")); const v=JSON.parse(new TextDecoder().decode(Uint8Array.from(b,ch=>ch.charCodeAt(0))));
-    return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(v.u) && v.c ? {u:v.u,c:String(v.c),n:String(v.n||"チーム").slice(0,30)} : null;
+    // the drill API (webapp/api), or a coach's own Google sheet (teams set up before the API)
+    const ok = /^https:\/\/jr-football-perspective\.com\/api\/t\/[a-z0-9]{12}$/.test(v.u) || /^http:\/\/localhost:8787\/api\/t\/[a-z0-9]{12}$/.test(v.u)
+      || /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(v.u);
+    return ok && v.c ? {u:v.u,c:String(v.c),n:String(v.n||"チーム").slice(0,30)} : null;
   };
   try{
     const ps=new URLSearchParams(location.search), t=ps.get("team"), c=ps.get("coach");
@@ -9158,6 +9161,9 @@ const TEAM = (()=>{
     get team(){ return team; },
     get coach(){ return coach; },
     leaveCoach(){ coach=null; put("pd8_coach",null); },
+    // only teams on the drill API can be deleted from the app (a Google sheet is deleted in Drive)
+    get canWipe(){ return !!coach && /\/api\/t\/[a-z0-9]{12}$/.test(coach.u); },
+    async wipe(){ const r=await fetch(coach.u+"/delete",{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({c:coach.c})}); const d=await r.json(); if(!d.ok) throw new Error(d.error||"net"); },
     send(rec){ if(!team) return; const box=get("pd8_outbox")||[]; box.push(rec); put("pd8_outbox",box.slice(-500)); flush(); },
     leave(){ team=null; put("pd8_team",null); }
   };
@@ -9395,7 +9401,7 @@ function renderName(){
   const dbNote = store.err==="nodb" ? `<p class="note">この画面では成績を保存できません（claude.aiにログインして開くと保存されます）。「ゲスト」で遊べます。</p>` : "";
   return `<section class="card">
     ${stepper(1,"なまえ")}
-    ${TEAM.team?`<p class="teamline"><b>${esc(TEAM.team.n)}</b> のドリル。せいせきはコーチにとどきます。<button class="del" id="leaveteam">チームからはずれる</button></p>`:""}
+    ${TEAM.team?`<p class="teamline"><b>${esc(TEAM.team.n)}</b> のドリル。せいせきはコーチにとどきます。<button class="del" id="leaveteam">チームからはずれる</button></p><p class="note" style="margin:0">なまえは<b>ニックネーム</b>でOK（本名でなくていいよ）。例：「ゆうと」「10番」</p>`:""}
     <h2>きみはだれ？</h2>
     <div class="chips">
       ${list.map(p=>`<button class="chip" data-pid="${esc(p.id)}"><span class="av" aria-hidden="true">${esc([...p.name][0]||"?")}</span><span class="nm">${esc(p.name)}<small class="muted">${p.grade?GLABEL(p.grade):"学年なし"}</small></span></button>`).join("")}
@@ -9553,7 +9559,7 @@ function renderCoach(){
   const remote = !!TEAM.coach, src = remote ? REMOTE : store;
   if(remote && !REMOTE.loaded){
     if(!REMOTE.loading && !REMOTE.err) setTimeout(loadRemote);
-    return `<section class="card"><h2>${esc(TEAM.coach.n)} のせいせき</h2>${REMOTE.err?`<p class="note">${REMOTE.err==="code"?"チームコードがちがうため、成績を読めませんでした。コーチ用ページで、コーチ用リンクを作り直してください。":"成績を読めませんでした。インターネットにつながっているか確認してください。"}</p><div class="row"><button class="ghost" id="reload">もう一度読みこむ</button></div>`:`<p class="muted" style="margin:0">スプレッドシートから成績を読みこんでいます…</p>`}</section>`;
+    return `<section class="card"><h2>${esc(TEAM.coach.n)} のせいせき</h2>${REMOTE.err?`<p class="note">${REMOTE.err==="code"?"チームコードがちがうため、成績を読めませんでした。コーチ用ページで、コーチ用リンクを作り直してください。":"成績を読めませんでした。インターネットにつながっているか確認してください。"}</p><div class="row"><button class="ghost" id="reload">もう一度読みこむ</button></div>`:`<p class="muted" style="margin:0">チームの成績を読みこんでいます…</p>`}</section>`;
   }
   if(!remote && !store.db) return `<section class="card"><h2>せいせき</h2><p class="note">成績を見るには、claude.aiにログインしてこのページを開いてください。</p></section>`;
   const players = src.players, phKeys = Object.keys(PHASES);
@@ -9591,7 +9597,7 @@ function renderCoach(){
   }
   return `<section class="card">
     <h2>${remote?esc(TEAM.coach.n)+" の":""}局面ごとの達成率</h2>
-    ${remote?`<div class="row"><span class="muted" style="font-size:.85rem">スプレッドシートの成績（${new Date(REMOTE.at).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} に読みこみ）</span><button class="ghost" id="reload" style="margin-left:auto">${REMOTE.loading?"読みこみ中…":"↻ 最新にする"}</button></div>`:""}
+    ${remote?`<div class="row"><span class="muted" style="font-size:.85rem">チームの成績（${new Date(REMOTE.at).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})} に読みこみ）</span><button class="ghost" id="reload" style="margin-left:auto">${REMOTE.loading?"読みこみ中…":"↻ 最新にする"}</button></div>`:""}
     ${!remote&&store.local?`<p class="note">この端末で答えた分の成績です。ほかのスマホやタブレットの成績は、ここには出ません。</p>`:""}
     <p class="muted" style="margin:0;font-size:.88rem">それぞれの問題の「さいごの答え」で計算しています（◎=2点、○=1点、✕=0点）。名前を押すと、テーマ別の達成率と、◎ではなかった問題が見られます。</p>
     ${kpis}
@@ -9604,7 +9610,8 @@ function renderCoach(){
     ${missed.length?`<div class="missed">${missed.map(([id,n])=>{const q=QBY[id];return `<div><span class="tag">${esc(TH[q.th].name)}</span><span>${esc(K(q.situ+" "+q.q,12))}<br><small class="muted">${esc(K(q.point,12))}</small></span><span class="n">${n}/${seen[id]}人</span></div>`;}).join("")}</div>`
       :`<p class="muted" style="margin:0">まだデータがありません。</p>`}
   </section>
-  ${remote?`<p class="muted" style="font-size:.8rem;margin:0">この端末はコーチ用リンクで開かれています。<button class="del" id="leavecoach">この端末からコーチ用をはずす</button></p>`:""}`;
+  ${remote?`<p class="muted" style="font-size:.8rem;margin:0">この端末はコーチ用リンクで開かれています。<button class="del" id="leavecoach">この端末からコーチ用をはずす</button></p>`:""}
+  ${remote&&TEAM.canWipe?`<p class="muted" style="font-size:.8rem;margin:0"><button class="del" id="wipeteam">チームのデータをすべて消す</button></p>`:""}`;
 }
 
 // ---------- Render + events ----------
@@ -9660,6 +9667,12 @@ view.addEventListener("click", e=>{
   }
   if(t.id==="leaveteam"){ TEAM.leave(); render(); return; }
   if(t.id==="reload"){ REMOTE.err=""; loadRemote(); return; }
+  if(t.id==="wipeteam"){
+    if(!confirm(`「${TEAM.coach.n}」の成績をすべて消します。元にはもどせません。選手のリンクも使えなくなります。消しますか？`)) return;
+    TEAM.wipe().then(()=>{ alert("チームのデータを消しました。"); TEAM.leaveCoach(); Object.assign(REMOTE,{loaded:false,err:""}); S.tab="drill"; render(); })
+      .catch(()=>alert("消せませんでした。インターネットにつながっているか確認して、もう一度押してください。"));
+    return;
+  }
   if(t.id==="leavecoach"){ TEAM.leaveCoach(); Object.assign(REMOTE,{loaded:false,err:""}); S.tab="drill"; render(); return; }
   if(t.id==="back-name"){ S.step="name"; render(); return; }
   if(t.dataset.form){ S.form=t.dataset.form; try{ localStorage.setItem("pd8_form",S.form); }catch(e){} render(); return; }

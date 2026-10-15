@@ -1,0 +1,13 @@
+.git
+.gitignore
+.assetsignore
+.nojekyll
+.wrangler
+node_modules
+api
+build.py
+README.md
+wrangler.jsonc
+package.json
+package-lock.json
+.DS_Store

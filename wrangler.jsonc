@@ -1,0 +1,31 @@
+// jr-football-perspective.com — 戦術ドリルのアプリ本体（静的ファイル）と成績の受け取り口（/api/*）を1つの Worker で出す
+// アプリのファイルは webapp/ そのもの（python3 webapp/build.py で作る）。出さないものは .assetsignore に書く
+{
+  "name": "jr-football-perspective",
+  "main": "api/src/index.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    // coach.html のように .html 付きの URL をそのまま出す（GitHub Pages と同じ。sw.js もこの URL で判定している）
+    // 「/」「/board/」は Worker が index.html を返す
+    "html_handling": "none",
+    // /api/* は必ず Worker が受ける。それ以外はファイルをそのまま返す
+    "run_worker_first": ["/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "TEAM", "class_name": "Team" },
+      { "name": "REGISTRY", "class_name": "Registry" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Team", "Registry"] }],
+  // 毎晩20時（日本時間）= 11:00 UTC にまとめメール
+  "triggers": { "crons": ["0 11 * * *"] },
+  "vars": {
+    "SITE_HOST": "jr-football-perspective.com",
+    // まとめメールの送り主（例："戦術ドリル <drill@jr-football-perspective.com>"）。空ならメールは送らない
+    "MAIL_FROM": ""
+  }
+  // メールを送るときは、Cloudflare の画面で秘密の値 RESEND_API_KEY を登録する
+}

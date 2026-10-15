@@ -1,2 +1,5 @@
 build.py
 .DS_Store
+node_modules/
+.wrangler/
+.dev.vars
