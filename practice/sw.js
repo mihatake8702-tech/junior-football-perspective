@@ -1,5 +1,5 @@
 // offline cache for the practice menu (version changes on every build)
-const C = "prac8-b149e06b";
+const C = "prac8-28206067";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(C).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith("prac8-") && k !== C).map(k => caches.delete(k))))); self.clients.claim(); });
