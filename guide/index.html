@@ -10478,6 +10478,8 @@ const X3 = (() => {
       CLIP3D.fitBox(cam, C.box, V.yaw + cv.dyaw + sway, Math.max(.25, Math.min(1.52, V.pitch + cv.dpitch)), cv.zoom);
     }
     clip.labels(cv.view === "eye" ? .7 : 1);
+    // the ball a little bigger than real so it is easy to follow (smaller through the eyes)
+    clip.ballScale = cv.view === "eye" ? .6 : 1.1; clip.ringScale = cv.view === "eye" ? .4 : .6;
   }
   // drag = turn the camera (or the head in PLAYER EYE), wheel / pinch = come closer
   { let dr = null, pts = new Map(), pinch = 0;
