@@ -10118,8 +10118,10 @@ const VOICE = (() => {
     const pref = [/Kyoko.*(Enhanced|Premium)/i, /O-ren.*(Enhanced|Premium)/i, /Google/i, /Nanami/i, /Kyoko/i, /O-ren/i];
     voice = pref.map(r => vs.find(v => r.test(v.name))).find(Boolean) || vs[0]; };
   if (ok){ pick(); speechSynthesis.addEventListener ? speechSynthesis.addEventListener("voiceschanged", pick) : (speechSynthesis.onvoiceschanged = pick); }
-  // phones only let a page talk after a tap: say nothing once on the first tap
-  if (ok) addEventListener("pointerdown", () => { if (unlocked) return; unlocked = true; const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); }, {capture:true});
+  // phones only let a page talk after a tap, and only from inside the tap itself (iPhone: touchend / click, not
+  // pointerdown): say one silent word on the first real tap; from then on the page may talk by itself
+  const unlock = () => { if (unlocked || !ok) return; unlocked = true; try{ const u = new SpeechSynthesisUtterance("あ"); u.lang = "ja-JP"; u.volume = 0; speechSynthesis.speak(u); }catch(e){} };
+  if (ok) for (const ev of ["touchend", "click", "keydown"]) addEventListener(ev, unlock, {capture:true});
   // position names as a Japanese voice should say them (the same words as MAESTRO BOARD's 練習メニュー voice:
   // letters read one by one were hard to catch, e.g. CH sounded like 新聞紙), and words the voice misreads
   const SAY = [["GK","ゴールキーパー"],["CB","センターバック"],["SB","サイドバック"],["CH","センターハーフ"],["SH","サイドハーフ"],["CF","センターフォワード"],["FW","フォワード"],["DF","ディフェンダー"],["MF","ミッドフィルダー"],["LH","左ハーフ"],["RH","右ハーフ"],["LB","左バック"],["RB","右バック"],["DM","ボランチ"],["CM","センターハーフ"],["OH","トップ下"],["→","、"],["＋","と"]];
@@ -10131,18 +10133,27 @@ const VOICE = (() => {
   // marks and short forms said the way a coach says them
   const say = t => words(String(t)).replace(/<[^>]+>/g, " ").replace(/◎/g, "にじゅうまる、").replace(/○/g, "まる、").replace(/[✕×]/g, "ばつ、")
     .replace(/(\d)-(\d)(?:-(\d))?(?:-(\d))?/g, (m, a, b, c, d) => [a, b, c, d].filter(Boolean).join("、")).replace(/[（(]/g, "、").replace(/[）)]/g, "、").replace(/\s+/g, " ").replace(/[、。\s]*。[、。\s]*/g, "。").replace(/(、\s*)+/g, "、").replace(/^[、。]+|、+$/g, "").trim();
+  // (phones drop words spoken right after cancel(): wait a moment after a cancel; and if a phone never says that the
+  // words are done, the clip waits no longer than the words could take, so it never stops for good)
+  let sayId = 0, cancelled = 0, timer = 0, until = 0;
   function speak(text, rate=1){
     if (!ok || !on) return; stop(); const t = say(text); if (!t) return;
-    const u = new SpeechSynthesisUtterance(t); u.lang = "ja-JP"; if (voice) u.voice = voice; u.rate = Math.max(.7, Math.min(1.4, rate));
-    talking = true; u.onend = u.onerror = () => { talking = false; }; speechSynthesis.speak(u);
+    const id = ++sayId, r = Math.max(.7, Math.min(1.4, rate));
+    talking = true; until = performance.now() + 250 + (3 + t.length*.2/r)*1000;
+    const go = () => { timer = 0; if (id !== sayId) return;
+      const u = new SpeechSynthesisUtterance(t); u.lang = "ja-JP"; if (voice) u.voice = voice; u.rate = r;
+      u.onend = u.onerror = () => { if (id === sayId) talking = false; };
+      if (speechSynthesis.paused) speechSynthesis.resume(); speechSynthesis.speak(u); };
+    const wait = 250 - (performance.now() - cancelled); if (wait > 0) timer = setTimeout(go, wait); else go();
   }
-  function stop(){ if (!ok) return; talking = false; speechSynthesis.cancel(); }
+  function stop(){ if (!ok) return; sayId++; talking = false; clearTimeout(timer); timer = 0;
+    if (speechSynthesis.speaking || speechSynthesis.pending){ speechSynthesis.cancel(); cancelled = performance.now(); } }
   function set(v){ on = v; try{ localStorage.setItem("voice_on", v ? "1" : "0"); }catch(e){} if (!v) stop(); document.querySelectorAll("[data-voice]").forEach(b => paint(b)); }
   const paint = b => { b.textContent = on ? "🔊" : "🔇"; b.setAttribute("aria-pressed", on); b.setAttribute("aria-label", on ? "読み上げ：オン" : "読み上げ：オフ"); b.title = b.getAttribute("aria-label"); };
   // a toggle button for any page: <button data-voice>
   function button(cls=""){ const b = document.createElement("button"); b.type = "button"; b.className = cls; b.dataset.voice = ""; paint(b); if (!ok) b.hidden = true; return b; }
   document.addEventListener("click", e => { if (e.target.closest("[data-voice]")) set(!on); });
-  return {speak, stop, button, get on(){ return ok && on; }, get busy(){ return ok && on && (talking || speechSynthesis.speaking); }, ok};
+  return {speak, stop, button, get on(){ return ok && on; }, get busy(){ return ok && on && talking && performance.now() < until; }, ok};
 })();
 
 const CLIP3D = (() => {
