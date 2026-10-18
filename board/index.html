@@ -214,6 +214,11 @@ body.demoslow .dplayer{transition-duration:1.45s} body.demoslow .dball{transitio
 .demobar:not([hidden]) .dcap,.demobar:not([hidden]) .dtitle{text-shadow:0 1px 3px rgba(0,0,0,.9)}
 .demobar .dcap{font-size:.95rem;min-height:0}
 .demobar .dctl button{min-height:34px;padding:4px 10px;font-size:.85rem}
+/* 音声: orange while it reads out; a red slash across the whole button when it is off */
+#demoVoice{position:relative;overflow:hidden}
+#demoVoice[aria-pressed="false"]::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(to top right,transparent calc(50% - 1.2px),#ff2340 calc(50% - 1.2px),#ff2340 calc(50% + 1.2px),transparent calc(50% + 1.2px))}
+#demoVoice[aria-pressed="true"]{background:var(--accent) !important;border-color:var(--accent) !important;color:var(--accent-ink,#1a0f00) !important}
 .dtitle{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .dcap{margin:0;font-size:1.05rem;font-weight:700;min-height:2.6em}
 .dctl{display:flex;flex-wrap:wrap;gap:8px}
@@ -554,7 +559,7 @@ html[data-digital] header.brand p.tagline{margin:4px 0 0;font-family:var(--en) !
       <div class="demobar" id="demoBar" hidden>
         <div class="dtitle"><span class="chip both">練習の動き</span><b id="demoTitle"></b><span id="demoStep" class="dmeta"></span><span id="demoDir" class="dmeta"></span></div>
         <p id="demoCap" class="dcap" aria-live="polite"></p>
-        <div class="dctl"><button class="ghost" id="demoPrev">◀ 前へ</button><button class="primary" id="demoPlay">一時停止</button><button class="ghost" id="demoNext">次へ ▶</button><button class="ghost" id="demoSlow" aria-pressed="false">スロー</button><button class="ghost" id="demoVoice" aria-pressed="false" hidden>🔊 音声</button><button class="ghost" id="demoStop">終了してボードに戻る</button></div>
+        <div class="dctl"><button class="ghost" id="demoPrev">◀ 前へ</button><button class="primary" id="demoPlay">一時停止</button><button class="ghost" id="demoNext">次へ ▶</button><button class="ghost" id="demoSlow" aria-pressed="false">スロー</button><button class="ghost" id="demoVoice" aria-pressed="false" aria-label="音声" hidden>🔊 音声</button><button class="ghost" id="demoStop">終了してボードに戻る</button></div>
       </div>
     </section>
 
@@ -2672,7 +2677,7 @@ document.getElementById("demoNext").addEventListener("click",()=>{ pauseDemo(); 
 document.getElementById("demoStop").addEventListener("click",()=>stopDemo(false));
 // 🔊 音声 (only shown when the browser can speak); the first press also lets a phone speak at all
 if(TTS){ const vb=document.getElementById("demoVoice"); vb.hidden=false; TTS.getVoices();
-  vb.addEventListener("click",()=>{ DM.voice=!DM.voice; vb.setAttribute("aria-pressed",DM.voice);
+  vb.addEventListener("click",()=>{ DM.voice=!DM.voice; vb.setAttribute("aria-pressed",DM.voice); 
     if(DM.voice){ const f=DM.frames[DM.i]; if(f) speakCap(f.cap); if(DM.playing) playDemo(); } else { const w=DM.waitSaid; stopSpeak(); if(w) w(); } }); }
 document.getElementById("demoSlow").addEventListener("click",e=>{ DM.slow=!DM.slow; e.currentTarget.setAttribute("aria-pressed",DM.slow); document.body.classList.toggle("demoslow",DM.slow); if(DM.playing) playDemo(); });
 
