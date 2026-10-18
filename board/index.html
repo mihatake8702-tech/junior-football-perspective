@@ -844,11 +844,11 @@ function defendTeam(fid,bx,by,trans,gk,press){
     const keepIn = crossD && (["CD","SD","FB","PV"].includes(cls[i]));
     const dd=Math.hypot(T[i][0]-bx,T[i][1]-d)+(keepIn?10:0); if(dd<bd){bd=dd;first=i;} });
   const ux=25-bx, uy=0-d, ul=Math.hypot(ux,uy)||1;
-  // centre: goal side, showing the ball outside. Wide (not defending the cross): cut off the line (縦切り) —
-  // stand goal side on the touchline side so the ball goes inside, where the covering player waits
-  // (footballhack『８人制サッカーの戦術』3-3-1 / 小澤『サッカー戦術の教科書』サイドの守備)
+  // centre: goal side, showing the ball outside. Wide (not defending the cross): 縦切り = stand straight in front, between
+  // the ball and our goal, so the attacker cannot go forward; the touchline side is narrow, so the ball goes inside,
+  // where the covering player waits. Never stand outside the attacker on the touchline side (たけし's rule).
   // (pressing high in their half is the opposite: the forward curves in and blocks the switch — 円弧アプローチ)
-  if(wide&&!crossD&&!high) T[first]=[bx+side*1.1, d-1.2];
+  if(wide&&!crossD&&!high) T[first]=[bx+ux/ul*1.4, d+uy/ul*1.4];
   else T[first]=[bx+ux/ul*1.5-(wide?side*.5:0), d+uy/ul*1.5];
   // second defender: covers 3-5m behind at an angle, inside
   let second=-1; bd=1e9;
