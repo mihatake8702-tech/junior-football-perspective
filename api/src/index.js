@@ -89,7 +89,7 @@ export default {
       await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: env.MAIL_FROM, to: [t.email], subject: `【戦術ドリル】${t.name} 今日のまとめ`, text })
+        body: JSON.stringify({ from: env.MAIL_FROM, to: [t.email], subject: `【MAESTRO DRILL】${t.name} 今日のまとめ`, text })
       }).catch(() => {});
     }
   }
