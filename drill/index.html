@@ -491,6 +491,26 @@ svg.pitch.half{max-width:100%}
 .v3note{position:absolute;left:6px;bottom:6px;right:6px;font-size:.66rem;color:var(--muted);pointer-events:none;text-shadow:0 1px 3px #000}
 .v3note b{font-family:var(--en);font-weight:600;color:var(--good);letter-spacing:.16em;margin-right:6px}
 .pitchwrap.veiled .v3d canvas{filter:blur(6px) saturate(.6)}
+/* 「3Dで見る」: the clip's caption and buttons at the bottom of the 3D box */
+.v3clip{position:absolute;left:6px;right:6px;bottom:6px;z-index:2;display:flex;flex-direction:column;gap:5px;pointer-events:none}
+.v3cap{pointer-events:auto;background:rgba(3,10,7,.84);border:1px solid var(--line);border-left:4px solid var(--fg);border-radius:4px;padding:6px 10px;max-height:9.6em;overflow:auto}
+.v3cap .k{display:inline-block;font-weight:700;font-size:.7rem;padding:1px 8px;border-radius:999px;background:var(--fg);color:#04120a}
+.v3cap h3{margin:3px 0 2px;font-size:.92rem;line-height:1.4}
+.v3cap p{margin:0;font-size:.82rem;line-height:1.55;color:#d7efe3}
+.v3cap.r2{border-left-color:var(--good)} .v3cap.r2 .k{background:var(--good)}
+.v3cap.r1{border-left-color:var(--warn)} .v3cap.r1 .k{background:var(--warn)}
+.v3cap.r0{border-left-color:var(--bad)} .v3cap.r0 .k{background:var(--bad);color:#fff}
+.v3ctl{pointer-events:auto;display:flex;gap:4px;align-items:center}
+.v3ctl>button{min-width:38px;min-height:34px;border:1px solid var(--line);background:rgba(3,10,7,.84);border-radius:4px;color:var(--fg);font-weight:700;padding:0 8px}
+.v3ctl>button.main{background:var(--good);color:#04120a;border-color:var(--good)}
+.v3dots{display:flex;gap:3px;flex:1;min-width:0}
+.v3dots button{flex:1;min-width:0;min-height:34px;border:1px solid var(--line);background:rgba(3,10,7,.84);border-radius:4px;color:var(--muted);font-weight:700;font-size:.66rem;padding:0;position:relative;overflow:hidden}
+.v3dots button .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(77,255,166,.25)}
+.v3dots button span{position:relative}
+.v3dots button[aria-current="true"]{border-color:var(--good);color:var(--fg)}
+.v3dots .r2{color:var(--good)} .v3dots .r1{color:var(--warn)} .v3dots .r0{color:var(--bad)}
+.play3d{border-color:var(--good);color:var(--good)}
+@media (max-width:600px){ .v3cap{max-height:7.4em;padding:5px 8px} .v3cap h3{font-size:.84rem} .v3cap p{font-size:.76rem} .v3dots button{font-size:.58rem} }
 @media (max-width:820px){ .viewbar{margin-bottom:4px} .viewbar button{min-height:26px;padding:1px 8px;font-size:.62rem} }
 
 /* ===== more digital (like MAESTRO BOARD): a HUD over the pitch, glowing lines and tokens, kickers, corner ticks ===== */
@@ -10938,16 +10958,333 @@ const gradeSelect = (id,val) => `<select id="${id}" aria-label="学年">${[9,10,
 const stepper = (n,label) => `<div class="stepper" aria-label="ステップ ${n} / 3">${[1,2,3].map(k=>`<i class="${k<=n?"on":""}"></i>`).join("")}<span><b>STEP ${n}</b> / 3　${label}</span></div>`;
 
 
+// ===== CLIP3D: the shared 3D clip engine =====
+// Used by 3D解説 (explain3d.js), 戦術ドリル「3Dで見る」(view3d.js) and MAESTRO BOARD 局面の切り替え (tactics-board.html, B3D).
+// The board is one hand-written file, so it keeps a copy of this file between the CLIP3D markers; build.py and
+// build-explain.py write it there. Edit this file only.
+//   voice:  VOICE (above CLIP3D) reads each step aloud; player.voice = false turns it off for one player
+//   look:   pitchTexture, label, makePlayer (arms and legs that swing), arrow, disc, makeBall, addPitch
+//   motion: run (move a player, face the way they go, swing arms and legs)
+//   clips:  plan (a drill question → the steps じょうきょう → もんだい → ◎ → ○ → ✕ → ポイント), pose (where everyone is),
+//           player (plays a clip in any three.js scene), fitBox / eyeCam (the cameras)
+// ===== VOICE: reads the captions aloud (the browser's own Japanese voice; no files, no account) =====
+// On by default; the 🔊 button turns it off and the choice is kept. A clip step waits until its words are read.
+const VOICE = (() => {
+  const ok = typeof speechSynthesis !== "undefined" && typeof SpeechSynthesisUtterance !== "undefined";
+  let on = (() => { try{ return localStorage.getItem("voice_on") !== "0"; }catch(e){ return true; } })(), voice = null, talking = false, unlocked = false;
+  // the nicest Japanese voice the device has
+  const pick = () => { if (!ok) return; const vs = speechSynthesis.getVoices().filter(v => /^ja/i.test(v.lang)); if (!vs.length) return;
+    const pref = [/Kyoko.*(Enhanced|Premium)/i, /O-ren.*(Enhanced|Premium)/i, /Google/i, /Nanami/i, /Kyoko/i, /O-ren/i];
+    voice = pref.map(r => vs.find(v => r.test(v.name))).find(Boolean) || vs[0]; };
+  if (ok){ pick(); speechSynthesis.addEventListener ? speechSynthesis.addEventListener("voiceschanged", pick) : (speechSynthesis.onvoiceschanged = pick); }
+  // phones only let a page talk after a tap: say nothing once on the first tap
+  if (ok) addEventListener("pointerdown", () => { if (unlocked) return; unlocked = true; const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); }, {capture:true});
+  // marks and short forms said the way a coach says them
+  const say = t => String(t).replace(/<[^>]+>/g, " ").replace(/◎/g, "にじゅうまる、").replace(/○/g, "まる、").replace(/[✕×]/g, "ばつ、")
+    .replace(/(\d)-(\d)(?:-(\d))?(?:-(\d))?/g, (m, ...d) => d.filter(x => /\d/.test(x || "")).join("、")).replace(/[（(]/g, "、").replace(/[）)]/g, "、").replace(/\s+/g, " ").replace(/[、。\s]*。[、。\s]*/g, "。").replace(/(、\s*)+/g, "、").replace(/^[、。]+|、+$/g, "").trim();
+  function speak(text, rate=1){
+    if (!ok || !on) return; stop(); const t = say(text); if (!t) return;
+    const u = new SpeechSynthesisUtterance(t); u.lang = "ja-JP"; if (voice) u.voice = voice; u.rate = Math.max(.7, Math.min(1.4, rate));
+    talking = true; u.onend = u.onerror = () => { talking = false; }; speechSynthesis.speak(u);
+  }
+  function stop(){ if (!ok) return; talking = false; speechSynthesis.cancel(); }
+  function set(v){ on = v; try{ localStorage.setItem("voice_on", v ? "1" : "0"); }catch(e){} if (!v) stop(); document.querySelectorAll("[data-voice]").forEach(b => paint(b)); }
+  const paint = b => { b.textContent = on ? "🔊" : "🔇"; b.setAttribute("aria-pressed", on); b.setAttribute("aria-label", on ? "読み上げ：オン" : "読み上げ：オフ"); b.title = b.getAttribute("aria-label"); };
+  // a toggle button for any page: <button data-voice>
+  function button(cls=""){ const b = document.createElement("button"); b.type = "button"; b.className = cls; b.dataset.voice = ""; paint(b); if (!ok) b.hidden = true; return b; }
+  document.addEventListener("click", e => { if (e.target.closest("[data-voice]")) set(!on); });
+  return {speak, stop, button, get on(){ return ok && on; }, get busy(){ return ok && on && (talking || speechSynthesis.speaking); }, ok};
+})();
+
+const CLIP3D = (() => {
+  if (typeof THREE === "undefined") return null;
+  const W = (x, y, h=0) => new THREE.Vector3(x - 25, h, y - 34);          // pitch metres → 3D (we attack towards −z)
+  const lin = c => new THREE.Color(c).convertSRGBToLinear();
+  const COL = {mate:"#ff7a3c", gk:"#f6c71b", opp:"#3fa9ff", ogk:"#b37bff", me:"#ffffff", good:"#4dffa6", warn:"#ffd23d", bad:"#ff4d6a"};
+  const RCOL = [COL.bad, COL.warn, COL.good], RMARK = ["✕","○","◎"], RNAME = ["✕ ダメな例","○ それもあり","◎ こうする"];
+  const MOVE = 2.6;                     // seconds the players take to move in an answer step (at 1×)
+  const clamp = v => Math.max(0, Math.min(1, v)), sm = v => { v = clamp(v); return v*v*(3 - 2*v); };
+  const lerp = (a, b, k) => [a[0] + (b[0] - a[0])*k, a[1] + (b[1] - a[1])*k];
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const kj = t => typeof K === "function" ? K(t) : t;
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const clone = s => JSON.parse(JSON.stringify(s));
+
+  // ---------- the look ----------
+  function pitchTexture(grid=false){
+    const S2 = 20, c = document.createElement("canvas"); c.width = 56*S2; c.height = 74*S2; const x = c.getContext("2d");
+    const P = v => (v + 3)*S2;
+    x.fillStyle = "#2c7d48"; x.fillRect(0,0,c.width,c.height);
+    for (let i=0;i<7;i++){ x.fillStyle = "#348f53"; x.fillRect(0, P(i*68/7), c.width, 68/14*S2); }
+    x.strokeStyle = "rgba(235,255,244,.95)"; x.lineWidth = .22*S2; x.fillStyle = "rgba(235,255,244,.95)";
+    const rect = (a,b,w,h) => x.strokeRect(P(a),P(b),w*S2,h*S2), circ = (cx,cy,r,fill) => { x.beginPath(); x.arc(P(cx),P(cy),r*S2,0,Math.PI*2); fill ? x.fill() : x.stroke(); };
+    rect(0,0,50,68); x.beginPath(); x.moveTo(P(0),P(34)); x.lineTo(P(50),P(34)); x.stroke(); circ(25,34,7); circ(25,34,.3,1);
+    for (const [gy,d] of [[0,1],[68,-1]]){ rect(10.5, d>0?0:56, 29, 12); rect(18.5, d>0?0:64, 13, 4); circ(25, gy+d*8, .3, 1); }
+    if (grid){ x.strokeStyle = "rgba(255,255,255,.05)"; x.lineWidth = 1; for (let i=0;i<=50;i+=5){ x.beginPath(); x.moveTo(P(i),P(0)); x.lineTo(P(i),P(68)); x.stroke(); } for (let j=0;j<=68;j+=5){ x.beginPath(); x.moveTo(P(0),P(j)); x.lineTo(P(50),P(j)); x.stroke(); } }
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; return t;
+  }
+  function label(text, col, ink="#fff", solid=false){
+    const c = document.createElement("canvas"); c.width = 128; c.height = 64; const x = c.getContext("2d");
+    x.fillStyle = solid ? col : "rgba(3,10,7,.78)"; x.beginPath(); x.roundRect ? x.roundRect(14,10,100,44,10) : x.rect(14,10,100,44); x.fill();
+    x.strokeStyle = col; x.lineWidth = 3; x.stroke(); x.fillStyle = ink; x.font = "700 28px 'Chakra Petch','Noto Sans JP',sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(text, 64, 33);
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:t, depthTest:false, transparent:true})); sp.scale.set(3,1.5,1); sp.renderOrder = 10; return sp;
+  }
+  // a simple player about 1.5 m tall; legs and arms in their own groups so they can swing when running
+  function makePlayer(col, text){
+    const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+    const shirt = new THREE.MeshStandardMaterial({color:lin(col), roughness:.45, emissive:lin(col), emissiveIntensity:.15});
+    const dark = new THREE.MeshStandardMaterial({color:0x15181d, roughness:.6}), skin = new THREE.MeshStandardMaterial({color:0xe9eef2, roughness:.5});
+    const stick = (r1, r2, len, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, len, 12), mat); m.position.set(x, y, z); body.add(m); return m; };
+    const ball = (r, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat); m.position.set(x, y, z); body.add(m); return m; };
+    const limbs = [];
+    for (const sx of [-1, 1]){
+      const leg = new THREE.Group(); leg.position.set(sx*.11, .8, 0); body.add(leg);
+      const lm = new THREE.Mesh(new THREE.CylinderGeometry(.075, .06, .72, 12), skin); lm.position.y = -.38; leg.add(lm);
+      const bt = new THREE.Mesh(new THREE.SphereGeometry(.085, 16, 12), dark); bt.position.set(0, -.74, .06); leg.add(bt);
+      const arm = new THREE.Group(); arm.position.set(sx*.25, 1.25, 0); arm.rotation.z = sx*.28; body.add(arm);
+      const am = new THREE.Mesh(new THREE.CylinderGeometry(.055, .045, .5, 12), skin); am.position.y = -.25; arm.add(am);
+      const hd = new THREE.Mesh(new THREE.SphereGeometry(.05, 12, 10), skin); hd.position.y = -.5; arm.add(hd);
+      limbs.push({leg, arm, sx}); }
+    stick(.2, .19, .2, dark, 0, .82, 0); stick(.19, .23, .5, shirt, 0, 1.13, 0); ball(.12, shirt, -.24, 1.32, 0); ball(.12, shirt, .24, 1.32, 0); ball(.15, skin, 0, 1.56, 0);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(.55,.72,32), new THREE.MeshBasicMaterial({color:lin(col), transparent:true, opacity:.75, side:THREE.DoubleSide})); ring.rotation.x = -Math.PI/2; ring.position.y = .02; g.add(ring);
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(.55,24), new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:.35})); shadow.rotation.x = -Math.PI/2; shadow.position.y = .01; g.add(shadow);
+    let lab = null; if (text){ lab = label(text, col); lab.position.y = 2.2; g.add(lab); }
+    g.userData = {lab, body, ring, limbs, text, col, phase:Math.random()*6, run:0}; return g;
+  }
+  // a flat arrow on the grass (pass = white dashed, run = orange, opponent = blue)
+  function arrow(f, t, col, dashed, op=.9){
+    const g = new THREE.Group(), dx = t[0]-f[0], dy = t[1]-f[1], L = Math.hypot(dx, dy); if (L < .5) return g;
+    const mat = new THREE.MeshBasicMaterial({color:lin(col), transparent:true, opacity:op, depthWrite:false, side:THREE.DoubleSide});
+    const head = Math.min(1.4, L*.4), body = L - head, seg = dashed ? 1.1 : body, gap = dashed ? .7 : 0;
+    for (let s = 0; s < body - .05; s += seg + gap){ const len = Math.min(seg, body - s); const m = new THREE.Mesh(new THREE.PlaneGeometry(.22, len), mat); m.rotation.x = -Math.PI/2; m.position.set(0, 0, s + len/2); g.add(m); }
+    const tri = new THREE.Shape(); tri.moveTo(-.6, 0); tri.lineTo(.6, 0); tri.lineTo(0, head); tri.lineTo(-.6, 0);
+    const hm = new THREE.Mesh(new THREE.ShapeGeometry(tri), mat); hm.rotation.x = Math.PI/2; hm.position.z = body; g.add(hm);
+    g.position.copy(W(f[0], f[1], .05)); g.rotation.y = Math.atan2(dx, dy); return g;
+  }
+  function disc(x, y, r, col, op, letter){
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(new THREE.CircleGeometry(r, 40), new THREE.MeshBasicMaterial({color:lin(col), transparent:true, opacity:op, depthWrite:false, side:THREE.DoubleSide}));
+    m.rotation.x = -Math.PI/2; g.add(m);
+    const rim = new THREE.Mesh(new THREE.RingGeometry(r*.92, r, 48), new THREE.MeshBasicMaterial({color:lin(col), transparent:true, opacity:.95, depthWrite:false, side:THREE.DoubleSide}));
+    rim.rotation.x = -Math.PI/2; rim.position.y = .01; g.add(rim);
+    if (letter){ const sp = label(letter, col, "#06120c", true); sp.scale.set(2.6, 1.3, 1); sp.position.y = 1.9; g.add(sp);
+      const pin = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 1.5, 8), new THREE.MeshBasicMaterial({color:lin(col), transparent:true, opacity:.9})); pin.position.y = .75; g.add(pin); }
+    g.position.copy(W(x, y, .06)); g.userData.pulse = m; return g;
+  }
+  // a black-and-white football and the glowing ring under it
+  function makeBall(){
+    const bc = document.createElement("canvas"); bc.width = 256; bc.height = 128; const bx = bc.getContext("2d"); bx.fillStyle = "#fff"; bx.fillRect(0,0,256,128); bx.fillStyle = "#111";
+    for (let k=0;k<12;k++){ const px = (k%6)*44 + (k>5?22:0) + 10, py = k>5 ? 88 : 34; bx.beginPath(); for (let q=0;q<5;q++){ const a = q/5*Math.PI*2 - Math.PI/2; bx.lineTo(px + Math.cos(a)*12, py + Math.sin(a)*12); } bx.fill(); }
+    const t = new THREE.CanvasTexture(bc); t.encoding = THREE.sRGBEncoding;
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(.34, 28, 20), new THREE.MeshStandardMaterial({map:t, roughness:.4, emissive:0xffffff, emissiveMap:t, emissiveIntensity:.25}));
+    const ring = new THREE.Mesh(new THREE.RingGeometry(.7, .95, 40), new THREE.MeshBasicMaterial({color:0xffd23d, transparent:true, opacity:.9, side:THREE.DoubleSide, depthWrite:false})); ring.rotation.x = -Math.PI/2;
+    return {mesh, ring};
+  }
+  // grass, lines, goals and light
+  function addPitch(scene, grid=false){
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x3a6a48, 1.05)); { const key = new THREE.DirectionalLight(0xffffff, .9); key.position.set(-20, 40, 25); scene.add(key); }
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(56, 74), new THREE.MeshStandardMaterial({map:pitchTexture(grid), roughness:.95})); ground.rotation.x = -Math.PI/2; scene.add(ground);
+    const white = new THREE.MeshStandardMaterial({color:0xffffff, roughness:.4});
+    for (const gy of [0, 68]){ for (const gx of [22.5, 27.5]){ const p = new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,2.15,10), white); p.position.copy(W(gx, gy, 1.07)); scene.add(p); }
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,5,10), white); bar.rotation.z = Math.PI/2; bar.position.copy(W(25, gy, 2.15)); scene.add(bar);
+      const net = new THREE.Mesh(new THREE.PlaneGeometry(5, 2.15), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:.12, side:THREE.DoubleSide})); net.position.copy(W(25, gy + (gy ? 1.2 : -1.2), 1.07)); scene.add(net); }
+  }
+
+  // ---------- motion ----------
+  // move a player from a to b (pitch metres) in dt seconds: face where they go (or `look` when standing), swing arms and legs
+  function run(g, a, b, dt, look){
+    g.position.copy(W(b[0], b[1]));
+    const v = dt > 0 ? dist(a, b)/dt : 0, u = g.userData;
+    u.run += ((v > .6 ? 1 : 0) - u.run)*Math.min(1, dt*8);
+    const want = v > .6 ? Math.atan2(b[0] - a[0], b[1] - a[1]) : (look && dist(look, b) > .8 ? Math.atan2(look[0] - b[0], look[1] - b[1]) : u.body.rotation.y);
+    let d = want - u.body.rotation.y; while (d > Math.PI) d -= 2*Math.PI; while (d < -Math.PI) d += 2*Math.PI;
+    u.body.rotation.y += d*Math.min(1, dt*9);
+    u.phase += dt*Math.min(16, 4 + v*1.6);
+    const sw = Math.sin(u.phase)*.75*u.run;
+    if (u.limbs) u.limbs.forEach(l => { l.leg.rotation.x = sw*l.sx; l.arm.rotation.x = -sw*l.sx*.9; });
+    u.body.position.y = Math.abs(Math.sin(u.phase))*.07*u.run; u.body.rotation.x = .18*u.run;
+  }
+
+  // ---------- one drill question → a clip ----------
+  // Each answer step starts from the question's scene and moves the players the way that answer does
+  // (pick: at / go / team, tap: the zone centre). Players with an arrow in the scene move along it at the same time.
+  function plan(q){
+    const sc = q.scene, me0 = [sc.me[1], sc.me[2]];
+    const mates0 = sc.mates.map(m => [m[1], m[2]]);
+    const base = typeof BASE_OPP_DEF !== "undefined" ? BASE_OPP_DEF : [];
+    const opps0 = [...base, ...sc.opps].filter((p,i,arr) => arr.findIndex(o => o[0]===p[0] && o[1]===p[1]) === i);
+    // who has the ball at the start
+    let holder = null;
+    if (dist(sc.ball, me0) < .01) holder = {kind:"me"};
+    else { let bd = 1.5; mates0.forEach((m,i) => { const d = dist(m, sc.ball); if (d < bd){ bd = d; holder = {kind:"mate", i}; } });
+      opps0.forEach((p,i) => { const d = dist(p, sc.ball); if (d < bd){ bd = d; holder = {kind:"opp", i}; } }); }
+    // arrows: who moves along them (the nearest player of that side to the arrow's start)
+    const arrowMoves = {me:null, mates:{}, opps:{}};
+    (sc.arrows||[]).forEach(a => {
+      if (a.k === "pass") return;
+      if (a.k === "opp"){ let bi = -1, bd = 2.5; opps0.forEach((p,i) => { const d = dist(p, a.f); if (d < bd){ bd = d; bi = i; } }); if (bi >= 0) arrowMoves.opps[bi] = a.t; return; }
+      if (dist(me0, a.f) < 2.5) { arrowMoves.me = a.t; return; }
+      let bi = -1, bd = 2.5; mates0.forEach((p,i) => { const d = dist(p, a.f); if (d < bd){ bd = d; bi = i; } }); if (bi >= 0) arrowMoves.mates[bi] = a.t;
+    });
+    const hasBall = holder && holder.kind === "me";
+    const planOpt = o => { const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:null, rad:1.1};
+      if (o.at){ if (hasBall) p.ball = o.at; else p.me = o.at; p.spot = o.at; }
+      else if (o.go){ p.me = o.go; p.ride = hasBall; p.spot = o.go; }
+      for (const [who, x, y] of (o.team||[])){
+        if (who === "me"){ p.me = [x, y]; if (p.ball) p.oneTwo = /リターン|ワンツー|もどして|かえして/.test(o.t); if (!p.spot) p.spot = [x, y]; }
+        else { const i = sc.mates.findIndex(m => m[0] === who); if (i >= 0) p.mates[i] = [x, y]; } }
+      if (!p.spot) p.spot = me0; return p; };
+    const planTap = z => { const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:z.c, rad:z.rad};
+      if (q.target === "ball") p.ball = z.c; else { p.me = z.c; p.ride = hasBall && q.target === "dribble"; } return p; };
+    // the steps of the clip
+    const steps = [{k:"じょうきょう", short:"状況", text:q.situ}, {k:"もんだい", short:"問題", title:q.q}];
+    if (q.type === "pick") q.opts.map((o, i) => ({o, i})).sort((a, b) => b.o.r - a.o.r || a.i - b.i).forEach(({o}) =>
+      steps.push({k:RNAME[o.r], short:RMARK[o.r], r:o.r, title:o.t, text:o.why, plan:planOpt(o)}));
+    else {
+      q.zones.slice().sort((a, b) => b.r - a.r).forEach(z => steps.push({k:RNAME[z.r], short:RMARK[z.r], r:z.r, title:z.r === 2 ? (q.target === "ball" ? "ここへパス！" : "ここに立つ！") : (q.target === "ball" ? "ここへのパスもあり" : "ここもあり"), text:z.why, plan:planTap(z)}));
+      if (q.miss) steps.push({k:RNAME[0], short:RMARK[0], r:0, title:"こうするとダメ", text:q.miss, plan:null});
+    }
+    const best = steps.find(s => s.r === 2);
+    if (q.point) steps.push({k:"ポイント", short:"ポイント", cls:"pt", text:q.point, plan:best && best.plan, still:true, r:best ? 2 : undefined});
+    steps.forEach(s => { const n = (kj(s.title||"") + kj(s.text||"")).length; s.dur = Math.max(3.4, 1.8 + n*.12) + (s.plan && !s.still ? MOVE : 0); });
+    // the part of the pitch the clip uses (for the camera)
+    const P = [sc.ball, me0]; (sc.arrows||[]).forEach(a => P.push(a.f, a.t));
+    steps.forEach(s => { const p = s.plan; if (!p) return; [p.me, p.ball, p.spot, ...Object.values(p.mates)].forEach(v => v && P.push(v)); });
+    let x0 = Math.min(...P.map(p => p[0])) - 6, x1 = Math.max(...P.map(p => p[0])) + 6, y0 = Math.min(...P.map(p => p[1])) - 6, y1 = Math.max(...P.map(p => p[1])) + 6;
+    const grow = (a, b, min) => { const m = (a + b)/2, h = Math.max(min, b - a)/2; return [m - h, m + h]; };
+    [x0, x1] = grow(x0, x1, 24); [y0, y1] = grow(y0, y1, 20);
+    return {q, sc, me0, mates0, opps0, holder, arrowMoves, steps, box:{x0, x1, y0, y1}};
+  }
+
+  // where everyone is for a plan at progress p (0 = the scene, 1 = the answer done)
+  function pose(c, plan, p){
+    const s = {me:c.me0.slice(), mates:c.mates0.map(v => v.slice()), opps:c.opps0.map(v => v.slice()), ball:null, bh:0};
+    const pa = sm(p/.85);
+    if (plan){
+      Object.entries(c.arrowMoves.opps).forEach(([i, t]) => s.opps[i] = lerp(c.opps0[i], t, pa));
+      Object.entries(c.arrowMoves.mates).forEach(([i, t]) => { if (!plan.mates[i]) s.mates[i] = lerp(c.mates0[i], t, pa); });
+      if (c.arrowMoves.me && !plan.me) s.me = lerp(c.me0, c.arrowMoves.me, pa);
+      Object.entries(plan.mates).forEach(([i, t]) => s.mates[i] = lerp(c.mates0[i], t, pa));
+      if (plan.me) s.me = lerp(c.me0, plan.me, plan.oneTwo ? sm((p - .12)/.6) : plan.ball ? sm((p - .3)/.6) : pa);
+    }
+    // the ball: at the feet of whoever has it, or on its way
+    const H = c.holder, at = (kind, i) => kind === "me" ? s.me : kind === "mate" ? s.mates[i] : s.opps[i];
+    const foot = (pt, toward) => { const dx = toward[0] - pt[0], dy = toward[1] - pt[1], L = Math.hypot(dx, dy) || 1; return [pt[0] + dx/L*.7, pt[1] + dy/L*.7]; };
+    const goalOf = kind => kind === "opp" ? [25, 68] : [25, 0];
+    const start = H ? foot(at(H.kind, H.i), goalOf(H.kind)) : c.sc.ball.slice();
+    if (plan && plan.ride){ const dir = plan.me; s.ball = foot(s.me, dist(s.me, dir) > .4 ? dir : [25, 0]); }
+    else if (plan && plan.ball){
+      const fly = (a, b, k) => { s.ball = lerp(a, b, k); const L = dist(a, b), shot = b[1] < 2; s.bh = shot ? k*.6 : L > 14 ? Math.sin(Math.PI*k)*Math.min(4, L*.08) : 0; };   // long passes lift, shots stay low
+      const st0 = H ? foot(H.kind === "me" ? c.me0 : at(H.kind, H.i), plan.ball) : c.sc.ball;
+      if (plan.oneTwo){ const k1 = sm(p/.35), k2 = sm((p - .55)/.33);
+        if (k2 > 0) fly(plan.ball, foot(s.me, [25, 0]), k2); else fly(st0, plan.ball, k1); }
+      else fly(st0, plan.ball, sm((p - .05)/.55));
+    } else s.ball = start;
+    return s;
+  }
+
+  // ---------- a clip player: put it in any scene, call update() every frame ----------
+  function player(scene){
+    const root = new THREE.Group(), actors = new THREE.Group(), arrowsG = new THREE.Group(), marks = new THREE.Group(), ball = makeBall();
+    root.add(actors, arrowsG, marks, ball.mesh, ball.ring); scene.add(root);
+    let C = null, endWait = 0;
+    const P = {root, ballScale:1.5, ringScale:.75, voice:true, get C(){ return C; }};
+    // answersOnly: only ◎ → ○ → ✕ → ポイント (the drill, where じょうきょう and もんだい were just read)
+    P.load = (q, answersOnly=false) => {
+      while (actors.children.length) actors.remove(actors.children[0]);
+      while (arrowsG.children.length) arrowsG.remove(arrowsG.children[0]);
+      C = plan(q); if (answersOnly) C.steps = C.steps.filter(s => s.r !== undefined || s.cls);
+      const meG = makePlayer(C.sc.me[0] === "GK" ? COL.gk : COL.mate, ""); { const ml = label("きみ", "#ffffff"); ml.position.y = 2.2; meG.add(ml); meG.userData.lab = ml; meG.userData.ring.material.color = lin("#ffffff"); }
+      const matesG = C.sc.mates.map(m => makePlayer(m[0] === "GK" ? COL.gk : COL.mate, m[0]));
+      const oppsG = C.opps0.map(p => makePlayer(p[0] === 25 && p[1] === 4 ? COL.ogk : COL.opp, ""));
+      actors.add(meG, ...matesG, ...oppsG);
+      (C.sc.arrows||[]).forEach(a => arrowsG.add(arrow(a.f, a.t, a.k === "opp" ? COL.opp : a.k === "run" ? COL.mate : "#ffffff", a.k === "pass")));
+      Object.assign(C, {meG, matesG, oppsG, i:0, t:0});
+      C.shown = pose(C, null, 0); C.from = clone(C.shown);
+      P.go(0);
+    };
+    P.go = i => {
+      if (!C) return; C.i = Math.max(0, Math.min(C.steps.length - 1, i)); C.t = 0; C.from = clone(C.shown); endWait = 0; C.said = -1; if (P.voice) VOICE.stop();
+      while (marks.children.length) marks.remove(marks.children[0]);
+      const st = C.steps[C.i], p = st.plan;
+      arrowsG.children.forEach(a => a.traverse(m => { if (m.material) m.material.opacity = st.plan ? .35 : .9; }));
+      if (!p || st.r === undefined) return;
+      const col = RCOL[st.r];
+      marks.add(disc(p.spot[0], p.spot[1], Math.max(1.1, p.rad), col, .28, RMARK[st.r]));
+      // the line the answer takes: きみ's run and the ball (white dashed)
+      if (p.me && dist(p.me, C.me0) > 1) marks.add(arrow(C.me0, p.me, col, false, .75));
+      if (p.ball){ const H = C.holder, from = H ? (H.kind === "me" ? C.me0 : H.kind === "mate" ? C.mates0[H.i] : C.opps0[H.i]) : C.sc.ball; marks.add(arrow(from, p.ball, "#ffffff", true, .85)); }
+      Object.entries(p.mates).forEach(([i, t]) => marks.add(arrow(C.mates0[i], t, COL.mate, false, .6)));
+    };
+    P.ended = () => !!C && C.i === C.steps.length - 1 && C.t >= C.steps[C.i].dur;
+    // move the clip on by dt seconds; returns {step:true} when it went to the next step, {end:true} once at the end
+    P.update = (dt, now, playing, speed=1) => {
+      const ev = {}; if (!C) return ev;
+      let st = C.steps[C.i];
+      if (P.voice){ if (playing && C.said !== C.i){ C.said = C.i; VOICE.speak(P.sayStep(), speed === 1 ? 1 : speed < 1 ? .85 : 1.2); }
+        else if (!playing && C.said !== -1){ C.said = -1; VOICE.stop(); } }
+      if (playing){ C.t += dt*speed;
+        if (C.t >= st.dur && P.voice && VOICE.busy) C.t = st.dur;   // still reading: wait
+        else if (C.t >= st.dur){ if (C.i < C.steps.length - 1){ P.go(C.i + 1); st = C.steps[C.i]; ev.step = true; } else { C.t = st.dur; endWait += dt; if (endWait > 1.2){ endWait = -1e9; ev.end = true; } } } }
+      const p = st.plan ? (st.still ? 1 : clamp((C.t - .5)/MOVE)) : 0;
+      const target = pose(C, st.plan, p), bl = sm(C.t/.5), mix = (a, b) => lerp(a, b, bl), prev = C.shown;
+      C.shown = {me:mix(C.from.me, target.me), mates:target.mates.map((v, i) => mix(C.from.mates[i], v)), opps:target.opps.map((v, i) => mix(C.from.opps[i], v)), ball:mix(C.from.ball, target.ball), bh:target.bh*bl};
+      const bp = C.shown.ball;
+      run(C.meG, prev.me, C.shown.me, dt, bp); C.matesG.forEach((g, i) => run(g, prev.mates[i], C.shown.mates[i], dt, bp)); C.oppsG.forEach((g, i) => run(g, prev.opps[i], C.shown.opps[i], dt, bp));
+      const bs = P.ballScale; ball.mesh.position.copy(W(bp[0], bp[1], .34*bs + C.shown.bh)); ball.mesh.scale.setScalar(bs);
+      if (dist(prev.ball, bp) > 1e-4){ ball.mesh.rotation.x -= (bp[1] - prev.ball[1])*2; ball.mesh.rotation.z += (bp[0] - prev.ball[0])*2; }
+      ball.ring.position.copy(W(bp[0], bp[1], .04)); ball.ring.scale.setScalar(P.ringScale*(1 + .16*Math.sin(now/220)));
+      marks.children.forEach(m => { if (m.userData.pulse) m.userData.pulse.material.opacity = .22 + .12*Math.sin(now/260); });
+      return ev;
+    };
+    P.progress = () => C ? clamp(C.t/C.steps[C.i].dur) : 0;
+    // the caption of the current step and the row of step buttons
+    // the words read aloud for the current step: its name, then the caption
+    // (じょうきょう and もんだい are only shown, not read: たけし wants the voice for the answers and the ポイント)
+    P.sayStep = () => { const st = C.steps[C.i]; if (st.r === undefined && !st.cls) return ""; return [st.k, st.title && kj(st.title), st.text && kj(st.text)].filter(Boolean).join("。"); };
+    P.capClass = () => { const st = C.steps[C.i]; return st.cls || (st.r !== undefined ? "r" + st.r : ""); };
+    P.capHTML = () => { const st = C.steps[C.i]; return `<span class="k">${esc(st.k)}</span>${st.title ? `<h3>${esc(kj(st.title))}</h3>` : ""}${st.text ? `<p>${esc(kj(st.text))}</p>` : ""}`; };
+    P.dotsHTML = () => C.steps.map((s, i) => `<button data-step="${i}" class="${s.r !== undefined && !s.cls ? "r" + s.r : ""}" aria-current="${i === C.i}" aria-label="${esc(s.k)}"><i class="fill" style="width:${i < C.i ? 100 : 0}%"></i><span>${esc(s.short)}</span></button>`).join("");
+    P.labels = k => [C.meG, ...C.matesG, ...C.oppsG].forEach(g => { if (g.userData.lab) g.userData.lab.scale.set(3*k, 1.5*k, 1); });
+    P.clear = () => { if (P.voice) VOICE.stop(); C = null; while (actors.children.length) actors.remove(actors.children[0]); while (arrowsG.children.length) arrowsG.remove(arrowsG.children[0]); while (marks.children.length) marks.remove(marks.children[0]); };
+    return P;
+  }
+
+  // ---------- cameras ----------
+  // look at a box of the pitch (metres) from yaw / pitch, far enough to hold it: the width across the screen, the depth
+  // foreshortened by the pitch angle (zoom < 1 comes closer)
+  function fitBox(cam, b, yaw, pitch, zoom=1){
+    const cx = (b.x0 + b.x1)/2, cy = (b.y0 + b.y1)/2, tg = W(cx, cy);
+    const t = Math.tan(cam.fov*Math.PI/360), across = Math.abs(Math.cos(yaw))*(b.x1 - b.x0) + Math.abs(Math.sin(yaw))*(b.y1 - b.y0), deep = Math.abs(Math.sin(yaw))*(b.x1 - b.x0) + Math.abs(Math.cos(yaw))*(b.y1 - b.y0);
+    const d = Math.max(across/2/(t*cam.aspect), deep*Math.sin(pitch)/2/t)*1.05*zoom + 4;
+    cam.position.set(tg.x + Math.sin(yaw)*Math.cos(pitch)*d, Math.sin(pitch)*d, tg.z + Math.cos(yaw)*Math.cos(pitch)*d); cam.lookAt(tg); cam.updateProjectionMatrix();
+  }
+  // through きみ's eyes in a clip: towards the goal when きみ has the ball, else towards the ball (eyeYaw = the head turned)
+  function eyeCam(cam, C, eyeYaw=0){
+    const m = C.shown.me, ball = C.shown.ball, onBall = dist(m, ball) < 1.2, tgt = onBall ? [25, 0] : ball;
+    const yaw = Math.atan2(tgt[0] - m[0], tgt[1] - m[1]) + eyeYaw, eye = W(m[0], m[1], 1.5);
+    cam.fov = cam.aspect < 1 ? 85 : 70; cam.position.copy(eye); cam.lookAt(eye.clone().add(new THREE.Vector3(Math.sin(yaw), -.16, Math.cos(yaw)))); cam.updateProjectionMatrix();
+  }
+
+  return {W, lin, COL, RCOL, RMARK, RNAME, MOVE, clamp, sm, lerp, dist, esc,
+    pitchTexture, label, makePlayer, arrow, disc, makeBall, addPitch, run, plan, pose, player, fitBox, eyeCam};
+})();
+
+
 // ===== 3D VIEW / PLAYER VIEW (same look as MAESTRO BOARD) =====
 // The question's scene in three.js, over the top-view pitch: the same players, ball, arrows and answer spots.
 // 3D VIEW = a camera behind our goal (drag to turn, wheel to come closer). PLAYER VIEW = through きみ's eyes (drag = turn the head).
 // Tap questions can be answered in 3D too: a tap on the grass is the same as a tap on the top view.
+// 「3Dで見る」(after answering): the question plays as a clip ◎ → ○ → ✕ → ポイント, with captions (no sound), using the
+// shared clip engine (clip3d.js, the same as 3D解説). Its own players and ball; the question's are hidden meanwhile.
 const V3D = (() => {
   if (typeof THREE === "undefined") return null;
   let view = (()=>{ try{ return localStorage.getItem("pd8_view") || "top"; }catch(e){ return "top"; } })();
   let renderer, scene, cam, wrap, note, raf = 0, ballM, ballRing, fan, eyeWall, actors, marks, meG = null, qid = null;
   let holder = null, mates = [], opps = [], cur = null, ov = new Map(), ovBall = null;   // ov / ovBall: where the viewer dragged a player or the ball (this question only)
   const orbit = {yaw:0, pitch:.82, zoom:1, key:null, eyeYaw:0};
+  let clip = null, cl = null;            // the clip player (CLIP3D) and, while a clip is on, {qid, playing, last, ui}
   const W = (x, y, h=0) => new THREE.Vector3(x - 25, h, y - 34);          // pitch metres → 3D (we attack towards −z)
   const lin = c => new THREE.Color(c).convertSRGBToLinear();
   const COL = {mate:"#ff7a3c", gk:"#f6c71b", opp:"#3fa9ff", ogk:"#b37bff", me:"#ffffff", pick:"#f2fff8", good:"#4dffa6", warn:"#ffd23d", bad:"#ff4d6a"};
@@ -11055,7 +11392,7 @@ const V3D = (() => {
       const test = (v, what) => { const q = v.clone().project(cam); if (q.z > 1) return; const d = Math.hypot((q.x + 1)/2*r.width - px, (1 - q.y)/2*r.height - py); if (d < bd){ bd = d; best = what; } };
       test(ballM.position, "ball"); groups().forEach(g => { test(g.position.clone().setY(.8), g); test(g.position, g); }); return best; };
     const toPitch = e => { aim(e); if (!ray.ray.intersectPlane(groundP, hit)) return null; return [Math.max(0, Math.min(50, hit.x + 25)), Math.max(0, Math.min(68, hit.z + 34))]; };
-    wrap.addEventListener("pointerdown", e => { wrap.setPointerCapture(e.pointerId); const grab = view === "tv" ? pick(e) : null;
+    wrap.addEventListener("pointerdown", e => { if (e.target.closest(".v3clip")) return; wrap.setPointerCapture(e.pointerId); const grab = view === "tv" && !cl ? pick(e) : null;
       dr = {x:e.clientX, y:e.clientY, yaw:orbit.yaw, pitch:orbit.pitch, eyeYaw:orbit.eyeYaw, moved:false, grab}; if (grab) wrap.style.cursor = "grabbing"; });
     wrap.addEventListener("pointermove", e => { if (!dr){ if (view === "tv") wrap.style.cursor = pick(e) ? "pointer" : "grab"; return; }
       const dx = e.clientX - dr.x, dy = e.clientY - dr.y; if (Math.hypot(dx, dy) > 6) dr.moved = true; if (!dr.moved) return;
@@ -11107,9 +11444,10 @@ const V3D = (() => {
     const pw = document.querySelector(".pitchwrap"), svg = pw && pw.querySelector("svg.pitch");
     document.querySelectorAll("[data-v3]").forEach(b => b.setAttribute("aria-pressed", b.dataset.v3 === view));
     const tr = document.querySelector(".pitchwrap .hud b.tr"); if (tr) tr.textContent = {top:"TOP VIEW", tv:"3D VIEW", eye:"PLAYER VIEW"}[view];
-    if (!svg || view === "top"){ if (wrap) wrap.remove(); if (pw) pw.classList.remove("v3on"); return; }
+    if (!svg || view === "top"){ if (cl) stopClip(); if (wrap) wrap.remove(); if (pw) pw.classList.remove("v3on"); return; }
     if (!renderer) init();
     const q = S.set[S.i]; if (q.id !== qid){ qid = q.id; build(q); }
+    if (cl && (cl.qid !== q.id || S.results.length <= S.i)) stopClip();
     drawMarks(q, S.results.length > S.i);
     pw.classList.add("v3on"); svg.after(wrap);
     if (!raf) raf = requestAnimationFrame(frame);
@@ -11164,9 +11502,10 @@ const V3D = (() => {
     const arc = 2*Math.PI - gap; if (arc > 160*Math.PI/180) return {a:best, half:HALF};
     return {a:norm(as[gi] + arc/2), half:Math.max(HALF, arc/2 + 6*Math.PI/180)};
   }
-  function frame(){
+  function frame(now){
     raf = 0; if (view === "top" || !wrap.isConnected || S.step !== "quiz") return;
     size();
+    if (cl){ clipFrame(now || performance.now()); raf = requestAnimationFrame(frame); return; }
     const q = S.set[S.i], sc = q.scene, me = sc.me, t = S.tgt || {me:[0,0], ball:[0,0], mates:{}, ride:false};
     const done = S.results.length > S.i, hidden = S.hide && !done;
     // move toward where the chosen answer puts them (like the top view's 1 s slide)
@@ -11239,9 +11578,54 @@ const V3D = (() => {
     }
     cam.updateProjectionMatrix(); renderer.render(scene, cam); raf = requestAnimationFrame(frame);
   }
+  // ---------- 「3Dで見る」: the question as a clip ----------
+  function play(q){
+    if (typeof CLIP3D === "undefined" || !CLIP3D) return;
+    if (view === "top") setView("tv");
+    if (!renderer) attach();
+    if (!clip) clip = CLIP3D.player(scene);
+    if (cl) cl.ui.remove();
+    const ui = document.createElement("div"); ui.className = "v3clip";
+    ui.innerHTML = `<div class="v3cap" aria-live="polite"></div><div class="v3ctl"><button data-cl="prev" aria-label="前の手順">◀</button><button data-cl="play" class="main">⏸</button><button data-cl="next" aria-label="次の手順">▶▶</button><div class="v3dots"></div><button data-cl="close" aria-label="3Dの解説をとじる">✕</button></div>`;
+    if (typeof VOICE !== "undefined") ui.querySelector(".v3ctl").insertBefore(VOICE.button(), ui.querySelector('[data-cl="close"]'));
+    wrap.append(ui);
+    cl = {qid:q.id, playing:true, last:0, ui, cap:ui.querySelector(".v3cap"), dots:ui.querySelector(".v3dots"), btn:ui.querySelector('[data-cl="play"]')};
+    ui.addEventListener("click", e => { const b = e.target.closest("[data-cl], [data-step]"); if (!b || !cl || !clip.C) return;
+      if (b.dataset.step !== undefined){ clip.go(+b.dataset.step); caption(); return; }
+      const k = b.dataset.cl;
+      if (k === "close") stopClip();
+      else if (k === "play"){ if (!cl.playing && clip.ended()){ clip.go(0); caption(); } cl.playing = !cl.playing; }
+      else if (k === "prev"){ clip.go(clip.C.t > 1.2 ? clip.C.i : clip.C.i - 1); caption(); }
+      else if (k === "next"){ clip.go(clip.C.i + 1); caption(); } });
+    clip.load(q, true); clip.root.visible = true; orbit.eyeYaw = 0; caption();
+    [actors, marks, fan, ballM, ballRing].forEach(o => o.visible = false); if (meG) meG.visible = false;
+    if (!raf) raf = requestAnimationFrame(frame);
+  }
+  function caption(){ cl.cap.className = "v3cap " + clip.capClass(); cl.cap.innerHTML = clip.capHTML(); cl.dots.innerHTML = clip.dotsHTML(); }
+  function stopClip(){ if (typeof VOICE !== "undefined") VOICE.stop();
+    if (!cl) return; cl.ui.remove(); cl = null; clip.root.visible = false; cam.clearViewOffset();
+    [actors, marks, ballM, ballRing].forEach(o => o.visible = true); if (meG) meG.visible = true;
+  }
+  function clipFrame(now){
+    const dt = Math.min(.05, (now - (cl.last || now))/1000); cl.last = now;
+    clip.ballScale = view === "eye" ? .45 : 1.3; clip.ringScale = view === "eye" ? .4 : .75;
+    const ev = clip.update(dt, now, cl.playing, 1), C = clip.C;
+    if (ev.step) caption();
+    if (ev.end) cl.playing = false;
+    cl.btn.textContent = cl.playing ? "⏸" : clip.ended() ? "↻" : "▶"; cl.btn.setAttribute("aria-label", cl.playing ? "止める" : "再生");
+    const dw = cl.dots.querySelector(`[data-step="${C.i}"] .fill`); if (dw) dw.style.width = (100*clip.progress()) + "%";
+    if (view === "eye"){ eyeWall.visible = true; C.meG.visible = false; cam.near = .1; cam.clearViewOffset(); CLIP3D.eyeCam(cam, C, orbit.eyeYaw); clip.labels(.7); }
+    else { eyeWall.visible = false; C.meG.visible = true; cam.near = .5; cam.fov = 46;
+      CLIP3D.fitBox(cam, C.box, orbit.yaw, Math.max(.3, Math.min(1.45, orbit.pitch - .2)), orbit.zoom); clip.labels(1);
+      // the caption covers the bottom of the box: the picture goes up by half its height (the play stays in the free part)
+      const w = size.w || 1, h = size.h || 1; cam.setViewOffset(w, h, 0, Math.min(h*.3, cl.ui.offsetHeight/2), w, h); }
+    note.innerHTML = "";
+    renderer.render(scene, cam);
+  }
+
   function setView(v){ view = v; try{ localStorage.setItem("pd8_view", v); }catch(e){} orbit.zoom = 1; orbit.key = null; orbit.eyeYaw = 0; attach(); }
   document.addEventListener("click", e => { const b = e.target.closest("[data-v3]"); if (b) setView(b.dataset.v3); });
-  return {attach, gaze, HALF, get view(){ return view; }};
+  return {attach, gaze, HALF, play, get canClip(){ return typeof CLIP3D !== "undefined" && !!CLIP3D; }, get view(){ return view; }};
 })();
 
 // ---------- Screens ----------
@@ -11372,7 +11756,7 @@ function renderQuiz(){
       ${done?`<div class="verdict ${RATE[r].cls} pop"><span class="mark">${RATE[r].mark}</span><div><div class="stamp">${RATE[r].stamp}</div><p>${r===2?"いちばん目的に合っている！":r===1?"目的には合っている。でも、もっといい答えがあるよ。":"この場面の目的を思い出そう。"}</p></div></div>
       <div class="aim"><small>この場面の目的</small>${esc(K(q.aim||TH[q.th].aim))}</div>
       <div class="point"><small>ポイント</small>${esc(K(q.point))}</div>
-      <div class="row"><button class="big" id="next">${S.i+1<S.set.length?"つぎの問題へ →":"けっかを見る →"}</button></div>`:""}
+      <div class="row">${typeof V3D!=="undefined"&&V3D&&V3D.canClip?`<button class="ghost play3d" id="play3d">▶ 3Dで見る</button>`:""}<button class="big" id="next">${S.i+1<S.set.length?"つぎの問題へ →":"けっかを見る →"}</button></div>`:""}
     </section>
   </div>`;
 }
@@ -11537,6 +11921,7 @@ view.addEventListener("click", e=>{
     const q=S.set[S.i]; S.picked=+t.dataset.ci; answer(q.opts[S.picked].r); return;
   }
   if(t.id==="tapok" && S.tap){ const q=S.set[S.i]; const z=rateTap(q,S.tap); answer(z?z.r:0); return; }
+  if(t.id==="play3d"){ V3D.play(S.set[S.i]); const pw=document.querySelector(".pitchwrap"); if(pw && pw.getBoundingClientRect().top<0) pw.scrollIntoView({behavior:"smooth",block:"start"}); return; }
   if(t.id==="next"){ if(S.i+1<S.set.length){ S.i++; newQuestion(); } else { recordClear(); S.step="result"; render(); window.scrollTo({top:0,behavior:"smooth"}); } return; }
   if(t.id==="again"){ startSet(S.mode); return; }
   if(t.id==="other"){ S.step="pick"; render(); return; }
