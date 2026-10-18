@@ -200,6 +200,7 @@ body.recpick .player{cursor:pointer}
 body.recpick .player.recoff{opacity:.35;pointer-events:auto}
 body.recpick .player:not(.recoff) circle:not(.hit){stroke:#ffd23d;stroke-width:.4}
 .dplayer{transition:transform .9s cubic-bezier(.3,.7,.2,1)}
+.darrowlab{font-family:var(--jp,sans-serif);font-weight:700;font-size:1.6px;pointer-events:none}
 .dplayer text{font-family:var(--body);font-weight:700;font-size:1.2px;pointer-events:none}
 .dball{transition:transform .7s cubic-bezier(.3,.7,.2,1)}
 body.demoslow .dplayer{transition-duration:1.45s} body.demoslow .dball{transition-duration:1.1s}
@@ -551,9 +552,9 @@ html[data-digital] header.brand p.tagline{margin:4px 0 0;font-family:var(--en) !
         <ol id="recList" class="reclist"></ol>
       </div>
       <div class="demobar" id="demoBar" hidden>
-        <div class="dtitle"><span class="chip both">練習の動き</span><b id="demoTitle"></b><span id="demoStep" class="dmeta"></span></div>
+        <div class="dtitle"><span class="chip both">練習の動き</span><b id="demoTitle"></b><span id="demoStep" class="dmeta"></span><span id="demoDir" class="dmeta"></span></div>
         <p id="demoCap" class="dcap" aria-live="polite"></p>
-        <div class="dctl"><button class="ghost" id="demoPrev">◀ 前へ</button><button class="primary" id="demoPlay">一時停止</button><button class="ghost" id="demoNext">次へ ▶</button><button class="ghost" id="demoSlow" aria-pressed="false">スロー</button><button class="ghost" id="demoStop">終了してボードに戻る</button></div>
+        <div class="dctl"><button class="ghost" id="demoPrev">◀ 前へ</button><button class="primary" id="demoPlay">一時停止</button><button class="ghost" id="demoNext">次へ ▶</button><button class="ghost" id="demoSlow" aria-pressed="false">スロー</button><button class="ghost" id="demoVoice" aria-pressed="false" hidden>🔊 音声</button><button class="ghost" id="demoStop">終了してボードに戻る</button></div>
       </div>
     </section>
 
@@ -1947,8 +1948,8 @@ DRILLS.push(
   how:["相手のゴールラインをドリブルで突破したら1点","攻撃は幅と深さ、守備はチャレンジ＆カバー","奪ったらすぐ反対へ攻める"],
   points:["攻撃：1人が持ったら2人は三角形の位置","守備：寄せる人とカバーの人を声で決める","切り替えの速さ"],kid:"1人が行ったら1人はうしろ。取ったらすぐ攻める"},
  {id:"def32",name:"守備：数的不利の3対2",theme:["守備"],grade:["U-11","U-12"],style:"both",min:15,players:"5人＋GK",area:"ハーフコート",
-  how:["攻撃3人に対してDF2人とGK","DFは遅らせて、中を締め、外へ追い出す。前を向かせない","うしろに戻されたら、もう一度寄せる。戻した味方へのコースを消して、逆サイドへ行かせる","逆サイドでも同じ。寄せる人と中でカバーする人を入れ替える","味方が戻ってくるまで時間を稼ぐ（6秒など）"],
-  points:["飛び込まない。ボールに1人、もう1人は中央","パスコースを背中で消しながら寄せる（限定プレス）","寄せる人が替わったら、もう1人はすぐ中へ戻る","GKと声で連携（「打たせていい」「中！」）"],kid:"飛び込まない。時間をかせげば味方が来る"},
+  how:["攻撃3人に対してDF2人とGK","DFは遅らせて、中を締め、外へ追い出す。前を向かせない","ボールに寄せるDFは片方のコースを切りながら寄せて、反対のサイドへ行かせる","そこへもう1人のDFが出て外へ追い出す。寄せていたDFは中へ戻ってカバー","うしろに戻されたら同じことを反対向きに。寄せる人と出る人を入れ替えながら、スライドして守る","味方が戻ってくるまで時間を稼ぐ（6秒など）"],
+  points:["本当は外へ追い込んで、そこで奪うのが理想。この練習では、戻されて逆へ展開されたのをスライドで守るところまで続ける","飛び込まない。ボールに1人、もう1人は中央","パスコースを背中で消しながら寄せる（限定プレス）","寄せる人が替わったら、もう1人はすぐ中へ戻る","GKと声で連携（「打たせていい」「中！」）"],kid:"飛び込まない。時間をかせげば味方が来る"},
  {id:"cooldown",name:"クールダウン：リフティング＆ストレッチ",theme:["コンディショニング"],grade:["U-9","U-10","U-11","U-12"],style:"both",min:10,players:"全員",area:"どこでも",
   how:["ゆっくりリフティング（足・もも・頭は軽く）","ペアでゆっくりパス交換","最後に下半身中心のストレッチ（各20〜30秒）"],
   points:["息を整える","今日の練習で良かったことを1つずつ話す","水分補給"],kid:"今日できるようになったこと、1つ教えて"},
@@ -1971,8 +1972,8 @@ DRILLS.push(
   how:["4対4＋どちらの味方にもなるフリーマン2人","パス20本で1点。守備側は奪ったら攻守交代","ボールを持つ人が捕まりそうなら、まず近くの安全な所（1）、次に相手の間（2）、一番外（3）"],
   points:["1の位置：すぐ近く、少し段差をつける（横一列は奪われると危ない）","2の位置：相手の間で受けると相手がバラバラになる","3の位置：一番外は相手が見えていて、相手から見られない","渡した人はもう一度関わる"],kid:"まず近く、次に間、それから外",src:"『8人制サッカーの教科書』（1・2・3の位置）"},
  {id:"sidecut",name:"サイドの守備：縦を切って中で奪う 2対2",theme:["守備"],grade:["U-10","U-11","U-12"],style:"both",min:12,players:"2対2（SH・CH 対 相手2人）",area:"25×22m（サイド）",
-  how:["相手がサイドでボールを持つ","SHはタッチライン側に立って縦を切り、中へドリブルさせる","中で待っているCHが奪う。奪ったらすぐ前へ"],
-  points:["SHは飛び込まない。体の向きで中へ誘う","CHはSHの斜め後ろ、中寄りで待つ（ディアゴナーレ）","真ん中では逆に外へ追い出す（場所で変わる）"],kid:"外を切って中へ。中で取る！",src:"『８人制サッカーの戦術』（3-3-1の守り方）／『サッカー戦術の教科書』"}
+  how:["相手がサイドでボールを持つ","SHは相手の真正面（ゴールとの間）に立って縦を切り、中へドリブルさせる","CHは中で、もう1人へのパスコースに立って待つ。中に入ってきたらSHと2人ではさんで奪う。奪ったらすぐ前へ"],
+  points:["外（タッチライン沿い）へは絶対に行かせない。行かせたら抜けられて終わり","SHは飛び込まない。真正面に立ち、体の向きで中へ誘う","CHは中で待つ。下がりすぎると中の相手へのパスで終わり。もう1人へのパスコースに立つ","SHとCHの間を空けない（2〜3m）"],kid:"外を切って中へ。中で取る！",src:"『８人制サッカーの戦術』（3-3-1の守り方）／『サッカー戦術の教科書』"}
 );
 THEMES.push("シュート","パス","ドリブル","GK","セットプレー");
 const T_=(id)=>DRILLS.find(d=>d.id===id)||Dx.custom.find(d=>d.id===id)||null;
@@ -2173,24 +2174,29 @@ const DEMOS={
  "wu-rondo41":{area:[21,30,8,8],
   players:{A:pm("A",25,30),B:pm("B",29,34),C:pm("C",25,38),D:pm("D",21,34),K:po("鬼",25,34)},
   steps:[{cap:"四角の4辺に1人ずつ、真ん中に鬼。Aがボールを持つ",ball:"A"},
-   {cap:"となりのBへ。Bは開いて受ける",ball:"B",mv:{K:[27,32]}},
-   {cap:"鬼が来たら、反対側のとなりCへ",ball:"C",mv:{K:[27,36]}},
-   {cap:"Dへ。2タッチ以内で回す",ball:"D",mv:{K:[24,36]}},
-   {cap:"鬼の足が届かない「間」を通すパスにボーナス",ball:"B",mv:{K:[23,33]}}]},
+   {cap:"鬼はAに寄せながら、Bへのコースを消す（パスコースを限定）",ball:"A",mv:{K:[26.5,31]}},
+   {cap:"空いているDへ。鬼はDに寄せて、Cへのコースを消す",ball:"D",mv:{K:[22.2,35.3]}},
+   {cap:"Dは空いているAへ戻す。2タッチ以内で回す",ball:"A",mv:{K:[26.5,31]}},
+   {cap:"鬼がBへのコースを消したら、鬼の足が届かない「間」を通してCへ（ボーナス）",ball:"C",mv:{K:[26.4,35]}},
+   {cap:"鬼はすぐCに寄せて、Dへのコースを消しながら追い込む",ball:"C",mv:{K:[23.7,36.7]}},
+   {cap:"逃げ場がなくなったところで、鬼が奪う！ 奪われた人が次の鬼",ball:"K",steal:true,look:{K:[25,38]},mv:{K:[24.6,37.3]}}]},
  "rondo52":{area:[19,28,12,12],
   players:{A:pm("A",25,28),B:pm("B",31,34),C:pm("C",25,40),D:pm("D",19,34),F:pm("F",25,34),K1:po("鬼",22.5,31.5),K2:po("鬼",27.5,36.5)},
   steps:[{cap:"外に4人、中にフリーマンF、鬼は2人",ball:"A"},
-   {cap:"Bへ。鬼2人がボール側へ寄る",ball:"B",mv:{K1:[27,31],K2:[29,37],F:[23,35]}},
-   {cap:"鬼と鬼の間にFが入って受ける（1点）",ball:"F",mv:{F:[25,34.5],K1:[25,32],K2:[27,37]}},
-   {cap:"3人目の動き：Fから空いているDへ",ball:"D",mv:{K1:[22,33],K2:[23,37],F:[27,33]}},
-   {cap:"Dから遠い側のAへ。奪われたら全員ですぐ奪い返す",ball:"A",mv:{K1:[24,30],K2:[22,34]}}]},
+   {cap:"Bへ。1人目の鬼がBに寄せてCへのコースを消す。2人目は中（F）の近くで待つ",ball:"B",mv:{K1:[29.7,35.3],K2:[26.5,32.5],F:[25,34]}},
+   {cap:"Cへのコースが消されたら、鬼と鬼の間にFが入って受ける（1点）",ball:"F",mv:{F:[26,34.3]}},
+   {cap:"3人目の動き：Fから空いているDへ",ball:"D",mv:{K1:[27.5,35.6],K2:[24.5,32.2],F:[27,33]}},
+   {cap:"鬼がDに寄せて、Aへのコースを消す",ball:"D",mv:{K2:[20.3,32.7],K1:[25,36]}},
+   {cap:"遠い側のCへ",ball:"C",mv:{K1:[25.5,37.8]}},
+   {cap:"鬼2人でCを追い込む。1人はBへ、もう1人はDへのコースを消す",ball:"C",mv:{K1:[26.3,38.7],K2:[23.7,38.7]}},
+   {cap:"逃げ場がなくなったところで、鬼が奪う！ 奪われたら全員ですぐ奪い返す",ball:"K1",steal:true,look:{K1:[25,40]},mv:{K1:[25.3,39.3]}}]},
  "pos3lane":{area:[10,22,30,25],lanes:[20,30],
-  players:{a:pm("",17,40),b:pm("",25,36),c:pm("",33,40),d:pm("",25,27),L:pm("F",11.5,32),R:pm("F",38.5,32),
+  players:{a:pm("A",17,40),b:pm("B",25,36),c:pm("C",33,40),d:pm("D",25,27),L:pm("F",11.5,32),R:pm("F",38.5,32),
    x:po("",20,33),y:po("",30,33),z:po("",25,40),w:po("",25,29)},
   steps:[{cap:"4対4＋両サイドのフリーマン。縦3レーンを使う",ball:"a"},
-   {cap:"中央レーンのbへ。同じレーンに3人入らない",ball:"b",mv:{x:[22,36],z:[23,40]}},
+   {cap:"中央レーンのBへ。同じレーンに3人入らない",ball:"b",mv:{x:[22,36],z:[23,40]}},
    {cap:"相手がボール側に寄ったら、逆サイドのFへ展開",ball:"R",mv:{x:[24,34],y:[34,33],z:[26,40]}},
-   {cap:"Fからcへ。三角形を作り直す",ball:"c",mv:{y:[34,37],c:[33,43],d:[30,27],w:[29,30]}},
+   {cap:"FからCへ。三角形を作り直す",ball:"c",mv:{y:[34,37],c:[33,43],d:[30,27],w:[29,30]}},
    {cap:"10本つながったら1点",ball:"d",mv:{x:[26,31],a:[16,36]}}]},
  "build32":{area:[0,34,50,34],goals:[[6,33,5,2],[39,33,5,2]],
   players:{G:pm("GK",25,63),L:pm("CB",14,58),R:pm("CB",36,58),M:pm("MF",25,50),f1:po("FW",21,48),f2:po("FW",29,48)},
@@ -2373,16 +2379,16 @@ Object.assign(DEMOS,{
    {cap:"空いた中へ",lead:true,ball:"b",mv:{b:[25,31],a:[17,36]}},
    {cap:"ライン突破！",ball:"b",mv:{b:[23,24.5]}}]},
  "def32":{area:[5,34,40,34],
-  players:{a:po("",14,38),b:po("",25,36),c:po("",36,38),d1:pm("DF",22,48),d2:pm("DF",30,48),G:pm("GK",25,65)},
+  players:{a:po("A",14,38),b:po("B",25,36),c:po("C",36,38),d1:pm("DF",22,48),d2:pm("DF",30,48),G:pm("GK",25,65)},
   steps:[{cap:"攻撃3人 対 DF2人。飛び込まない",ball:"b"},
-   {cap:"1人がボールへ、もう1人は中央",ball:"b",mv:{b:[25,42],d1:[24,46],d2:[28,51]}},
-   {cap:"外へ出されたら、外へ追い出す",ball:"c",mv:{c:[38,46],d1:[33,48],d2:[27,52],a:[16,46]}},
-   {cap:"中を締めて、前を向かせない（後ろ向きにさせる）。DFはいつもボールとゴールの間",ball:"c",mv:{c:[40,53],d1:[37.5,55.5],d2:[29,57],a:[20,52]}},
-   {cap:"前を向けないので、うしろのパサーへ戻す",ball:"b",mv:{b:[28,45],d1:[36,53.5],d2:[26,55],a:[18,50]}},
-   {cap:"戻しに合わせてもう一度寄せる。cへのコースを消しながら（限定プレス）",ball:"b",mv:{d1:[30.5,47],d2:[23,54],c:[37,50]}},
-   {cap:"逆サイドのaへ行かせる",ball:"a",mv:{a:[16,50],d2:[19,53.5],d1:[28,50]}},
-   {cap:"同じ動き：もう1人が寄せて外へ追い出す。最初に寄せたDFは中へ戻ってカバー",ball:"a",mv:{a:[12,56],d2:[14.5,58.5],d1:[25,56],b:[26,48],c:[34,52]}},
-   {cap:"GKと声で連携。前を向かせずに時間をかせぐ。その間に味方が戻る",ball:"a",mv:{G:[21,64]}}]},
+   {cap:"1人がボールへ。左（Aへのコース）を切りながら寄せる。もう1人は中央",ball:"b",mv:{b:[25,42],d1:[23.2,44.2],d2:[28,50]}},
+   {cap:"右へ展開させる。もう1人のDFが外へ出て、外へ追い出す。寄せたDFは中へ戻ってカバー",ball:"c",mv:{c:[38,46],d2:[35.5,48.5],d1:[28,51],a:[16,46]}},
+   {cap:"中を締めて、前を向かせない（後ろ向きにさせる）。DFはいつもボールとゴールの間",ball:"c",mv:{c:[40,53],d2:[37.5,55.5],d1:[29,57],a:[20,52]}},
+   {cap:"前を向けないので、うしろのパサーへ戻す",ball:"b",mv:{b:[28,45],d2:[35,52.5],d1:[26,54],a:[18,50]}},
+   {cap:"戻しに合わせて、外にいたDFがもう一度寄せる。右（Cへのコース）を切りながら（限定プレス）",ball:"b",mv:{d2:[30.5,47.2],d1:[23,54],c:[37,50]}},
+   {cap:"左のAへ行かせる",ball:"a",mv:{a:[16,50],d1:[19,53.5],d2:[28,50]}},
+   {cap:"同じ動き：もう1人のDFが外へ出て、外へ追い出す。寄せたDFは中へ戻ってカバー",ball:"a",mv:{a:[12,56],d1:[14.5,58.5],d2:[25,56],b:[26,48],c:[34,52]}},
+   {cap:"もっと外へ追い込む。タッチライン際で中を向かせない（奪えれば最高）。GKと声で連携、その間に味方が戻る",ball:"a",look:{a:[0,57]},mv:{a:[5.5,60.5],d1:[8,61.8],d2:[20,59.5],G:[22,64],b:[24,52],c:[32,55]}}]},
  "cooldown":{area:[10,30,30,20],
   players:{a:pm("",16,36,1),b:pm("",24,40,1),c:pm("",32,36,1),e:pm("",20,46,1),f:pm("",30,46,1)},
   steps:[{cap:"ゆっくりリフティング",ball:null},
@@ -2436,12 +2442,12 @@ Object.assign(DEMOS,{
    {cap:"3の位置：一番外。相手が見えていて、相手から見られない",ball:"P3",mv:{o4:[32,32],o3:[30,30]}},
    {cap:"渡した人はもう一度関わる",ball:"P3",mv:{H:[24,30],P1:[29,38]}}]},
  "sidecut":{area:[25,30,25,22],
-  players:{w:po("",44,35,1),s:po("",35,33),S:pm("SH",41,40),C:pm("CH",33,43)},
+  players:{w:po("",44,35),s:po("",35,33),S:pm("SH",41,40),C:pm("CH",33,43)},
   steps:[{cap:"相手がサイドでボールを持つ",ball:"w"},
-   {cap:"SHはタッチライン側に立って縦を切る",ball:"w",mv:{S:[45.5,37.5]}},
-   {cap:"中へドリブルさせる。CHは斜め後ろの中で待つ",ball:"w",mv:{w:[39,38],S:[42,39],C:[36,42]}},
-   {cap:"CHが奪う！",ball:"C",mv:{C:[37,40],w:[38,38.5]}},
-   {cap:"奪ったらすぐ前へ",ball:"C",mv:{C:[36,34],S:[44,32]}}]}
+   {cap:"SHは相手の真正面（ゴールとの間）に立って縦を切る。CHは中で、もう1人へのパスコースに立つ",ball:"w",mv:{S:[44,37],C:[39.5,35.2]}},
+   {cap:"中へドリブルさせる。SHは真正面のままついていく。CHは中で待つ（間を空けない）",ball:"w",mv:{w:[41.5,36.5],S:[41.6,38.3],C:[39.6,36.9],s:[33,36]}},
+   {cap:"SHとCHで挟んで、CHが奪う！",ball:"C",mv:{C:[40.8,36.8],w:[41.4,36.6],S:[41.5,37.9]}},
+   {cap:"奪ったらすぐ前へ",ball:"C",mv:{C:[38,32],S:[44,33]}}]}
 });
 // auto scripts built from the auto-slide engine with the current formations
 function positionsFor(bx,by,mineAtt,trans){
@@ -2468,10 +2474,10 @@ function autoScript(kind){
   return {players,steps,area:null};
 }
 // resolve a script into absolute frames
-function demoFrames(sc){
+function demoFrames(sc,tight){
   const pos={}; Object.entries(sc.players).forEach(([id,p])=>pos[id]=[...p.p]);
   let holder=null, prevBall=null, runner=null;
-  return sc.steps.map(st=>{
+  const frames=sc.steps.map(st=>{
     // the one who ran onto a pass into space reaches the ball in the next scene (unless the scene moves them itself)
     if(runner&&prevBall&&!(st.mv&&st.mv[runner])) pos[runner]=[prevBall[0]-1.1,prevBall[1]+1.1];
     runner=null;
@@ -2487,15 +2493,63 @@ function demoFrames(sc){
       const p=pos[st.ball], q=prev[st.ball]||p, dx=p[0]-q[0], dy=p[1]-q[1], L=Math.hypot(dx,dy);
       const gy=(sc.players[st.ball]||{}).t==="o"?68:0, gx=25-p[0], gd=gy-p[1], G=Math.hypot(gx,gd)||1;
       ball = L>1 ? [p[0]+dx/L*1.3, p[1]+dy/L*1.3] : [p[0]+gx/G*1.3, p[1]+gd/G*1.3];
-      pass=holder!==null&&holder!==st.ball; holder=st.ball; }
+      pass=holder!==null&&holder!==st.ball&&!st.steal; holder=st.ball; }   // (a steal is not a pass: no pass line)
     else if(Array.isArray(st.ball)){ ball=[...st.ball]; pass=holder!==null||(prevBall&&Math.hypot(ball[0]-prevBall[0],ball[1]-prevBall[1])>2); holder=null; }
     prevBall=ball;
-    return {cap:st.cap, pos:JSON.parse(JSON.stringify(pos)), ball, pass, lead, hold:typeof st.ball==="string"&&!lead?st.ball:null};
+    return {cap:st.cap, pos:JSON.parse(JSON.stringify(pos)), ball, pass, lead, hold:typeof st.ball==="string"&&!lead?st.ball:null, look:st.look||null};
   });
+  return tight?clearLanes(sc,tightenPress(sc,frames)):frames;
+}
+// a pass must not go through an opponent: anyone of the other team standing on the line of a pass (where it starts, or
+// where they end up) steps 1.6 m to the side of it — the side they are on, or towards their own goal if right on it
+// (not for shots, and never the keeper)
+function clearLanes(sc,frames){
+  const P=sc.players;
+  const off=(a,b,q)=>{ const dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L,t=(q[0]-a[0])*ux+(q[1]-a[1])*uy;
+    if(t<1||t>L-.8) return null; const cr=(q[0]-a[0])*uy-(q[1]-a[1])*ux; return {t,cr,ux,uy}; };
+  frames.forEach((f,i)=>{ if(!i||!f.ball) return; const pf=frames[i-1];
+    const from=pf.hold?pf.pos[pf.hold]:pf.ball, to=f.hold?f.pos[f.hold]:f.ball; if(!from||!to||!f.pass) return;
+    const team=P[pf.hold||f.hold]?.t; if(!team) return;
+    if(!f.hold&&(to[1]<3||to[1]>65)) return;                       // a shot: the keeper and the wall stay where they are
+    Object.keys(f.pos).forEach(id=>{ const p=P[id]; if(!p||p.t===team||p.lab==="GK") return;
+      for(const fr of [pf,f]){ const q=fr.pos[id], o=off(from,to,q); if(!o||Math.abs(o.cr)>=1.4) continue;
+        let side=Math.sign(o.cr); if(!side){ const gy=p.t==="m"?68:0; side=Math.sign(-o.ux*(gy-q[1]))||1; }
+        const k=1.6*side-o.cr; fr.pos[id]=[+(q[0]+o.uy*k).toFixed(2),+(q[1]-o.ux*k).toFixed(2)]; } });
+  });
+  return frames;
+}
+// the drills that come with the app: the defender on the ball presses closer (about 6/10 of the drawn gap, not under
+// 1.8 m), on the same line so goal-side / inside stays as drawn; not in the first scene (the starting places), and not
+// where it would stand in the way of the pass that comes in or goes out
+function tightenPress(sc,frames){
+  const sd=(a,b,p)=>{ const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy||1,t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L)); return [Math.hypot(a[0]+dx*t-p[0],a[1]+dy*t-p[1]),t*Math.sqrt(L)]; };
+  frames.forEach((f,i)=>{ if(!i||!f.hold) return;
+    const P=sc.players, h=f.pos[f.hold], team=P[f.hold].t; let k=null, bd=6;
+    Object.entries(f.pos).forEach(([id,q])=>{ const p=P[id]; if(!p||p.t===team||p.lab==="GK") return; const d=Math.hypot(q[0]-h[0],q[1]-h[1]); if(d<bd){ bd=d; k=id; } });
+    if(!k||bd<=1.9) return;
+    const q=f.pos[k], nd=Math.max(1.8,bd*.6), np=[h[0]+(q[0]-h[0])*nd/bd, h[1]+(q[1]-h[1])*nd/bd];
+    const lanes=[]; const pf=frames[i-1]; if(pf&&pf.hold&&pf.hold!==f.hold) lanes.push([pf.pos[pf.hold],h]);
+    const nf=frames[i+1]; if(nf&&nf.hold&&nf.hold!==f.hold) lanes.push([h,nf.pos[nf.hold]]);
+    if(nf&&nf.lead) lanes.push([h,nf.ball]);
+    const blocks=lanes.some(([a,b])=>{ const [d,along]=sd(a,b,np), L=Math.hypot(b[0]-a[0],b[1]-a[1]); return d<1.2&&along>1&&along<L-.8; });
+    const crowds=Object.entries(f.pos).some(([id,o])=>id!==k&&id!==f.hold&&Math.hypot(o[0]-np[0],o[1]-np[1])<1);
+    if(!blocks&&!crowds) f.pos[k]=np.map(v=>+v.toFixed(2));
+  });
+  return frames;
 }
 const DM={id:null, sc:null, frames:[], i:0, timer:null, playing:false, slow:false};
 // スロー: a little slower (about 1.6×), not very slow
 const demoT=ms=>DM.slow?Math.round(ms*1.6):ms;
+// which way a drill attacks (the team that has the ball most): {team, goal (y of the goal it attacks)}, or null
+// (not for drills without a direction: rondos, tag, passing shapes, warm-up and cool-down)
+const NODIR=new Set(["wu-tag","wu-rondo41","rondo52","pos3lane","pass-tri","dribble-land","coord-react","cooldown"]);
+function demoAttack(sc,frames){ let m=0,o=0; frames.forEach(f=>{ const p=f.hold&&sc.players[f.hold]; if(p) p.t==="o"?o++:m++; });
+  if((!m&&!o)||Object.entries(DEMOS).some(([id,d])=>d===sc&&NODIR.has(id))) return null; return o>m?{team:"o",goal:68}:{team:"m",goal:0}; }
+// a free place beside the drill for the arrow (left of it, or right if there is no room)
+function demoArrowSpot(sc,frames){ const pts=[]; frames.forEach(f=>Object.values(f.pos).forEach(q=>pts.push(q)));
+  if(sc.area){ const [x,y,w,h]=sc.area; pts.push([x,y],[x+w,y+h]); }
+  const xs=pts.map(q=>q[0]), ys=pts.map(q=>q[1]), x0=Math.min(...xs), x1=Math.max(...xs);
+  const x=x0>6?Math.max(2.5,x0-3.5):Math.min(47.5,x1+3.5), y=Math.max(9,Math.min(59,(Math.min(...ys)+Math.max(...ys))/2)); return [x,y]; }
 function demoLayer(){ let g=document.getElementById("demoLayer"); if(!g) g=el("g",{id:"demoLayer"},svg); return g; }
 function setBoardHidden(h){
   ["mineLayer","oppLayer","drawLayer","ball","zones"].forEach(id=>{const e=document.getElementById(id); if(e) e.style.display=h?"none":"";});
@@ -2516,7 +2570,10 @@ function startDemo(id){
   let sc;
   try{ sc=base.auto?autoScript(base.auto):base; if(!validScript(sc)) throw new Error("invalid"); }
   catch(e){ stopDemo(false); showNotice("この練習の動きのデータが読み込めませんでした。「動きを作る」で作り直してください。"); return; }
-  DM.id=id; DM.sc=sc; DM.frames=demoFrames(sc); DM.i=0;
+  DM.id=id; DM.sc=sc; DM.frames=demoFrames(sc,!dr.custom); DM.i=0;   // (own drills stay as they were recorded)
+  // which way the drill attacks (the team that has the ball most); said by whose goal, so it reads the same in every view
+  { const at=demoAttack(sc,DM.frames);
+    const el=document.getElementById("demoDir"); if(el) el.innerHTML=!at?"":at.team==="o"?'攻め：<b style="color:var(--opp)">青（相手）</b> → 自チームのゴールへ':'攻め：<b style="color:var(--accent)">オレンジ（自チーム）</b> → 相手のゴールへ'; }
   fillDrillPick();
   if(typeof B3D!=="undefined"&&B3D) B3D.demoStart();   // start in the 3D view, close to the drill
   setBoardHidden(true);
@@ -2525,6 +2582,11 @@ function startDemo(id){
     [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([cx,cy])=>el("path",{d:`M${cx-.7},${cy+.6} L${cx},${cy-.7} L${cx+.7},${cy+.6} Z`,fill:"#ff9f1c"},g));
     (sc.lanes||[]).forEach(lx=>el("line",{x1:lx,y1:y,x2:lx,y2:y+h,stroke:"rgba(255,255,255,.5)","stroke-width":.18,"stroke-dasharray":".6 .6"},g)); }
   (sc.goals||[]).forEach(([x,y,w,h])=>el("rect",{x,y,width:w,height:h,fill:"rgba(255,255,255,.85)"},g));
+  { const at=demoAttack(sc,DM.frames);
+    if(at){ const [ax,ay]=demoArrowSpot(sc,DM.frames), d=at.goal===68?1:-1, col=at.team==="o"?"var(--opp)":"var(--accent)";
+      const ag=el("g",{class:"darrow",transform:`translate(${ax} ${ay})`},g);
+      el("path",{d:`M-.4,${-5*d} L.4,${-5*d} L.4,${3*d} L1.3,${3*d} L0,${6*d} L-1.3,${3*d} L-.4,${3*d} Z`,fill:col,"fill-opacity":.55,stroke:col,"stroke-width":.2},ag);
+      const t=el("text",{x:0,y:d>0?-6.2:7.6,"text-anchor":"middle",class:"darrowlab",fill:col},ag); t.textContent="攻め"; } }
   el("g",{id:"demoTrails"},g);
   Object.entries(sc.players).forEach(([pid,p])=>{
     const pg=el("g",{class:"dplayer","data-pid":pid},g);
@@ -2555,17 +2617,49 @@ function showFrame(i,instant){
   else b.style.display="none";
   document.getElementById("demoCap").textContent=f.cap;
   document.getElementById("demoStep").textContent=`${i+1} / ${DM.frames.length}`;
+  speakCap(f.cap);
 }
+// ---------- 🔊 音声: the scene's words read out by the browser's own voice (no files, works offline) ----------
+const TTS=window.speechSynthesis||null;
+// position names as a Japanese voice should say them
+// (said with their Japanese names: the letters read out one by one were hard to catch, e.g. CH sounded like 新聞紙)
+const SAY=[["GK","ゴールキーパー"],["CB","センターバック"],["SB","サイドバック"],["CH","センターハーフ"],["SH","サイドハーフ"],["CF","センターフォワード"],["FW","フォワード"],["DF","ディフェンダー"],["MF","ミッドフィルダー"],["LH","左ハーフ"],["RH","右ハーフ"],["LB","左バック"],["RB","右バック"],["DM","ボランチ"],["→","、"],["＋","と"]];
+// 間 is あいだ here (not かん), except in 時間・瞬間・仲間
+// (each fix below was found by reading every scene with the Mac's Kyoko voice and transcribing it back with Whisper)
+const SAY2=[["バックパス","後ろへのパス"],["こぼれ球","こぼれだま"],["ターンして","くるっと回って"],["ターン","くるっと回る"],["復帰","戻れる"],["＝","は"]];
+const voiceText=t=>SAY2.reduce((a,[k,v])=>a.split(k).join(v),SAY.reduce((a,[k,v])=>a.split(k).join(v),String(t||"")))
+  .replace(/[（）「」()・]/g,"、").replace(/人\s*対\s*/g,"人、たい、")                                // brackets are a pause; 3人 対 was heard as 忍耐
+  .replace(/(^|[、。！\s])間/g,"$1すきま")                                                // あいだ at the start of a phrase was heard as 缶
+  .replace(/(?<![時瞬仲])間/g,"あいだ")
+  .replace(/(?<![実国交])際/g,"ぎわ")                                                    // タッチライン際 was read as 祭
+  .replace(/(?<![以案海国])外(?![すれしさ])/g,"そと")                                    // 外へ出て was read as がいへ (but 外す・外れる stay)
+  .replace(/(?<![0-9０-９])1人(?!目)/g,"ひとり").replace(/(?<![0-9０-９])2人(?!目)/g,"ふたり");   // (1人 was heard as 一人目)
+function jaVoice(){ if(!TTS) return null; const vs=TTS.getVoices().filter(v=>/^ja/i.test(v.lang)); return vs.find(v=>/Kyoko|O-ren|Google|Siri|Nanami|Haruka/i.test(v.name))||vs[0]||null; }
+// speak a scene; when it has been said, the playback may go on (DM.saidDone / DM.waitSaid)
+function speakCap(text){
+  DM.saidDone=true; if(!DM.voice||!TTS||!text) return;
+  const id=DM.sayId=(DM.sayId||0)+1; TTS.cancel(); DM.saidDone=false;
+  const u=new SpeechSynthesisUtterance(voiceText(text)); u.lang="ja-JP"; u.rate=DM.slow?.95:1.15; const v=jaVoice(); if(v) u.voice=v;
+  // (only this scene's words count: stopping the previous one must not let the playback go on)
+  let fin=false; const done=()=>{ if(fin||id!==DM.sayId) return; fin=true; DM.saidDone=true; const w=DM.waitSaid; DM.waitSaid=null; if(w) w(); };
+  u.onend=done; u.onerror=done; setTimeout(done,16000);   // (never wait for ever)
+  TTS.speak(u);
+}
+function stopSpeak(){ DM.sayId=(DM.sayId||0)+1; if(TTS) TTS.cancel(); DM.saidDone=true; DM.waitSaid=null; }
 function playDemo(){
   clearTimeout(DM.timer); DM.playing=true; document.getElementById("demoPlay").textContent="一時停止";
+  // the next scene comes after ms — and, with 音声 on, not before the words have been said (plus a short breath)
+  const after=(ms,fn)=>{ const t0=performance.now(); clearTimeout(DM.timer);
+    const go=()=>{ DM.timer=setTimeout(fn,Math.max(DM.voice?450:0,ms-(performance.now()-t0))); };
+    if(!DM.voice||DM.saidDone) go(); else DM.waitSaid=go; };
   const tick=()=>{ if(!DM.playing) return;
-    if(DM.i>=DM.frames.length-1){ DM.timer=setTimeout(()=>{ showFrame(0,true); DM.timer=setTimeout(tick,demoT(1600)); },demoT(1800)); return; }
-    showFrame(DM.i+1); DM.timer=setTimeout(tick,demoT(2000)); };
-  DM.timer=setTimeout(tick,demoT(1800));
+    if(DM.i>=DM.frames.length-1){ after(demoT(1800),()=>{ if(!DM.playing) return; showFrame(0,true); after(demoT(1600),tick); }); return; }
+    showFrame(DM.i+1); after(demoT(2000),tick); };
+  after(demoT(1800),tick);
 }
-function pauseDemo(){ DM.playing=false; clearTimeout(DM.timer); document.getElementById("demoPlay").textContent="再生"; }
+function pauseDemo(){ DM.playing=false; clearTimeout(DM.timer); DM.waitSaid=null; document.getElementById("demoPlay").textContent="再生"; }
 function stopDemo(keep){
-  clearTimeout(DM.timer); DM.playing=false; DM.id=null;
+  clearTimeout(DM.timer); DM.playing=false; DM.id=null; stopSpeak();
   if(!keep) setTimeout(fillDrillPick);
   const g=document.getElementById("demoLayer"); if(g) g.innerHTML="";
   if(!keep){ document.getElementById("demoBar").hidden=true; setBoardHidden(false); }
@@ -2574,6 +2668,10 @@ document.getElementById("demoPlay").addEventListener("click",()=>DM.playing?paus
 document.getElementById("demoPrev").addEventListener("click",()=>{ pauseDemo(); showFrame(Math.max(0,DM.i-1)); });
 document.getElementById("demoNext").addEventListener("click",()=>{ pauseDemo(); showFrame(Math.min(DM.frames.length-1,DM.i+1)); });
 document.getElementById("demoStop").addEventListener("click",()=>stopDemo(false));
+// 🔊 音声 (only shown when the browser can speak); the first press also lets a phone speak at all
+if(TTS){ const vb=document.getElementById("demoVoice"); vb.hidden=false; TTS.getVoices();
+  vb.addEventListener("click",()=>{ DM.voice=!DM.voice; vb.setAttribute("aria-pressed",DM.voice);
+    if(DM.voice){ const f=DM.frames[DM.i]; if(f) speakCap(f.cap); if(DM.playing) playDemo(); } else { const w=DM.waitSaid; stopSpeak(); if(w) w(); } }); }
 document.getElementById("demoSlow").addEventListener("click",e=>{ DM.slow=!DM.slow; e.currentTarget.setAttribute("aria-pressed",DM.slow); document.body.classList.toggle("demoslow",DM.slow); if(DM.playing) playDemo(); });
 
 // ---------- Recording a custom drill's movement ----------
@@ -2939,12 +3037,20 @@ const B3D = (() => {
       g.position.copy(W(p.p[0], p.p[1])); g.userData.fan = makeFan(10); demoRoot.add(g, g.userData.fan); demo.list.push(g);
     });
     demo.ball = new THREE.Mesh(ballM.geometry, ballM.material); demo.ball.visible = false; demoRoot.add(demo.ball);
+    { const at = demoAttack(sc, DM.frames);
+      if (at){ const [ax, ay] = demoArrowSpot(sc, DM.frames), d = at.goal === 68 ? 1 : -1, sh = new THREE.Shape();
+        sh.moveTo(-.4, -5); sh.lineTo(.4, -5); sh.lineTo(.4, 3); sh.lineTo(1.3, 3); sh.lineTo(0, 6); sh.lineTo(-1.3, 3); sh.lineTo(-.4, 3); sh.lineTo(-.4, -5);
+        const ag = new THREE.ShapeGeometry(sh); ag.rotateX(Math.PI/2);       // pointing along +z (towards y = 68 on the board)
+        const am = new THREE.Mesh(ag, new THREE.MeshBasicMaterial({color:lin(at.team === "o" ? "#3fa9ff" : "#ff7a3c"), transparent:true, opacity:.6, depthWrite:false, side:THREE.DoubleSide}));
+        am.position.copy(W(ax, ay, .05)); if (d < 0) am.rotation.y = Math.PI; demoRoot.add(am);
+        const lab = label("攻め", at.team === "o" ? "#3fa9ff" : "#ff7a3c"); lab.scale.set(2.6, 1.3, 1); lab.position.copy(W(ax, ay - 6.8*d, 1.2)); demoRoot.add(lab); } }
     pickBar();
   }
   // move the drill's players a little towards the current scene (about the same speed as in the top view)
   function syncDemo(){
     const on = typeof DM !== "undefined" && DM.id && DM.frames && DM.frames[DM.i];
-    if (!on){ if (demo.id){ clearDemo(); pickBar(); } return false; }
+    // back on the board (not a drill): the 3D view looks from the home side again, as at the start
+    if (!on){ if (demo.id){ clearDemo(); pickBar(); orbit.yaw = 0; orbit.pitch = .95; orbit.zoom = 1; orbit.eyeYaw = 0; } return false; }
     if (demo.id !== DM.id) buildDemo();
     const f = DM.frames[DM.i], next = DM.i < DM.frames.length - 1 ? DM.frames[DM.i + 1] : null, bs = view === "tv" ? 1.1 : .45;   // (next: not the first scene again when it loops)
     // who has the ball in this scene: the nearest one, if close
@@ -2952,7 +3058,9 @@ const B3D = (() => {
     const bp = demo.ball.position.clone();
     demo.list.forEach(g => { const q = f.pos[g.userData.pid], t = W(q[0], q[1]), mv = t.clone().sub(g.position); g.position.lerp(t, DM.slow ? .038 : .06);
       const b = g.userData.body; let want = b.rotation.y;
-      if (g === hold){
+      const lk = f.look && f.look[g.userData.pid];
+      if (lk) want = Math.atan2(lk[0] - q[0], lk[1] - q[1]);              // the scene says where this player faces
+      else if (g === hold){
         // on the ball: carrying it → the way they go; standing with a pass to come → the team-mate; otherwise the goal they attack
         const gy = g.userData.t === "m" ? 0 : 68;
         if (mv.length() > .4) want = Math.atan2(mv.x, mv.z);
@@ -3150,6 +3258,11 @@ const B3D = (() => {
           const near = ids.filter(id => F0.some(f => balls.some(bb => Math.hypot(f.pos[id][0]-bb[0], f.pos[id][1]-bb[1]) < 7)));
           const u = [...new Set([...moves, ...near])]; if (u.length) use = u; }
         const pts = []; use.forEach(id => F0.forEach(f => pts.push(f.pos[id]))); balls.forEach(b => pts.push(b));
+        // the goal: in the picture whenever the drill comes near it (a keeper in it, or the ball / players within 20 m)
+        { const gy = demoGoal(), near = pts.some(q => Math.abs(q[1] - gy) < 20) || use.some(id => (DM.sc.players[id] || {}).lab === "GK");
+          if (near) pts.push([22.5, gy], [27.5, gy]); }
+        // and the arrow that shows which way it attacks
+        if (demoAttack(DM.sc, DM.frames)){ const [ax, ay] = demoArrowSpot(DM.sc, DM.frames); pts.push([ax, ay - 6], [ax, ay + 6]); }
         const dkey = [DM.id, key].join();
         if (orbit.dkey !== dkey){
           // the nearest distance at which all of it (with a little room round each player, and their heads) is in the
@@ -3214,7 +3327,10 @@ const B3D = (() => {
     const k = e.target.closest("[data-eye]"); if (k){ eyeIdx = +k.dataset.eye; orbit.eyeYaw = 0; pickBar(); }
     const dk = e.target.closest("[data-deye]"); if (dk){ demo.eye = dk.dataset.deye; orbit.eyeYaw = 0; pickBar(); }
   });
-  function demoStart(){ orbit.yaw = .32; orbit.pitch = .82; orbit.zoom = 1; orbit.dkey = null; if (view === "top") setView("tv"); }
+  // which goal the drill attacks: the side of whoever has the ball most (HOME attacks y=0, AWAY y=68)
+  function demoGoal(){ const at = demoAttack(DM.sc, DM.frames); return at ? at.goal : 0; }
+  // start from behind the attackers, a little to the side, looking down at about 45°, so the goal they attack is in the picture
+  function demoStart(){ orbit.yaw = demoGoal() === 68 ? Math.PI + .32 : .32; orbit.pitch = .82; orbit.zoom = 1; orbit.dkey = null; if (view === "top") setView("tv"); }
   return {setView, demoStart};
 })();
 </script>
