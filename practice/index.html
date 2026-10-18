@@ -1,0 +1,1758 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1310">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="自主練">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="ひとりでできるサッカーの自主練メニュー。ボールタッチ・ジンガ・ドリブル・キック・かべ当て・体づくり。">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+</head><body>
+<title>自主練メニュー</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// 3D example player for the 自主練メニュー (three.js r128). One renderer is kept for the whole app; the practice screen
+// calls FIG3D.show(container, drillId) and the canvas moves into it. A muscular, faceless figure in compression wear is
+// built from turned (lathe) shapes; joints are placed every frame, knees/elbows come from 2-bone IK.
+// Units: metres (about 1.78 m tall). The figure faces +z; x is its right side when seen from behind.
+// Rules for every move: the boots never go inside the ball (keepOut), the foot only comes to the ball from outside,
+// and every curve eases in and out (ss) so nothing jumps.
+const FIG3D = (() => {
+  if(!window.THREE) return {has: () => false, show(){}, hide(){}};
+  const V = (x,y,z) => new THREE.Vector3(x,y,z);
+  const ss = (a,b,x) => { const t = Math.min(1, Math.max(0, (x-a)/(b-a))); return t*t*(3-2*t); };
+  const BALL_R = .11, GINGA_BPM = 128;
+
+  // ---------- renderer, scene, lights ----------
+  let renderer = null, scene, camera, fig, ball, parts = {}, props, ground, glowMat = {}, marks = {};
+  function init(){
+    renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.domElement.style.cssText = "display:block;width:100%;height:100%;touch-action:none;cursor:grab";
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x2a3832).convertSRGBToLinear();
+    camera = new THREE.PerspectiveCamera(32, 1, .1, 50);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x2a3a30, .55));
+    const key = new THREE.DirectionalLight(0xffffff, 1.05); key.position.set(3.3, 5.2, 3.9); key.castShadow = true;
+    key.shadow.mapSize.set(2048,2048); Object.assign(key.shadow.camera, {left:-7,right:7,top:8,bottom:-4, far:30}); key.shadow.camera.updateProjectionMatrix(); scene.add(key);   // big enough for the dribbling courses
+    const rim = new THREE.DirectionalLight(0xbfd8ff, .7); rim.position.set(-2.5, 2.2, -2.5); scene.add(rim);
+    const fill = new THREE.DirectionalLight(0xffffff, .25); fill.position.set(-2, 1, 2); scene.add(fill);
+    ground = new THREE.Mesh(new THREE.CircleGeometry(14, 64), new THREE.MeshStandardMaterial({color:new THREE.Color(0x2f6b48).convertSRGBToLinear(), roughness:.95}));
+    ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+    // three.js is right-handed: for a figure facing +z, its own right side is −x. The moves are written with +x as the
+    // player's right (as seen from behind), so the figure and everything on the ground sit in a mirrored group —
+    // then 右足 in a move really is the right foot on screen. (three.js flips the face winding for mirrored objects.)
+    const mirror = new THREE.Group(); mirror.scale.x = -1; scene.add(mirror);
+    props = new THREE.Group(); mirror.add(props);
+    fig = new THREE.Group(); mirror.add(fig);
+    build();
+    // drag to orbit
+    const el = renderer.domElement; let drag = null;
+    el.addEventListener("pointerdown", e => { drag = {x:e.clientX, y:e.clientY, yaw:cam.yaw, pitch:cam.pitch}; el.setPointerCapture(e.pointerId); el.style.cursor = "grabbing"; });
+    el.addEventListener("pointermove", e => { if(!drag) return; cam.yaw = drag.yaw - (e.clientX-drag.x)*.01; cam.pitch = Math.max(-.05, Math.min(.9, drag.pitch + (e.clientY-drag.y)*.006)); });
+    addEventListener("pointerup", () => { drag = null; el.style.cursor = "grab"; });
+  }
+
+  // ---------- the figure ----------
+  const M = c => { const m = new THREE.MeshStandardMaterial(c); m.color.convertSRGBToLinear(); return m; };
+  let skin, bootMat, soleMat, studMat, shirtMat, shortsMat, hemMat;
+  const L = {thigh:.44, shin:.43, upper:.29, fore:.26};
+  const P = {
+    thigh:[[0,.094],[.12,.1],[.3,.096],[.55,.084],[.8,.064],[1,.056]],
+    shin: [[0,.054],[.08,.06],[.25,.069],[.42,.062],[.7,.041],[1,.031]],
+    upper:[[0,.054],[.2,.05],[.5,.055],[.75,.046],[1,.038]],
+    fore: [[0,.04],[.18,.047],[.4,.042],[.75,.032],[1,.027]]
+  };
+  function lathe(profile, len, sx=1, sz=1, mat=skin){
+    const pts = profile.map(([t,r]) => new THREE.Vector2(r, t*len));
+    pts.unshift(new THREE.Vector2(.0001, -profile[0][1]*.6)); pts.push(new THREE.Vector2(.0001, len + profile[profile.length-1][1]*.6));
+    const g = new THREE.LatheGeometry(pts, 28); g.scale(sx, 1, sz); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true; fig.add(m); m.userData.len = len; return m;
+  }
+  const UP = V(0,1,0), ZAX = V(0,0,1);
+  function place(m, a, b){ const d = new THREE.Vector3().subVectors(b, a), l = d.length(); m.position.copy(a); m.quaternion.setFromUnitVectors(UP, d.normalize()); m.scale.set(1, l / m.userData.len, 1); }
+  function blob(r, sx, sy, sz, mat=skin){ const m = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 20), mat); m.scale.set(sx,sy,sz); m.castShadow = true; fig.add(m); return m; }
+  const ring = mat => { const m = new THREE.Mesh(new THREE.TorusGeometry(1, .09, 8, 28), mat); fig.add(m); return m; };
+  function hem(m, p, dir, r){ m.position.copy(p); m.quaternion.setFromUnitVectors(ZAX, dir.clone().normalize()); m.scale.set(r, r, r*1.4); }
+  const sleeveOf = (prof, to, add=.006) => { const out = prof.filter(([t])=>t<to).map(([t,r])=>[t/to, r+add]); const n = prof.findIndex(([t])=>t>=to);
+    const [t1,r1] = prof[n-1], [t2,r2] = prof[n]; out.push([1, r1+(r2-r1)*(to-t1)/(t2-t1)+add]); return out; };
+  // a football boot (local: ankle at the origin, toe towards +z): a sole shaped like a foot (narrow heel, wide forefoot,
+  // round toe), no studs, an upper whose underside sits flat on the sole and whose toe springs up a little
+  function makeBoot(bootMat){
+    const g = new THREE.Group();
+    // the outline seen from below: [z, half-width] from heel to toe
+    const W = [[-.07,.022],[-.062,.034],[-.04,.037],[-.005,.034],[.03,.039],[.08,.048],[.12,.047],[.15,.039],[.168,.024],[.177,0]];   // a touch wider than the upper, like a real outsole
+    const shape = new THREE.Shape();
+    shape.moveTo(0, W[0][0]); W.forEach(([z,w]) => shape.lineTo(w, z)); for(let i=W.length-2;i>=0;i--) shape.lineTo(-W[i][1], W[i][0]);
+    const soleG = new THREE.ExtrudeGeometry(shape, {depth:.007, bevelEnabled:true, bevelThickness:.002, bevelSize:.002, bevelSegments:2, curveSegments:6});
+    soleG.rotateX(Math.PI/2);                                       // shape y → boot z, thickness goes down
+    // toe spring: the front of the sole bends up a little
+    const pos = soleG.attributes.position; for(let i=0;i<pos.count;i++){ const z = pos.getZ(i); if(z > .11) pos.setY(i, pos.getY(i) + (z - .11)*.18); }
+    soleG.computeVertexNormals();
+    const sole = new THREE.Mesh(soleG, soleMat); sole.position.y = -.014; sole.castShadow = true; g.add(sole);   // right under the upper, no gap
+    // the upper: an egg shape flattened underneath, narrower at the heel, toe springing up with the sole
+    const upG = new THREE.SphereGeometry(1, 28, 18), up = upG.attributes.position;
+    for(let i=0;i<up.count;i++){
+      let x = up.getX(i)*.044, y = up.getY(i)*.072, z = up.getZ(i)*.122 + .055;
+      if(y < 0) y *= .22;                                           // flat underneath, sitting on the sole
+      if(z < .02) x *= .78 + .22*Math.max(0, (z + .07)/.09);         // narrower heel
+      if(z > .11) y += (z - .11)*.18;                               // toe spring
+      if(z > .1 && y > 0) y *= 1 - (z - .1)*3;                      // the toe box gets lower towards the tip
+      up.setXYZ(i, x, y + .002, z);
+    }
+    upG.computeVertexNormals();
+    const upper = new THREE.Mesh(upG, bootMat); upper.castShadow = true; g.add(upper);
+    // the collar round the ankle
+    const ank = new THREE.Mesh(new THREE.CylinderGeometry(.034, .041, .075, 18), bootMat); ank.position.set(0, .045, -.008); ank.castShadow = true; g.add(ank);
+    return g;
+  }
+  function build(){
+    skin = M({color:0xdfe5ea, metalness:.35, roughness:.22}); bootMat = M({color:0xff6b2c, metalness:.15, roughness:.38}); soleMat = M({color:0xc2410c, roughness:.5}); studMat = M({color:0xe8edf1, roughness:.4});
+    shirtMat = M({color:0x2a3038, metalness:.05, roughness:.5}); shortsMat = M({color:0x1d2127, metalness:.05, roughness:.55}); hemMat = M({color:0xff6b2c, roughness:.5});
+    for(const s of ["L","R"]){
+      glowMat["thigh"+s] = skin.clone(); glowMat["boot"+s] = bootMat.clone();
+      parts["thigh"+s] = lathe(P.thigh, L.thigh, 1, .92, glowMat["thigh"+s]); parts["shin"+s] = lathe(P.shin, L.shin, 1, .95);
+      parts["upper"+s] = lathe(P.upper, L.upper); parts["fore"+s] = lathe(P.fore, L.fore, 1, .85);
+      parts["delt"+s] = blob(.06, 1.05, .95, 1, shirtMat); parts["hand"+s] = blob(.042, .7, 1.15, .45);
+      parts["glute"+s] = blob(.07, 1, .9, .5, shortsMat); parts["knee"+s] = blob(.052, 1, 1, 1);
+      parts["sleeve"+s] = lathe(sleeveOf(P.upper, .45), L.upper*.45, 1, 1, shirtMat);
+      parts["short"+s] = lathe(sleeveOf(P.thigh, .52), L.thigh*.52, 1, .92, shortsMat);
+      parts["sleeveHem"+s] = ring(hemMat); parts["shortHem"+s] = ring(hemMat);
+      const boot = makeBoot(glowMat["boot"+s]); fig.add(boot); parts["boot"+s] = boot;
+    }
+    const TORSO = [[0,.13],[.1,.14],[.28,.115],[.45,.125],[.62,.15],[.78,.166],[.88,.158],[.94,.125],[1,.06]];
+    parts.torso = lathe(TORSO.map(([t,r])=>[t, r+.004]).filter(([t])=>t>=.28 && t<.9).map(([t,r])=>[(t-.26)/.64, r]).concat([[1,.14]]), .6*.64, 1.25, .66, shirtMat);
+    parts.hips = lathe([[0,.134],[.35,.144],[.85,.12],[1,.118]], .6*.3, 1.25, .66, shortsMat);
+    parts.waistband = ring(hemMat);
+    parts.chestTop = lathe([[0,.14],[.45,.11],[1,.058]], .6*.16, 1.25, .66, shirtMat);
+    parts.neck = lathe([[0,.055],[.5,.047],[1,.045]], .12);
+    glowMat.head = skin.clone(); parts.head = blob(.105, .86, 1.14, .98, glowMat.head);
+    // a dark visor across the eyes, so you can see which way the face is turned
+    const visor = new THREE.Mesh(new THREE.SphereGeometry(.108, 24, 6, Math.PI/2 - .95, 1.9, 1.3, .36), M({color:0x161a1f, metalness:.4, roughness:.25}));
+    parts.head.add(visor);
+    // markers on the ground: the standing (plant) foot, and where the player is looking
+    const yellow = c => new THREE.MeshBasicMaterial({color:new THREE.Color(c).convertSRGBToLinear(), transparent:true, opacity:0, depthWrite:false, side:THREE.DoubleSide});
+    marks.plant = new THREE.Mesh(new THREE.RingGeometry(.1, .135, 40), yellow(0xffd23d)); marks.plant.rotation.x = -Math.PI/2; fig.add(marks.plant);
+    const fan = new THREE.BufferGeometry(), fp = [], N = 16, H = .32, RR = 2.2;
+    for(let i=0;i<N;i++){ const a1 = -H + 2*H*i/N, a2 = -H + 2*H*(i+1)/N; fp.push(0,0,0, RR*Math.sin(a1),0,RR*Math.cos(a1), RR*Math.sin(a2),0,RR*Math.cos(a2)); }
+    fan.setAttribute("position", new THREE.Float32BufferAttribute(fp, 3)); marks.look = new THREE.Mesh(fan, yellow(0xfff1b0)); fig.add(marks.look);
+    const c = document.createElement("canvas"); c.width = 256; c.height = 128; const x = c.getContext("2d");
+    x.fillStyle = "#fff"; x.fillRect(0,0,256,128); x.fillStyle = "#111";
+    for(let i=0;i<12;i++){ const px=(i%6)*44+(i>5?22:0)+10, py=i>5?88:34; x.beginPath(); for(let k=0;k<5;k++){ const a=k/5*Math.PI*2-Math.PI/2; x.lineTo(px+Math.cos(a)*12, py+Math.sin(a)*12); } x.fill(); }
+    const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding;
+    ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 28, 20), new THREE.MeshStandardMaterial({map:tex, roughness:.4})); ball.castShadow = true; fig.add(ball);
+  }
+
+  // ---------- joints ----------
+  function ik(a, c, l1, l2, pole){
+    const d = new THREE.Vector3().subVectors(c, a); let len = Math.min(d.length(), l1 + l2 - .001);
+    const dir = d.clone().normalize(), x = (l1*l1 - l2*l2 + len*len) / (2*len), h = Math.sqrt(Math.max(0, l1*l1 - x*x));
+    const side = pole.clone().sub(dir.clone().multiplyScalar(pole.dot(dir))).normalize();
+    return a.clone().add(dir.multiplyScalar(x)).add(side.multiplyScalar(h));
+  }
+  const bootTilt = ankle => Math.min(.3, Math.max(0, ankle.y - .1) * 1.2);
+  // points on the boot (relative to the ankle): sole/studs underneath, toe, sides and top of the upper
+  const BOOT_PTS = [V(0,-.083,-.05), V(0,-.083,.02), V(0,-.083,.09), V(0,-.074,.15), V(0,-.04,.177), V(.042,-.075,.06), V(-.042,-.075,.06), V(0,.0,.1), V(.044,-.03,.04), V(-.044,-.03,.04), V(0,-.01,.14)];
+  // move the ankle until no point of the boot is inside the ball
+  // how a boot is turned (yaw: + turns the toe to the player's right) and tilted (+ toe down, − toe up), unless a move says:
+  //  · standing: toes a little out, like people stand;  · lifted: toe a little down;
+  //  · sole on top of the ball (tap, pull, stop, trap): toe up so the sole sits on the ball, not the toe digging in
+  function footAngles(p, side, ft){
+    const yaw = (side === "L" ? p.lfYaw : p.rfYaw) ?? (side === "L" ? -.13 : .13);
+    let tilt = side === "L" ? p.lfTilt : p.rfTilt;
+    if(tilt === undefined || tilt === null){
+      tilt = bootTilt(ft);
+      if(p.ball && !p.ballFree){
+        const b = p.ball, dxz = Math.hypot(ft.x - b.x, ft.z - (b.z - .03));
+        const sole = (1 - ss(.08, .17, dxz)) * ss(b.y + BALL_R*.5, b.y + BALL_R + .04, ft.y);
+        tilt = tilt*(1 - sole) - .3*sole;
+      }
+    }
+    return {yaw, tilt};
+  }
+  const bootQ = (ankle, yaw=0, tilt=null) => new THREE.Quaternion().setFromAxisAngle(UP, yaw).multiply(new THREE.Quaternion().setFromAxisAngle(V(1,0,0), tilt ?? bootTilt(ankle)));
+  function keepOut(ankle, ballC, yaw=0, tilt=null){
+    for(let k=0; k<6; k++){
+      const q = bootQ(ankle, yaw, tilt); let worst = 0, push = null;
+      for(const pt of BOOT_PTS){ const w = pt.clone().applyQuaternion(q).add(ankle), gap = BALL_R + .004 - w.distanceTo(ballC); if(gap > worst){ worst = gap; push = w.sub(ballC).normalize(); } }
+      if(!push) break;
+      // never push the foot down into the ground: move it sideways/back instead
+      if(push.y < 0 && ankle.y + push.y*worst < .085){ push.y = 0; if(push.lengthSq() < 1e-6) push.set(0,0,-1); push.normalize(); }
+      ankle.add(push.multiplyScalar(worst));
+    }
+    return ankle;
+  }
+  function setBody(p){
+    const pel = p.pelvis, lean = p.lean || V(0,0,0), up = k => lean.clone().multiplyScalar(k);
+    // twist: the upper body turned on the hips (opening up to receive); look: the head turned on top of that (scanning)
+    const tw = p.twist || 0, look = p.look || 0, rot = v => v.clone().applyAxisAngle(UP, tw);
+    const hipL = pel.clone().add(V(-.095,-.01,0)), hipR = pel.clone().add(V(.095,-.01,0));
+    const shL = pel.clone().add(rot(V(-.195,.468,-.01))).add(up(1)), shR = pel.clone().add(rot(V(.195,.468,-.01))).add(up(1));
+    const hand = h => tw ? pel.clone().add(rot(h.clone().sub(pel))) : h;
+    for(const [s, hip, ft] of [["L",hipL,p.lf],["R",hipR,p.rf]]){
+      const {yaw: fy, tilt: ftl} = footAngles(p, s, ft);
+      const ankle = p.ball && !p.ballFree ? keepOut(ft.clone(), p.ball, fy, ftl) : ft.clone();
+      const knee = ik(hip, ankle, L.thigh, L.shin, V(0,0,1));
+      place(parts["thigh"+s], hip, knee); place(parts["shin"+s], knee, ankle);
+      parts["knee"+s].position.copy(knee).add(V(0,0,.008));
+      const se = hip.clone().lerp(knee, .52); place(parts["short"+s], hip, se); hem(parts["shortHem"+s], se, knee.clone().sub(hip), .084);
+      // the boot turns about the ankle (as the collision points do); the sole just touches the ground when the ankle is at 0.085
+      parts["boot"+s].rotation.set(ftl, fy, 0, "YXZ");
+      parts["boot"+s].position.copy(ankle).add(V(0,-.06,0).applyEuler(parts["boot"+s].rotation));
+    }
+    for(const [s, sh, hd, sx] of [["L",shL,hand(p.lh),-1],["R",shR,hand(p.rh),1]]){
+      const elb = ik(sh, hd, L.upper, L.fore, (p.armPole || V(sx*.4,0,-1)).clone().normalize());
+      place(parts["upper"+s], sh, elb); place(parts["fore"+s], elb, hd);
+      const se = sh.clone().lerp(elb, .45); place(parts["sleeve"+s], sh, se); hem(parts["sleeveHem"+s], se, elb.clone().sub(sh), .057);
+      parts["delt"+s].position.copy(sh).add(V(-sx*.012,-.012,0));
+      parts["hand"+s].position.copy(hd).add(new THREE.Vector3().subVectors(hd, elb).normalize().multiplyScalar(.045));
+      parts["glute"+s].position.copy(pel).add(V(sx*.06,.03,-.03));
+    }
+    const tb = pel.clone().add(V(0,-.03,0));
+    place(parts.hips, tb, tb.clone().add(V(0,.18,0)));
+    place(parts.torso, tb.clone().add(V(0,.156,0)), tb.clone().add(V(0,.54,0)).add(up(1)));
+    place(parts.chestTop, tb.clone().add(V(0,.504,0)).add(up(.95)), tb.clone().add(V(0,.6,0)).add(up(1.05)));
+    const twQ = new THREE.Quaternion().setFromAxisAngle(UP, tw); parts.torso.quaternion.multiply(twQ); parts.chestTop.quaternion.multiply(twQ);
+    parts.waistband.position.copy(tb).add(V(0,.162,0)); parts.waistband.rotation.set(Math.PI/2,0,0); parts.waistband.scale.set(.16, .0845, .14);
+    place(parts.neck, pel.clone().add(V(0,.55,-.01)).add(up(1.05)), pel.clone().add(V(0,.66,-.005)).add(up(1.15)));
+    parts.head.position.copy(pel).add(V(0,.75,.005)).add(up(1.25)); parts.head.rotation.set(0, tw + look, 0);
+    // where the player is looking (only shown while the head is turned away from straight ahead)
+    const lk = Math.abs(tw + look); marks.look.material.opacity = .32*ss(.3,.6,lk)*(p.marks === false ? 0 : 1);
+    marks.look.position.set(pel.x, .012, pel.z); marks.look.rotation.set(0, tw + look, 0);
+    // the standing foot while kicking: a yellow ring round it
+    const pl = p.plant, pf = pl ? (pl.side === "L" ? p.lf : p.rf) : null;
+    marks.plant.material.opacity = pf && p.marks !== false ? .95*ss(.3,.7,pl.k) : 0; if(pf) marks.plant.position.set(pf.x, .008, pf.z + .03);
+    ball.visible = !!p.ball && (p.ballScale ?? 1) > .01; if(p.ball) ball.position.copy(p.ball);
+    ball.scale.setScalar(p.ballScale ?? 1);                                 // a new ball "appears" after a long kick
+    // the whole figure can turn (e.g. hopping around the ball): it turns about the point p.root.pivot
+    const r = p.root || {}, yaw = r.yaw || 0;
+    fig.rotation.set(r.pitch || 0, yaw, 0, "YXZ");                       // pitch: the whole body tilted (plank)
+    if(r.pos) fig.position.copy(r.pos);                                    // moving drills: the figure's place on the ground
+    else { const pivot = r.pivot || V(0,0,0); fig.position.copy(pivot).sub(pivot.clone().applyAxisAngle(UP, yaw)); }
+  }
+
+  // ---------- moves (local to the figure). Each returns pelvis, lean, feet (ankles), hands, ball ----------
+  const STAND = {pelvis:V(0,.9,0), lf:V(-.13,.085,0), rf:V(.13,.085,0), lh:V(-.34,.88,.05), rh:V(.34,.88,.05)};
+  const ballOnTop = (b, dx=0, dz=-.03) => V(b.x + dx, b.y + BALL_R + .055, b.z + dz);
+  // a ball rolled across under the sole in 2-beat bars (roll on 1, both feet down on 2) — used by sole roll and ginga
+  function rollBars(t, bpm, width, feetX, ballZ){
+    const b = t*bpm/60, n = Math.floor(b), ph = b - n, within = n % 2, bar = Math.floor(n/2), side = bar % 2 ? -1 : 1;
+    const roll = within === 0 ? ss(.18,.82,ph) : 1, bx = width*(-side + 2*side*roll), ball = V(bx, BALL_R, ballZ);
+    const carry = within === 0 ? ss(0,.38,ph) * (1 - ss(.68,1,ph)) : 0;
+    return {n, ph, side, ball, carry, top: V(bx, BALL_R*2 + .055, ballZ - .03)};
+  }
+  const MOVES = {
+    // 足うらタッチ: the foot rises, moves over the ball, rests the sole on top, comes back; feet take turns
+    t1: {view:"diag", f: t => { const ph = (t*1.2)%2, k = ph%1, right = ph<1;
+      const arc = ss(0,.42,k) * (1-ss(.5,.92,k)), rise = ss(0,.3,k) * (1-ss(.62,1,k));
+      const lift = (on, x) => on ? V(x*(1-.65*arc), .085 + rise*.215, arc*.145) : V(x, .085, 0);
+      const sway = Math.sin(ph*Math.PI);
+      return {pelvis:V(-.014*sway, .9 - .006*Math.abs(sway), 0), lf:lift(!right,-.11), rf:lift(right,.11), lh:V(-.34-.01*sway,.88,.05), rh:V(.34-.01*sway,.88,.05), ball:V(0,.11,.2)}; }},
+    // インサイドタッチ: the ball goes to and fro between the feet, each inside of the foot meets it and sends it back
+    t2: {view:"back", f: t => { const ph = (t*1.6)%2, k = ph%1, toR = ph<1;
+      const bx = .07*(toR ? -1 + 2*ss(.08,.92,k) : 1 - 2*ss(.08,.92,k));
+      const meet = (x, on) => V(x + Math.sign(x)*.012*on, .085 + .012*on, .02);   // the foot opens out (turns) rather than reaching in
+      const onR = toR ? ss(.7,1,k) : 1 - ss(0,.3,k), onL = toR ? 1 - ss(0,.3,k) : ss(.7,1,k);
+      return {pelvis:V(.008*(onR-onL), .87, 0), lean:V(0,0,.03), lf:meet(-.2, onL), rf:meet(.2, onR), lfYaw:-.2 - .5*onL, rfYaw:.2 + .5*onR, lh:V(-.36,.88,.08), rh:V(.36,.88,.08), ball:V(bx, BALL_R, .05)}; }},
+    // 足うらロール: roll the ball sideways with the sole, stop it with the other foot, roll it back with that foot
+    t3: {view:"back", f: t => { const r = rollBars(t, 96, .09, .21, .14);
+      let lf = V(-.21,.085,-.02), rf = V(.21,.085,-.02);
+      if(r.side > 0) rf = rf.lerp(r.top.clone().add(V(.012,0,0)), r.carry); else lf = lf.lerp(r.top.clone().add(V(-.012,0,0)), r.carry);
+      const w = (r.side > 0 ? 1 : -1) * r.carry;
+      return {pelvis:V(-.015*w, .885, 0), lean:V(.01*w,0,.03), lf, rf, lh:V(-.36,.88,.08), rh:V(.36,.88,.08), ball:r.ball}; }},
+    // 引いてインサイド: sole on top pulls the ball back, the same foot's inside pushes it forward on the diagonal
+    t4: {view:"diag", f: t => { const cyc = (t*.75)%2, k = cyc%1, R = cyc<1, sx = R ? 1 : -1;
+      const pull = ss(.1,.45,k), push = ss(.55,.85,k), back = 1 - ss(.85,1,k);
+      const bz = .24 - .16*pull + .16*push, bx = sx*(.06 - .045*push);   // pushed forward and a little inward
+      const b = V(bx, BALL_R, bz);
+      const onTop = ballOnTop(b, sx*.01, -.03), behind = V(bx + sx*.13, .09, bz - .04);   // inside of the foot behind-outside the ball
+      // from the top of the ball the foot lifts off and goes round the outside to behind it (a waypoint keeps it clear)
+      const lifted = V(bx + sx*.16, BALL_R*2 + .02, bz - .02), sw = ss(.38,.62,k), mid = 1 - Math.abs(2*sw - 1);
+      // onto the ball: first up above the back of it, then forward onto the top (never through it)
+      const rest = V(sx*.13, .085, 0), above = V(bx + sx*.02, BALL_R*2 + .09, bz - .16);
+      const onto = rest.clone().lerp(above, ss(0,.08,k)).lerp(onTop, ss(.05,.16,k));
+      const active = onto.lerp(behind, sw).lerp(lifted, mid*.8).lerp(rest, 1 - back);   // and finally back to its place
+      const other = V(-sx*.13, .085, 0);
+      return {pelvis:V(-sx*.012, .88, 0), lean:V(0,0,.03), lf: R ? other : active, rf: R ? active : other, lh:V(-.36,.88,.08), rh:V(.36,.88,.08), ball:b}; }},
+    // リフティング: ball low, struck ~15–20 cm off the ground with the laces, the leg swings out almost straight,
+    // standing knee bent, chest up, and the foot straight back down after each touch
+    t5: {view:"side", f: t => { const ph = (t*.95)%1, bx = .1, bz = .6;
+      const by = .28 + .36*Math.sin(Math.PI*ph);
+      const under = V(bx, by - BALL_R - .02, bz - .12), rest = V(.12, .085, .06), c = ss(.74,1,ph) + (1-ss(0,.2,ph));
+      return {pelvis:V(-.01-.012*c, .87-.01*c, 0), lean:V(.01*c, 0, .025), lf:V(-.11,.085,0), rf:rest.clone().lerp(under, c), lh:V(-.38,.9,.1), rh:V(.37,.92,.12), ball:V(bx, by, bz)}; }},
+    // ボールのまわりを1周: right sole stays on the ball, the left foot hops round it; the body turns about the ball
+    t7: {view:"diag", f: t => { const hop = (t*2.2)%1, h = Math.sin(hop*Math.PI), b = V(0,BALL_R,.24);
+      return {root:{yaw: t*1.1, pivot: b}, pelvis:V(-.05, .84 + .03*h, 0), lean:V(.02,0,.04), rf:ballOnTop(b, .02, -.03), lf:V(-.16, .085 + .05*h, -.06), lh:V(-.38,.92,.1), rh:V(.34,.95,.12), ball:b}; }},
+    // ジンガ ステップ (no ball): on the beat the knees dip, the weight snaps to one foot and the free foot taps out to the side
+    g1: {view:"back", beat:true, f: t => { const b = t*GINGA_BPM/60, n = Math.floor(b), ph = b - n, dir = n % 2 ? 1 : -1, sway = -dir + 2*dir*ss(0,.38,ph);
+      const dip = ph < .14 ? ss(0,.14,ph) : 1 - ss(.14,.75,ph), tap = Math.sin(Math.PI*ss(0,.6,ph));
+      const lf = V(-.2 - .025*sway - (dir<0 ? .06*tap : 0), .085 + (dir<0 ? .04*tap : 0), -.04 + (dir<0 ? .05*tap : 0));
+      const rf = V(.2 - .025*sway + (dir>0 ? .06*tap : 0), .085 + (dir>0 ? .04*tap : 0), -.04 + (dir>0 ? .05*tap : 0));
+      return {pelvis:V(.06*sway, .845 - .04*dip, -.02), lean:V(-.08*sway, -.01*dip, .03), lf, rf, lfYaw:-.15 - (dir<0 ? .35*tap : 0), rfYaw:.15 + (dir>0 ? .35*tap : 0), lh:V(-.44-.06*sway, .9+.08*sway, .18), rh:V(.44-.06*sway, .9-.08*sway, .18), ball:null}; }},
+    // ジンガ＋足うら: the same beat, with the ball rolled across under the sole every other beat
+    g2: {view:"diag", beat:true, f: t => { const r = rollBars(t, GINGA_BPM, .065, .2, .2), ph = r.ph, dir = r.n % 2 ? 1 : -1, sway = -dir + 2*dir*ss(0,.38,ph);
+      const dip = ph < .14 ? ss(0,.14,ph) : 1 - ss(.14,.75,ph), ground = (x, lift) => V(x - .025*sway, .085 + lift, -.04);
+      let lf = ground(-.2, .02*Math.max(0,-sway)*dip), rf = ground(.2, .02*Math.max(0,sway)*dip);
+      if(r.side > 0) rf = rf.lerp(r.top.clone().add(V(.015,0,0)), r.carry); else lf = lf.lerp(r.top.clone().add(V(-.015,0,0)), r.carry);
+      return {pelvis:V(.055*sway, .845 - .04*dip, -.02), lean:V(-.075*sway, -.01*dip, .03), lf, rf, lh:V(-.42-.04*sway, .86+.05*sway, .2), rh:V(.42-.04*sway, .86-.05*sway, .2), ball:r.ball}; }},
+    // その場でまたぎ: a foot circles over the front of the ball from outside to inside, the upper body drops to that side
+    g3: {view:"diag", beat:true, f: t => { const b = t*90/60, n = Math.floor(b), k = b - n, sx = n % 2 ? -1 : 1, ball = V(0, BALL_R, .2);
+      // over the front of the ball from outside to inside (lifted), then back round the front along the ground and home —
+      // the foot never passes behind the ball, so it never has to go through it
+      const A = k < .6 ? .8*Math.PI*ss(.05,.6,k) : .8*Math.PI*(1-ss(.62,.95,k));
+      const lift = k < .6 ? .15*Math.sin(Math.PI*ss(.05,.6,k)) : .012;
+      const over = V(sx*Math.cos(A)*.21, .085 + lift, .08 + Math.sin(A)*.36);
+      const home = V(sx*.15, .085, -.02), circ = home.clone().lerp(over, ss(0,.08,k)*(1-ss(.94,1,k)));
+      // the toe points the way the foot travels round the ball (outside → front → inside), back to normal at home
+      const dA = k < .6 ? 1 : -1, tan = Math.atan2(-sx*Math.sin(A)*.21*dA, Math.cos(A)*.36*dA), w = ss(0,.1,k)*(1-ss(.9,1,k)) * (k < .6 ? 1 : .4);
+      // (the foot only turns part of the way: the leg sweeps round, the toe stays mostly forward — at most ±0.45 rad)
+      const stepYaw = sx*.13 + Math.max(-.45, Math.min(.45, .5*Math.atan2(Math.sin(tan - sx*.13), Math.cos(tan - sx*.13))))*w;
+      const lean = Math.sin(Math.PI*ss(.1,.9,k)), dip = 1 - Math.abs(Math.cos(Math.PI*k));
+      return {pelvis:V(sx*.03*lean, .86 - .02*dip, -.02), lean:V(sx*.09*lean, 0, .03), lf: sx<0 ? circ : V(-.15,.085,-.02), rf: sx>0 ? circ : V(.15,.085,-.02), [sx>0 ? "rfYaw" : "lfYaw"]: stepYaw,
+              lh:V(-.42+sx*.04*lean, .9-sx*.06*lean, .16), rh:V(.42+sx*.04*lean, .9+sx*.06*lean, .16), ball}; }}
+  };
+
+  // ---------- moving drills: a path on the ground, a running stride, and the ball kept in front ----------
+  // a smooth path through ground points [[x,z],…] (Catmull-Rom), looked up by distance along it
+  function makePath(pts, closed){
+    const P = pts.map(([x,z]) => V(x,0,z)), n = P.length, S = [], N = 600;
+    const at = (i) => closed ? P[(i+n)%n] : P[Math.max(0, Math.min(n-1, i))];
+    const seg = closed ? n : n-1;
+    for(let k=0;k<=N;k++){ const u = k/N*seg, i = Math.min(seg-1, Math.floor(u)), f = u - i;
+      const p0 = at(i-1), p1 = at(i), p2 = at(i+1), p3 = at(i+2), q = V(0,0,0);
+      for(const c of ["x","z"]) q[c] = .5*((2*p1[c]) + (-p0[c]+p2[c])*f + (2*p0[c]-5*p1[c]+4*p2[c]-p3[c])*f*f + (-p0[c]+3*p1[c]-3*p2[c]+p3[c])*f*f*f);
+      S.push(q); }
+    const D = [0]; for(let k=1;k<S.length;k++) D.push(D[k-1] + S[k].distanceTo(S[k-1]));
+    const len = D[D.length-1];
+    function pos(d){ d = closed ? ((d % len) + len) % len : Math.max(0, Math.min(len, d)); let lo = 0, hi = D.length-1;
+      while(hi - lo > 1){ const m = (lo+hi) >> 1; if(D[m] <= d) lo = m; else hi = m; }
+      const f = (d - D[lo]) / ((D[hi] - D[lo]) || 1); return S[lo].clone().lerp(S[hi], f); }
+    const heading = d => { const a = pos(d - .15), b = pos(d + .15); return Math.atan2(b.x - a.x, b.z - a.z); };
+    return {len, pos, heading};
+  }
+  const STEP = .42;
+  // a jogging stride by distance travelled (phi = steps). a = 0 … 1 blends from standing to full stride
+  // a jogging stride by distance travelled (phi = steps). a = 0 … 1 blends from standing to full stride.
+  // Numbers from video of real players (books/body-movement-notes.md §4): the knee lands only a little bent and bends
+  // as the weight comes on; the heel comes up behind in the swing; the hips go down over the standing foot and up in
+  // flight (about 6 cm); the trunk leans forward ~15°; the arms swing against the legs with bent elbows.
+  function stride(phi, a, step=STEP){                             // step: length of one step (longer when running fast)
+    const A = Math.min(1, a), sf = .55 - .13*A;                   // part of the cycle a foot is on the ground (< .5 = flight)
+    const Ls = a*2*step*sf;                                       // how far the foot moves back under the body while it is down
+    const foot = (i, x) => { const c = ((phi/2) + (i ? .5 : 0)) % 1;
+      if(c < sf){ const u = c/sf, tilt = -.12*a*(1 - ss(0,.25,u)) + .55*a*ss(.65,1,u);   // heel lands first, then up onto the toes
+        return {p:V(x, .085 + .17*Math.sin(Math.max(0, tilt)), Ls*(.5 - u)), tilt, down:Math.sin(Math.PI*u)}; }
+      const u = (c - sf)/(1 - sf), tilt = .55*a*(1 - ss(0,.35,u)) - .12*a*ss(.7,1,u);    // toes down as it leaves, toe up to land
+      return {p:V(x, .085 + .17*Math.sin(Math.max(0, tilt))*(1 - ss(0,.2,u)) + a*.2*Math.sin(Math.PI*Math.pow(u, .75)), Ls*(-.5 + ss(0,1,u))), tilt, down:0}; };
+    const L = foot(0, -.11), Rr = foot(1, .11), lf = L.p, rf = Rr.p;
+    const drop = Math.max(L.down, Rr.down);                       // weight on a foot: the hips are lowest over it
+    const pelvis = V(.025*A*(Rr.down - L.down), .9 - .01*A - .035*A*drop, 0);
+    // arms: the left hand goes forward with the right foot (and the other way round), elbows bent, the forward hand higher
+    const arm = (sx, z) => V(sx*.27, .92 + .2*Math.max(0, z)*A, .06 + z);
+    return {pelvis, lean:V(0, 0, .03 + .11*A), lf, rf, lfTilt:L.tilt, rfTilt:Rr.tilt,
+            lh:arm(-1, .85*rf.z*A), rh:arm(1, .85*lf.z*A)};
+  }
+  // the ball while dribbling: touched as a foot finishes its swing, it rolls ahead, the player catches up for the next touch.
+  // every = 1: alternate feet each step; 2: one foot every other step (offset picks which foot)
+  // (lead = base + A·fr·(1−fr): the ball's slowing between touches is 2A/P² — with a touch every 2 steps that is about
+  // grass friction, so the ball never slows down faster than it would on its own)
+  const world = (pos, yaw) => ({root:{pos, yaw}});
+  // turn a local point of the figure into the world (to keep the ball fixed in the world while the body turns)
+  const toWorld = (local, pos, yaw) => local.clone().applyAxisAngle(UP, yaw).add(pos);
+  const toLocal = (w, pos, yaw) => w.clone().sub(pos).applyAxisAngle(UP, -yaw);
+  // a segment list: [{dur, f(u, t)}] played in order and looped
+  const seq = segs => { const total = segs.reduce((s,x)=>s+x.dur,0); return t => { let u = ((t % total) + total) % total;
+    for(const s of segs){ if(u <= s.dur) return s.f(u/s.dur, u); u -= s.dur; } return segs[segs.length-1].f(1, 0); }; };
+  // run straight from a to b (world [x,z]) easing in and out, ball in front; returns the segment and where the stride ends
+  // the ball only changes speed when a foot touches it: between touches it rolls in a straight line, slowing a little
+  // (grass). touches: [{u, W}] in order (u = time in the segment, W = world point where the foot meets it);
+  // a touch with stop:true is the sole landing on it, the ball stays there afterwards.
+  // (c = how much it slows: the slowing is 2cL/T², kept to grass friction, at most 2.5 m/s²)
+  const rollC = (L, T, cMax=.4) => Math.min(cMax, 2.5*T*T/(2*Math.max(L, 1e-3)));
+  const touchBall = (touches, dur) => u => {
+    if(u <= touches[0].u) return touches[0].W.clone();
+    for(let i = 0; i < touches.length - 1; i++){ const a = touches[i], b = touches[i+1];
+      if(u <= b.u){ const x = (u - a.u)/(b.u - a.u), c = rollC(a.W.distanceTo(b.W), (b.u - a.u)*dur, b.stop ? .3 : .4); return a.W.clone().lerp(b.W, (1+c)*x - c*x*x); } }
+    return touches[touches.length-1].W.clone();
+  };
+  // invert a rising function f on [0,1]: the u where f(u) = y
+  const inv = (f, y) => { let lo = 0, hi = 1; for(let i=0;i<30;i++){ const m = (lo+hi)/2; if(f(m) < y) lo = m; else hi = m; } return (lo+hi)/2; };
+  // how far in front of the body the ball is when the right foot touches it: just in front of its toe (phi = the step it touches on)
+  const touchLead = (phi, a, step=STEP) => stride(phi, a, step).rf.z + .2;
+  const TOUCH_X = .04;                                                 // (and a little to the right, in front of the right toe)
+  // the foot on top of the ball (stopping it), seen from the body
+  const soleOn = (s, ball, on) => { s.rf = s.rf.clone().lerp(V(ball.x + .01, BALL_R*2 + .055, ball.z - .03), on); s.pelvis.y -= .02*on; if(on > .02) s.rfTilt = null; };
+  // run straight from a to b (world [x,z]) easing in and out, ball in front. The ball starts still .32 in front, is touched
+  // every second step, and at the end the right sole stops it .32 in front of b (stopSole:false = a short sole tap that leaves it there)
+  function runSeg(a, b, dur, opts={}){
+    const A = V(a[0],0,a[1]), B = V(b[0],0,b[1]), yaw = Math.atan2(B.x-A.x, B.z-A.z), dist = A.distanceTo(B), dir = B.clone().sub(A).normalize();
+    const e = u => ss(0,1,u), amp = opts.amp || 1, a2Of = u => Math.min(1, Math.min(1, 4*Math.min(u, 1-u))*1.2) * amp;
+    const sideV = V(dir.z, 0, -dir.x), at = (d, x=0) => A.clone().add(dir.clone().multiplyScalar(d)).add(sideV.clone().multiplyScalar(x)).setY(BALL_R);
+    // (it lies still until the first step reaches it)
+    const touches = [{u:0, W:at(.32)}, {u:inv(e, .12/dist), W:at(.32)}];
+    const SP = opts.step || STEP;
+    for(let k = 0; ; k++){ const dk = SP*(1 + 2*k); if(dk >= dist) break; const uk = inv(e, dk/dist); if(uk > .62) break;
+      touches.push({u:uk, W:at(dk + touchLead(1 + 2*k, a2Of(uk), SP), TOUCH_X)}); }
+    const uStop = opts.stopSole === false ? .9 : .86;
+    touches.push({u:uStop, W:at(dist + .32), stop:true});
+    const track = touchBall(touches, dur);
+    return {dur, f: u => { const d = dist*e(u), a2 = a2Of(u), phi = d/SP, pos = A.clone().lerp(B, e(u));
+      const s = stride(phi, a2, SP), ball = toLocal(track(u), pos, yaw); ball.y = BALL_R;
+      // the last part of the stop: the right sole is on top of the ball, so it is the foot that brings it to rest
+      soleOn(s, ball, opts.stopSole === false ? ss(.76,uStop,u)*(1-ss(.94,1,u)) : ss(.7,uStop,u));
+      return Object.assign(s, {ball}, world(pos, yaw)); }};
+  }
+  // stop the ball with the sole, pull it back, and turn round over it (the ball stays still while the body turns about it)
+  function pullTurnSeg(at, yaw0, dur, dirSign=1){
+    const P = V(at[0],0,at[1]);
+    return {dur, f: u => {
+      const pull = ss(0,.35,u), turn = ss(.3,.95,u), yaw = yaw0 + dirSign*Math.PI*turn;
+      const ballL0 = V(0, BALL_R, .32 - .2*pull);                     // pulled back towards the standing foot
+      const ballW = toWorld(ballL0, P, yaw0);                          // where it is in the world
+      // once turning, the body turns about the ball: keep the ball's world spot, and its local spot eases out in front again
+      const ballL = V(0, BALL_R, .12 + .2*ss(.6,1,u));
+      const pos = turn > 0 ? ballW.clone().sub(ballL.clone().applyAxisAngle(UP, yaw)) : P;
+      const posBlend = P.clone().lerp(pos, ss(.25,.4,u));
+      const ball = toLocal(ballW, posBlend, yaw);
+      const onTop = V(ball.x + .01, ball.y + BALL_R + .055, ball.z - .03);
+      const sole = 1 - ss(.38,.5,u);                                   // already on the ball (it stopped it), then off to turn
+      const steps = Math.sin(Math.PI*turn*3);                          // small steps round while turning
+      const rf = V(.13, .085, 0).lerp(onTop, sole).add(V(0, .04*Math.max(0,steps), 0));
+      const lf = V(-.13, .085 + .04*Math.max(0,-steps), -.02);
+      return {pelvis:V(0,.88,0), lean:V(0,0,.09), lf, rf, lh:V(-.42,.92,.1), rh:V(.42,.92,.12), ball, root:{pos:posBlend, yaw}}; }};
+  }
+  // cones
+  const coneRing = (cx, cz, r, n, a0=0) => Array.from({length:n}, (_,i)=>{ const a = a0 + i/n*2*Math.PI; return [cx + r*Math.cos(a), cz + r*Math.sin(a)]; });
+  // d1: zigzag through 5 cones 1 m apart, there and back (the way back passes them on the other side)
+  const D1 = (() => { const pts = [];
+    for(let z=-.6; z<=4.95; z+=.25) pts.push([.42*Math.cos(Math.PI*(z-.5)), z]);
+    pts.push([.65,5.5],[0,5.95],[-.65,5.5]);
+    for(let z=4.95; z>=-.6; z-=.25) pts.push([-.42*Math.cos(Math.PI*(z-.5)), z]);
+    pts.push([-.65,-1.1],[0,-1.55],[.65,-1.1]);
+    return makePath(pts, true); })();
+  // d3: round a circle of cones (clockwise, the outside of the right foot keeps turning the ball)
+  const D3 = makePath(coneRing(0, 1.8, 1.25, 16).reverse(), true);
+  // d6: a loop with gentle bends, head up
+  const D6 = makePath([[0,0],[1.4,.6],[1.8,2.2],[.8,3.4],[-.8,3.2],[-1.6,1.8],[-1.2,.4]], true);
+  // dribbling round a closed path: a touch every `every` steps; between touches the ball rolls straight on
+  const pathMove = (path, speed, opts={}) => {
+    const every = opts.every || 2, off = opts.offset ?? 1, side = opts.side || 0, lead = touchLead(off, 1);
+    // (the touch point is just in front of the foot, where the body is at that moment)
+    // (every 1: a touch each step with alternate feet — odd steps the right, even steps the left)
+    const touchAt = k => { const st = off + every*k, dk = STEP*st, x = every === 1 && st % 2 === 0 ? -TOUCH_X : TOUCH_X;
+      return toWorld(V(side + x, BALL_R, lead), path.pos(dk), path.heading(dk)); };
+    const T = every*STEP/speed, c = k => rollC(touchAt(k).distanceTo(touchAt(k+1)), T);
+    return t => {
+      const d = t*speed, pos = path.pos(d), yaw = path.heading(d), phi = d/STEP;
+      const s = stride(phi, 1), k = Math.floor((phi - off)/every), x = (phi - off)/every - k;
+      const ball = toLocal(touchAt(k).lerp(touchAt(k+1), (1+c(k))*x - c(k)*x*x), pos, yaw); ball.y = BALL_R;
+      if(opts.lean) s.lean.add(opts.lean);
+      if(opts.look) s.look = opts.look(t);
+      return Object.assign(s, {ball}, world(pos, yaw));
+    };
+  };
+  Object.assign(MOVES, {
+    d1: {view:"diag", cam:{dist:7, pitch:.6, target:[0,.3,2.3]}, cones:[[0,.5],[0,1.5],[0,2.5],[0,3.5],[0,4.5]], f: pathMove(D1, 1.5, {every:1})},
+    // d2: 5 m between two cones; dribble across, stop it with the sole, pull back and turn, dribble back
+    d2: {view:"diag", cam:{dist:7.5, pitch:.55, target:[0,.3,2.5]}, cones:[[0,-.45],[0,5.45]], f: seq([
+      runSeg([0,.2],[0,4.3],2.5, {step:.55}), pullTurnSeg([0,4.3], 0, 1.1, 1),
+      runSeg([0,4.74],[0,.64],2.5, {step:.55}), pullTurnSeg([0,.64], Math.PI, 1.1, 1)])},
+    d3: {view:"diag", cam:{dist:6.5, pitch:.75, target:[0,.2,1.8]}, cones:coneRing(0, 1.8, 1.75, 6), f: pathMove(D3, 1.3, {every:2, offset:1, side:.05})},
+    // d4: fast for 10 m, stop dead with the sole, then the same back
+    d4: {view:"side", cam:{dist:8.5, pitch:.35, target:[0,.4,2.5]}, f: seq([
+      runSeg([0,-.6],[0,5.2],2.4, {amp:1.1, step:.72}), pullTurnSeg([0,5.2], 0, 1.2, 1),
+      runSeg([0,5.64],[0,-.16],2.4, {amp:1.1, step:.72}), pullTurnSeg([0,-.16], Math.PI, 1.2, 1)])},
+    d6: {view:"diag", cam:{dist:7.5, pitch:.6, target:[0,.3,1.8]}, f: pathMove(D6, 1.3, {lean:V(0,.0,-.04), look: t => .55*Math.sin(t*1.7)})}   // head up, looking round
+  });
+
+  // dribble along an open path (from its start to its end) in dur seconds; inE / outE ease the speed in or out
+  function pathSeg(path, dur, {inE=false, outE=false, ballFrom=null, ballTo=null, burst=0, stopSole=null}={}){
+    const ease = u => inE && outE ? ss(0,1,u) : inE ? u*u : outE ? 1-(1-u)*(1-u) : u;
+    const peak = inE && outE ? 1.5 : (inE || outE) ? 2 : 1;
+    const spOf = u => (ease(Math.min(1,u+.01)) - ease(Math.max(0,u-.01))) / (Math.min(1,u+.01) - Math.max(0,u-.01)) / peak;
+    const a2Of = u => Math.min(1, spOf(u)*1.3) * (inE ? 1 : ss(0,.12,u)) * (outE ? 1 : 1 - ss(.88,1,u));
+    const endH = path.heading(path.len - .16), at = (d, x=0) => { const h = path.heading(Math.min(path.len, d)); return (d <= path.len ? path.pos(d) : path.pos(path.len).add(V(Math.sin(endH),0,Math.cos(endH)).multiplyScalar(d - path.len))).add(V(Math.cos(h),0,-Math.sin(h)).multiplyScalar(x)).setY(BALL_R); };
+    // touches: where the ball was (the move before let it go there), then every second step once the player has caught up
+    // with it (after a push-out with burst, nobody touches it until the player gets back to it)
+    const W0 = ballFrom ? ballFrom.clone() : at(.32), touches = [{u:0, W:W0}];
+    if(!burst) touches.push({u:inv(ease, .12/path.len), W:W0.clone()});   // (it lies still until the first step reaches it)
+    for(let k = 0; ; k++){ const dk = STEP*(1 + 2*k); if(dk >= path.len) break; const uk = inv(ease, dk/path.len);
+      if(outE && uk > .62) break; if(burst && uk < .45) continue;
+      touches.push({u:uk, W:at(dk + touchLead(1 + 2*k, a2Of(uk)), TOUCH_X)}); }
+    if(outE) touches.push({u:.86, W:ballTo ? ballTo.clone() : at(path.len + .32), stop:true});   // (ballTo: where the next move expects it)
+    const track = touchBall(touches, dur);
+    return {dur, f: u => {
+      const e = ease(u), d = path.len*e, a2 = a2Of(u), pos = path.pos(d), yaw = path.heading(Math.min(path.len - .16, Math.max(.16, d))), phi = d/STEP;
+      const s = stride(phi, a2), ball = toLocal(track(u), pos, yaw); ball.y = BALL_R;
+      if(outE) soleOn(s, ball, stopSole === 'tap' ? ss(.7,.86,u)*(1-ss(.93,1,u)) : ss(.7,.86,u));
+      return Object.assign(s, {ball}, world(pos, yaw)); }};
+  }
+  // d5 クライフターン: dribble at the cone, fake a kick, drag the ball behind the standing leg with the inside, turn and go back
+  const D5back = makePath([[-.25,2.67],[-.2,1.7],[0,.95],[0,.44]], false);
+  const D5 = seq([
+    runSeg([0,0],[0,2.3],1.8, {stopSole:false}),
+    {dur:1.1, f: u => {                                                 // plant, fake, drag (body still)
+      const P = V(0,0,2.3), plant = ss(0,.25,u), back = ss(.15,.42,u)*(1-ss(.45,.6,u)), fwd = ss(.45,.6,u), reach = ss(.58,.68,u), drag = ss(.68,.92,u);
+      const ball = V(-.25*drag, BALL_R, .32 - .27*drag);                  // behind the standing foot, which is beside and ahead of it
+      const lf = V(-.11,.085,0).lerp(V(-.19,.085,.42), plant);
+      let rf = V(.11,.085,0).lerp(V(.13,.3,-.26), back);                  // the kicking leg swings back…
+      rf = rf.lerp(V(.2,.12,.4), fwd*(1-reach));                          // …comes through as if to kick, stops in front of the ball
+      rf = rf.lerp(V(ball.x + .135, .1, ball.z + .1), reach);               // the inside goes onto the ball, then pulls it behind the standing leg
+      return {pelvis:V(-.02*plant, .88 - .02*plant, 0), lean:V(-.02*fwd, 0, .04), lf, rf, rfYaw:.13 + .7*reach, lh:V(-.4,.95,.15), rh:V(.36,.9,.0+.2*back), ball, root:{pos:P, yaw:0}}; }},
+    {dur:.8, f: u => {                                                  // turn to the left after the ball (the body goes round it)
+      const ballW = V(-.25, BALL_R, 2.35), yaw = -Math.PI*ss(0,1,u), bl = V(-.25,BALL_R,.05).lerp(V(0,BALL_R,.32), ss(0,.7,u));
+      const pos = ballW.clone().sub(bl.clone().applyAxisAngle(UP, yaw)); pos.y = 0;
+      const st = Math.sin(Math.PI*u*2.5);
+      // the standing (left) foot stays planted until the ball has rolled past it, then steps round
+      const e = ss(0,.45,u), e2 = ss(.72,1,u), lf = V(-.19,.085,.42).lerp(V(-.16,.085,0), e2).add(V(0,.04*Math.max(0,st)*e2,0)), rf = V(-.12,.1,.15).lerp(V(.13,.085,0), e).add(V(0,.04*Math.max(0,-st)*e,0));
+      return {pelvis:V(0,.87,0), lean:V(0,0,.05), lf, rf, lh:V(-.38,.92,.1), rh:V(.38,.92,.1), ball:bl, root:{pos, yaw}}; }},
+    pathSeg(D5back, 1.9, {outE:true, ballFrom:V(-.25, BALL_R, 2.35), ballTo:V(0, BALL_R, .12)}),
+    pullTurnSeg([0,.44], Math.PI, 1.1, 1)
+  ]);
+  // d7 またぎでぬく: slow down at the "defender" (cone), step over, then push it out to the other side and accelerate past
+  const D7out = makePath([[0,1.9],[-.45,2.5],[-.6,3.3],[-.3,4.2],[.4,4.9],[1.3,4.4],[1.5,3.0],[1.4,1.4],[.9,.2],[.3,-.55],[0,-.4],[0,0]], false);
+  const D7 = seq([
+    runSeg([0,0],[0,1.9],1.7, {stopSole:false}),
+    {dur:.75, f: u => {                                                 // stepover with the right foot round the front of the ball
+      const ball = V(0, BALL_R, .32), A = u < .62 ? .8*Math.PI*ss(.05,.62,u) : .8*Math.PI*(1-ss(.64,.95,u));
+      const lift = u < .62 ? .15*Math.sin(Math.PI*ss(.05,.62,u)) : .012;
+      const over = V(Math.cos(A)*.21, .085 + lift, .2 + Math.sin(A)*.36), home = V(.13,.085,0);
+      const rf = home.clone().lerp(over, ss(0,.08,u)*(1-ss(.94,1,u))), lean = Math.sin(Math.PI*ss(.05,.9,u));
+      const dA = u < .62 ? 1 : -1, tan = Math.atan2(-Math.sin(A)*.21*dA, Math.cos(A)*.36*dA), w = ss(0,.1,u)*(1-ss(.9,1,u))*(u < .62 ? 1 : .4);
+      const rfYaw = .13 + Math.max(-.45, Math.min(.45, .5*Math.atan2(Math.sin(tan - .13), Math.cos(tan - .13))))*w;
+      return {pelvis:V(.03*lean,.86,0), lean:V(.1*lean,0,.04), lf:V(-.13,.085,0), rf, rfYaw, lh:V(-.44,.92-.06*lean,.15), rh:V(.4,.86+.08*lean,.15), ball, root:{pos:V(0,0,1.9), yaw:0}}; }},
+    pathSeg(D7out, 5.2, {inE:true, outE:true, ballFrom:V(0, BALL_R, 2.22), burst:.6, stopSole:'tap', ballTo:V(0, BALL_R, .32)})   // pushed out past the defender, then chase it
+  ]);
+  Object.assign(MOVES, {
+    d5: {view:"diag", cam:{dist:7, pitch:.5, target:[0,.3,1.9]}, cones:[[0,3.25]], f: D5},
+    d7: {view:"diag", cam:{dist:7.5, pitch:.55, target:[.3,.3,2.3]}, cones:[[0,2.85]], f: D7}
+  });
+
+  // ---------- ball in flight ----------
+  const roll = (a, b, u) => a.clone().lerp(b, 1 - (1-u)*(1-u));                       // rolling, slowing down
+  const arc = (a, b, u, h) => { const p = a.clone().lerp(b, u); p.y = a.y + (b.y - a.y)*u + 4*h*u*(1-u); return p; };
+  // the kicking (right) leg: plant the left foot beside the ball, swing back, through the contact point, follow through.
+  // contact: ankle position at the moment of contact; yaw/tilt: how the boot is turned there. Returns feet + boot angles.
+  function kickLeg(u, B, {contact, yaw=0, tilt=null, back=V(.12,.22,-.42), follow=V(0,.25,.35)}){
+    const bs = ss(.15,.5,u), ds = ss(.5,.7,u), fs = ss(.7,.8,u), home = 1 - ss(.8,1,u);   // a short follow-through, then a calm step back
+    const plant = ss(0,.3,u)*home, lf = V(-.12,.085,0).lerp(V(B.x - .2, .085, B.z - .06), plant);   // planted beside the ball, back home after
+    let rf = V(.12,.085,-.05).lerp(B.clone().add(back).setY(back.y), bs*(1-ds));
+    rf = rf.lerp(contact, ds*(1-fs)).lerp(contact.clone().add(follow), fs);
+    rf = V(.12,.085,-.05).lerp(rf, home);
+    const turn = Math.sin(Math.PI*ss(.4,1,u));
+    return {lf, rf, rfYaw: .13 + (yaw - .13)*turn, rfTilt: tilt === null ? null : tilt*turn, plant, swing: ds, back: bs*(1-ds), follow: fs*home, home};
+  }
+  const KICK_T = .7;                                                                  // contact happens at u = .7 of the kick
+  const B0 = V(0, BALL_R, .5);                                                       // where the ball waits in front of the player
+  // a kick-and-reset loop: kick (dur k), ball flies (fly(u)), fades and a new ball appears at B0
+  // the body during a kick (from video of real kicks): the trunk twists away from the kicking leg as it swings back
+  // (the "bow"), then unwinds through the ball; the body leans forward over the ball (15–30°); the other arm goes out
+  // wide (much more for a hard kick); the standing knee bends a little as the weight comes onto it.
+  function kickBody(k, leg, side=1){
+    const power = leg.power ?? 1, arm = ss(.0,.6,k.back + k.plant*.6)*(1 - k.follow*.6)*k.home;
+    const twist = side*(-.35*power*k.back + .3*power*k.swing*(1 - k.follow))*k.home;
+    const lean = V(-side*.03*k.plant, 0, (.05 + .06*power*k.back + .1*k.swing*(1 - .5*k.follow))*k.home + .03);
+    const out = V(-side*(.4 + .24*power*arm), .95 + .25*power*arm, .12 - .05*arm), other = V(side*.34, .92, -.05 - .15*k.back + .3*k.swing*(1 - k.follow));
+    // the hips move forward with the plant step, over the standing foot (it is beside the ball, 0.44 m ahead)
+    const fwd = .3*k.plant;
+    return {twist, lean, pelvis:V(-side*.05*k.plant, .9 - .035*k.plant, fwd), far:out.add(V(0,0,fwd)), near:other.add(V(0,0,fwd))};
+  }
+  // a kick-and-reset loop: kick (dur k), ball flies (fly(u)), fades and a new ball appears at B0.
+  // run: a short run-up from behind and to the side ({from:[x,z], dur}); after the kick the player steps back there.
+  function kickLoop({kickDur=1.25, flyDur=1.2, fly, leg, wait=.6, cam, run=null}){
+    const R0 = run ? V(run.from[0], 0, run.from[1]) : null, rDur = run ? run.dur : 0, rYaw = run ? Math.atan2(-R0.x, -R0.z) : 0, rLen = run ? R0.length() : 0;
+    const back = run ? Math.max(wait, 1.1) : wait;
+    return t => { const total = rDur + kickDur + flyDur + back, T = t % total, tt = T - rDur;
+      // run-up: a few steps along the line to the ball, turning square to the target at the end
+      if(run && tt < 0){ const u = T/rDur, e = u, pos = R0.clone().lerp(V(0,0,0), e), yaw = rYaw*(1 - ss(.55,1,u));
+        const s = stride(e*rLen/STEP, .85*(1 - ss(.75,1,u)) + .15), k0 = kickLeg(0, B0, leg), hm = ss(.72,1,u);
+        s.lf = s.lf.lerp(k0.lf, hm); s.rf = s.rf.lerp(k0.rf, hm); if(hm > .3){ s.lfTilt = null; s.rfTilt = null; }
+        const ball = toLocal(B0, pos, yaw); ball.y = BALL_R;
+        return Object.assign(s, {ball, root:{pos, yaw}}); }
+      const ku = Math.min(1, tt/kickDur), k = kickLeg(ku, B0, leg), kb = kickBody(k, leg);
+      let ball = B0.clone(), scale = 1, free = false, pos = V(0,0,0), yaw = 0, walk = null;
+      if(tt > kickDur*KICK_T){ const fu = Math.min(1, (tt - kickDur*KICK_T)/flyDur); ball = fly(fu); free = true;
+        if(tt > kickDur*KICK_T + flyDur){ const w = (tt - kickDur*KICK_T - flyDur)/(total - rDur - kickDur*KICK_T - flyDur); ball = B0.clone(); scale = ss(.2,1,w); free = false; if(w < .2) scale = 0; } }
+      // after the kick: walk back (backwards, still facing the target) to the start of the run-up
+      if(run && tt > kickDur + flyDur*.3){ const wu = Math.min(1, (tt - kickDur - flyDur*.3)/(total - rDur - kickDur - flyDur*.3)), e = ss(0,1,wu);
+        pos = V(0,0,0).lerp(R0, e); yaw = rYaw*ss(0,.4,wu); walk = stride(-e*rLen/STEP, .5*Math.sin(Math.PI*wu));
+        const bw = ball.clone(); ball = toLocal(bw, pos, yaw); ball.y = bw.y; }
+      if(walk) return Object.assign(walk, {ball, ballScale:scale, ballFree:free, root:{pos, yaw}});
+      return {pelvis:kb.pelvis, lean:kb.lean, twist:kb.twist, lf:k.lf, rf:k.rf, rfYaw:k.rfYaw, rfTilt:k.rfTilt, plant:{side:"L", k:k.plant},
+              lh:kb.far, rh:kb.near, ball, ballScale:scale, ballFree:free, root:{pos, yaw}}; };
+  }
+  // the inside of the foot (foot turned out, the inside faces the target): ankle behind the ball, boot along +x
+  const INSIDE = {contact: V(B0.x - .06, .095, B0.z - BALL_R - .05), yaw: Math.PI/2, back: V(.1,.27,-.4), follow: V(0,.06,.32), power:.45};
+  // the instep (laces): ankle behind and above, toe pointing down
+  const INSTEP = {contact: V(B0.x + .01, .2, B0.z - BALL_R - .1), tilt: .75, back: V(.06,.5,-.42), follow: V(0,.5,.5), power:1};
+  // receiving a ball that comes back: the sole stops it on top
+  const trap = (u, B) => V(.12,.085,-.05).lerp(V(B.x + .01, B.y + BALL_R + .055, B.z - .03), Math.sin(Math.PI*ss(0,1,u)));
+  Object.assign(MOVES, {
+    // インサイドで当てる: inside pass along the ground to a bottle 5 m away
+    k1: {view:"diag", cam:{dist:7.5, pitch:.45, target:[0,.3,2.6]}, cones:[[0,5.3]], f: kickLoop({flyDur:1.3, leg:INSIDE, run:{from:[-.3,-.85], dur:.6},
+         fly: u => B0.clone().lerp(V(0, BALL_R, 5.1), .55*(1 - (1-u)*(1-u)) + .45*u)})},   // still rolling when it hits the bottle
+    // インステップで遠くへ: laces, the ball flies high and far
+    k2: {view:"side", cam:{dist:9, pitch:.3, target:[0,1.4,4.5]}, f: kickLoop({kickDur:1.1, flyDur:1.6, leg:INSTEP, run:{from:[-.5,-1.35], dur:.75},
+         fly: u => arc(B0, V(0, BALL_R, 14), u, 3.4)})},
+    // すみをねらってシュート: two posts 3 m apart, the ball driven low just inside the left post
+    k3: {view:"diag", cam:{dist:8, pitch:.4, target:[0,.4,3]}, goal:[[-1.5,6],[1.5,6]], f: kickLoop({flyDur:.9, leg:INSTEP, run:{from:[-.5,-1.35], dur:.75},
+         fly: u => u < .7 ? arc(B0, V(-1.25, BALL_R, 6.6), u/.7, .25) : V(-1.25, BALL_R, 6.6).lerp(V(-1.38, BALL_R, 7.6), (u-.7)/.3)})},
+    // うかせてトラップ: toss the ball up with the hands, cushion it with the sole as it comes down, pick it up again
+    k4: {view:"diag", cam:{dist:4, pitch:.25, target:[0,.9,.3]}, f: t => { const T = 3.2, tt = t % T;
+      const hold = V(0, 1.12, .32), land = V(.1, .35, .56), rest = V(.1, BALL_R, .56);
+      let ball, hands = 1, lh, rh, lean = V(0,0,.03), pel = V(0,.89,0), rf = V(.12,.085,0);
+      if(tt < .35){ ball = hold.clone().lerp(V(0,1.3,.35), ss(0,1,tt/.35)); }                         // toss
+      else if(tt < 1.3){ const u = (tt-.35)/.95; ball = arc(V(0,1.3,.35), land, u, .9); hands = 0; }   // up and down
+      else if(tt < 1.75){ const u = (tt-1.3)/.45; ball = land.clone().lerp(rest, ss(0,1,u)); hands = 0; }  // cushioned down
+      else if(tt < 2.6){ ball = rest.clone(); hands = 0; }                                                // still
+      else { const u = (tt-2.6)/.6; ball = rest.clone().lerp(hold, ss(0,1,u)); }                         // picked up
+      // the right foot rises to meet the ball and goes down with it
+      const meet = tt > .95 && tt < 1.75 ? (tt < 1.3 ? ss(.95,1.3,tt) : 1) : 0;
+      if(meet) rf = V(.12,.085,0).lerp(V(ball.x + .01, ball.y + BALL_R + .045, ball.z - .03), meet);
+      if(tt >= 1.75 && tt < 2.0) rf = V(.12,.085,0).lerp(V(rest.x+.01, rest.y + BALL_R + .045, rest.z - .03), 1 - ss(1.75,2.0,tt));
+      // bending down to pick it up (knees and back), hands on the ball when holding
+      const bend = ss(2.2,2.6,tt) * (1 - ss(2.75,3.2,tt));
+      pel = V(0, .89 - .12*bend, -.1*bend); lean = V(0, -.2*bend, .03 + .42*bend);
+      const hb = n => ball.clone().add(V(n*.12, 0, -.02));
+      lh = hands ? hb(-1) : V(-.4,.95,.15).lerp(hb(-1), bend); rh = hands ? hb(1) : V(.38,.95,.15).lerp(hb(1), bend);
+      return {pelvis:pel, lean, lf:V(-.12,.085,0), rf, lh, rh, ball, ballFree: ball.y > .6, handsFixed: hands > 0 || bend > .02}; }},
+  });
+  // ---------- かべ当て (wall 3 m away) ----------
+  const WALL_Z = 3, WB = WALL_Z - BALL_R;
+  function wallLoop({leg, kickDur=1.1, out=.55, back=.75, trapDur=.5, oneTouch=false, chip=false}){
+    const c = kickDur*KICK_T;
+    const toWall = u => chip ? arc(B0, V(0, 1.0, WB), u, .5) : B0.clone().lerp(V(0, BALL_R, WB), u);
+    // back from the wall: slowing a little on the grass, still rolling when it reaches the feet (no stopping by itself)
+    const fromWall = u => chip ? (u < .7 ? arc(V(0,1.0,WB), V(0, BALL_R, 1.1), u/.7, .25) : V(0,BALL_R,1.1).lerp(B0, (u-.7)/.3))
+                               : V(0, BALL_R, WB).lerp(B0, .8*u + .2*(1 - (1-u)*(1-u)));
+    if(oneTouch){
+      // one-touch: the contact is at the start of each cycle, the leg already swinging as the ball comes back
+      const total = out + back;
+      return t => { const tt = t % total, ku = tt < kickDur - c ? (tt + c)/kickDur : tt > total - c ? (tt - (total - c))/kickDur : 1;
+        const n = Math.floor(t / total), k = kickLeg(ku, B0, leg), ball = tt < out ? toWall(tt/out) : fromWall((tt-out)/back);
+        // left and right take turns (mirror the kick for the left foot)
+        const R = (tt > total - c ? n + 1 : n) % 2 === 0, m = v => V(-v.x, v.y, v.z);   // the swing before a touch belongs to that touch's foot
+        const kb = kickBody(k, leg, R ? 1 : -1);
+        return {pelvis:kb.pelvis, lean:kb.lean, twist:kb.twist, plant:{side: R ? "L" : "R", k:k.plant},
+                lf: R ? k.lf : m(k.rf), rf: R ? k.rf : m(k.lf), lfYaw: R ? undefined : -k.rfYaw, rfYaw: R ? k.rfYaw : undefined, lfTilt: R ? null : k.rfTilt, rfTilt: R ? k.rfTilt : null,
+                lh: R ? kb.far : kb.near, rh: R ? kb.near : kb.far, ball, ballFree: ku > KICK_T - .02 && ku < .99 || tt < out}; };
+    }
+    const total = c + out + back + trapDur;
+    return t => { const tt = t % total, k = kickLeg(Math.min(1, tt/kickDur), B0, leg);
+      let ball = B0.clone(), free = false, trapU = -1;
+      if(tt >= c && tt < c + out){ ball = toWall((tt-c)/out); free = true; }
+      else if(tt >= c + out && tt < c + out + back){ ball = fromWall((tt-c-out)/back); free = true; }
+      else if(tt >= c + out + back) trapU = (tt - c - out - back)/trapDur;
+      let rf = k.rf, rfYaw = k.rfYaw, rfTilt = k.rfTilt;
+      if(tt > kickDur){ rf = V(.12,.085,-.05); rfYaw = undefined; rfTilt = null; }
+      // the sole rises as the ball comes back and lands on top of it just as it arrives, stays, then goes home
+      const top = V(B0.x + .01, BALL_R*2 + .055, B0.z - .03), up = V(.1, BALL_R*2 + .1, B0.z - .12);
+      if(tt >= c + out + back*.65 && trapU < 0){ const a = ss(c + out + back*.65, c + out + back, tt); rf = V(.12,.085,-.05).lerp(up, ss(0,.6,a)).lerp(top, ss(.55,1,a)); rfYaw = undefined; rfTilt = null; }
+      if(trapU >= 0){ rf = top.clone().lerp(V(.12,.085,-.05), ss(.45,1,trapU)); rfYaw = undefined; rfTilt = null; }
+      // while the ball is away: a look over each shoulder (首振り), back on the ball before it arrives
+      const sx = (tt - c - .05)/(out + back*.55), look = sx > 0 && sx < 1 ? .85*Math.sin(2*Math.PI*sx) : 0;
+      // the body: as in a kick while kicking, then a ready stance (knees soft, leaning a little forward) to receive
+      const kb = kickBody(k, leg), kk = tt < kickDur ? 1 - ss(kickDur*.85, kickDur, tt) : 0;
+      return {pelvis:kb.pelvis, lean:kb.lean.clone().lerp(V(0,0,.1), 1 - kk), twist:kb.twist*kk, lf: tt < kickDur ? k.lf : V(-.12,.085,0), rf, rfYaw, rfTilt,
+              plant: tt < kickDur ? {side:"L", k:k.plant} : null, look, lh:kb.far.clone().lerp(V(-.42,.94,.14), 1 - kk), rh:kb.near.clone().lerp(V(.4,.92,.1), 1 - kk), ball, ballFree:free}; };
+  }
+  Object.assign(MOVES, {
+    w1: {view:"diag", cam:{dist:6.5, pitch:.4, target:[0,.5,1.5]}, wall:{z:WALL_Z}, f: wallLoop({leg:INSIDE})},
+    // 止めて向きをかえる: the ball comes back, the first touch takes it to the side while the body turns, two steps, back again
+    w2: {view:"diag", cam:{dist:7.5, pitch:.45, target:[.5,.5,1.2]}, wall:{z:WALL_Z}, f: (() => {
+      const T = 4.2, kd = .9, c = kd*KICK_T, P1 = c + 1.3, P2 = T - P1;
+      // the first touch: the inside of the right foot (toe turned out to the right) meets the ball as it arrives
+      const A0 = V(0,BALL_R,.6), S = V(.8,BALL_R,.1), CY = 1.2, nrm = V(-Math.cos(CY), 0, Math.sin(CY));
+      const contact = A0.clone().sub(nrm.clone().multiplyScalar(BALL_R + .05)).add(V(-.04*Math.sin(CY), 0, -.04*Math.cos(CY))).setY(.085);
+      const posAt = u => V(0,0,0).lerp(V(.48,0,.1), ss(.06,.4,u)).lerp(V(0,0,0), ss(.5,.92,u));
+      const yawAt = u => Math.PI/2*ss(.02,.3,u)*(1 - ss(.5,.9,u));
+      const ballAt = u => u < .4 ? A0.clone().lerp(S, 1.3*(u/.4) - .3*(u/.4)**2)       // rolls off to the right and back, stopped by the sole
+                       : S.clone().lerp(B0, ss(.5,.92,u));                           // rolled back under the sole to where it started
+      return t => { const tt = t % T;
+        if(tt < P1){                                                       // pass, ball to the wall and back (like w1)
+          const k = kickLeg(Math.min(1, tt/kd), B0, INSIDE); let ball = B0.clone(), free = false;
+          if(tt >= c && tt < c + .55){ ball = B0.clone().lerp(V(0,BALL_R,WB), (tt-c)/.55); free = true; }
+          else if(tt >= c + .55){ const u = (tt-c-.55)/.75; ball = V(0,BALL_R,WB).lerp(A0, .8*u + .2*(1-(1-u)*(1-u))); free = true; }
+          // the right foot goes out to meet it, toe turned out (the body opening to the right)
+          const meet = ss(P1 - .4, P1, tt);
+          const rf = tt > kd ? V(.12,.085,-.05).lerp(contact, meet) : k.rf;
+          // look over the right shoulder (where to turn) while the ball is away, then open the body to the right to receive
+          const sx = (tt - c - .1)/.75, look = sx > 0 && sx < 1 ? 1.0*Math.sin(Math.PI*sx) : 0;
+          const kb = kickBody(k, INSIDE), kk = tt < kd ? 1 - ss(kd*.85, kd, tt) : 0;
+          return {pelvis:kb.pelvis, lean:kb.lean.clone().lerp(V(0,0,.1), 1 - kk), lf: tt < kd ? k.lf : V(-.12,.085,0), rf, rfYaw: tt > kd ? .13 + (CY - .13)*meet : k.rfYaw,
+                  plant: tt < kd ? {side:"L", k:k.plant} : null, look, twist:kb.twist*kk + .45*meet, lh:kb.far.clone().lerp(V(-.42,.94,.14), 1 - kk), rh:kb.near.clone().lerp(V(.4,.92,.1), 1 - kk), ball, ballFree:free};
+        }
+        const u = (tt - P1)/P2, pos = posAt(u), yaw = yawAt(u), bw = ballAt(u), ball = toLocal(bw, pos, yaw); ball.y = BALL_R;
+        const walked = (posAt(u).length() + (u > .5 ? .5 : 0)) / STEP, amp = .5*Math.sin(Math.PI*ss(.06,.4,u)) + .4*Math.sin(Math.PI*ss(.5,.92,u));
+        const st = stride(walked*2, amp);
+        // right foot: goes with the ball for the touch, back under the body, then on top of the ball (stop, roll back), then home
+        const withBall = toLocal(contact.clone().add(bw.clone().sub(A0).multiplyScalar(.5)), pos, yaw);
+        const top = V(ball.x + .01, BALL_R*2 + .055, ball.z - .03);
+        let rf = withBall.lerp(st.rf, ss(.04,.2,u)).lerp(top, ss(.3,.4,u)).lerp(V(.12,.085,-.05), ss(.92,1,u));
+        const yawK = 1 - ss(.04,.2,u), rfYaw = ss(.3,.4,u) > .5 && u < .92 ? undefined : .13 + (CY - .13)*yawK;
+        return Object.assign(st, {rf, rfYaw, rfTilt:null, twist:.45*(1 - ss(.04,.25,u)), pelvis:st.pelvis.clone().add(V(0,-.02*ss(.3,.4,u)*(1-ss(.92,1,u)),0)), ball, root:{pos, yaw}, lh:V(-.38,.92,.1), rh:V(.36,.9,.08)}); };
+    })()},
+    // ダイレクトかべ当て: no stop, every return is passed straight back
+    w3: {view:"diag", cam:{dist:6.5, pitch:.4, target:[0,.5,1.5]}, wall:{z:WALL_Z}, f: wallLoop({leg:INSIDE, kickDur:.8, out:.45, back:.55, oneTouch:true})},
+    // うかせてかべ当て: a chip that hits the wall about 1 m up, comes back with a bounce, stopped with the sole
+    w4: {view:"side", cam:{dist:7, pitch:.3, target:[0,.6,1.5]}, wall:{z:WALL_Z}, f: wallLoop({leg:INSTEP, out:.7, back:1.0, chip:true})}
+  });
+
+  // ---------- 体づくり ----------
+  const hop = (u) => Math.sin(Math.PI*u);                                              // 0 → 1 → 0 over a hop
+  // プランク: the whole body tilted to lie straight on forearms and toes (found once so elbows and toes touch the ground)
+  const PLANK = (() => {
+    const local = {pelvis:V(0,.9,0), lean:V(0,0,0), lf:V(-.1,.085,0), rf:V(.1,.085,0), lfTilt:0, rfTilt:0,
+                   lh:V(-.16,1.62,.3), rh:V(.16,1.62,.3), armPole:V(0,-.7,1)};
+    // elbow ≈ shoulder + forward 0.29 (local), toe ≈ ankle + forward 0.17: pick the tilt so both are at the ground
+    const sh = V(0, .9 + .468, .28), toe = V(0, .085 - .01, .17);
+    let best = 1.4, err = 9;
+    for(let a = 1.2; a < 1.6; a += .0005){ const y1 = sh.y*Math.cos(a) - sh.z*Math.sin(a), y2 = toe.y*Math.cos(a) - toe.z*Math.sin(a); const e = Math.abs((y1 - .06) - (y2 - .01)); if(e < err){ err = e; best = a; } }
+    const lift = .06 - (sh.y*Math.cos(best) - sh.z*Math.sin(best));
+    return {local, pitch: best, lift};
+  })();
+  Object.assign(MOVES, {
+    // 線またぎステップ: small quick hops over a line, forwards and back, then side to side
+    b1: {view:"diag", cam:{dist:4.2, pitch:.3, target:[0,.6,.2]}, line:{z:.2, w:1.4}, f: t => { const n = Math.floor(t/.32), u = (t/.32)%1;
+      const P = [[0,0],[0,.38],[0,0],[0,.38],[0,0],[0,.38],[-.22,.38],[.22,.38],[-.22,.38],[.22,.38]], pos = k => { const q = P[((k % P.length) + P.length) % P.length]; return V(q[0], 0, q[1]); };
+      const a = pos(n), b = pos(n+1), c = a.clone().lerp(b, ss(.1,.8,u)), h = .06*hop(ss(.05,.85,u));
+      return {pelvis:V(c.x, .86 + h, c.z - .02), lean:V(0,0,.05), lf:V(c.x - .11, .085 + h*1.2, c.z), rf:V(c.x + .11, .085 + h*1.2, c.z),
+              lh:V(c.x - .36, .92, c.z + .1 + .08*Math.sin(Math.PI*n)), rh:V(c.x + .36, .92, c.z + .1 - .08*Math.sin(Math.PI*n)), ball:null}; }},
+    // ケンケン: hops on one leg, the other leg bent behind; change legs every 4 hops
+    b2: {view:"diag", cam:{dist:4.2, pitch:.25, target:[0,.8,0]}, f: t => { const n = Math.floor(t/.42), u = (t/.42)%1, R = Math.floor(n/4) % 2 === 0;
+      const h = .07*hop(ss(.1,.75,u)), change = n % 4 === 3 ? ss(.15,.75,u) : 0, r = R ? 1 - change : change;   // r = 1: standing on the right
+      const footAt = (side, standW) => { const sx = side; return V(sx*.09, .085 + h, 0).lerp(V(sx*.12, .38 + h, -.24), 1 - standW); };
+      const sx = r > .5 ? 1 : -1;
+      return {pelvis:V(.03*(2*r-1), .87 + h - .02*(1-hop(u)), 0), lean:V(.02*(2*r-1),0,.04), lf: footAt(-1, 1 - r), rf: footAt(1, r),
+              lh:V(-.38,.98 + h,.14), rh:V(.38,.98 + h,.14), ball:null}; }},
+    // プランク: body straight on forearms and toes, a slow breath
+    b3: {view:"side", cam:{dist:4.5, pitch:.35, target:[0,.25,.75]}, f: t => { const b = .006*Math.sin(t*1.6), L0 = PLANK.local;
+      return Object.assign({}, L0, {pelvis:L0.pelvis.clone().add(V(0,b,0)), lean:V(0,0,b), ball:null, root:{pos:V(0,PLANK.lift,0), yaw:0, pitch:PLANK.pitch}}); }},
+    // ダッシュ＆ストップ: 5 m dash, a low stop, turn, dash back
+    b4: {view:"side", cam:{dist:8, pitch:.3, target:[0,.5,2.5]}, cones:[[.5,0],[.5,5]], f: seq([
+      {dur:1.4, f: u => { const e = ss(0,1,u), d = 4.6*e, a = Math.min(1, 4*Math.min(u,1-u))*1.15, s = stride(d/.8, a, .8);
+        s.pelvis.y -= .12*ss(.75,1,u); s.lean.z += .08*ss(.75,1,u); return Object.assign(s, {ball:null, root:{pos:V(0,0,.2+d), yaw:0}}); }},
+      {dur:.5, f: u => { const s = stride(0,0); s.pelvis.y -= .12*(1-ss(0,1,u)); const st = Math.sin(Math.PI*u*2);
+        s.lf.y += .05*Math.max(0,st); s.rf.y += .05*Math.max(0,-st); return Object.assign(s, {ball:null, root:{pos:V(0,0,4.8), yaw:Math.PI*ss(0,1,u)}}); }},
+      {dur:1.4, f: u => { const e = ss(0,1,u), d = 4.6*e, a = Math.min(1, 4*Math.min(u,1-u))*1.15, s = stride(d/.8, a, .8);
+        s.pelvis.y -= .12*ss(.75,1,u); s.lean.z += .08*ss(.75,1,u); return Object.assign(s, {ball:null, root:{pos:V(0,0,4.8-d), yaw:Math.PI}}); }},
+      {dur:.5, f: u => { const s = stride(0,0); s.pelvis.y -= .12*(1-ss(0,1,u)); const st = Math.sin(Math.PI*u*2);
+        s.lf.y += .05*Math.max(0,st); s.rf.y += .05*Math.max(0,-st); return Object.assign(s, {ball:null, root:{pos:V(0,0,.2), yaw:Math.PI*(1+ss(0,1,u))}}); }}
+    ])},
+    // 片足立ちタッチ: stand on one leg, the other sole taps the top of the ball; arms out for balance; change legs
+    b5: {view:"diag", cam:{dist:3.8, pitch:.25, target:[0,.7,.2]}, f: t => { const R = Math.floor(t/4) % 2 === 0, k = (t*2)%1, sx = R ? 1 : -1;
+      const ball = V(0, BALL_R, .26), top = V(sx*.01, BALL_R*2 + .055, .23), hover = V(sx*.03, BALL_R*2 + .14, .2);
+      const tap = hover.clone().lerp(top, Math.sin(Math.PI*ss(.2,.8,k)));
+      const sw = Math.min(1, (t % 4)/.4, (4 - t % 4)/.4), foot = V(sx*.12,.085,0).lerp(tap, ss(0,1,sw));
+      return {pelvis:V(-sx*.04, .89, 0), lean:V(-sx*.02,0,.03), lf: R ? V(-.1,.085,0) : foot, rf: R ? foot : V(.1,.085,0),
+              lh:V(-.5,1.05,.08), rh:V(.5,1.05,.08), ball}; }},
+    // 両足ジャンプ: arms back and knees bent, jump with the arms up, soft landing
+    b6: {view:"diag", cam:{dist:4.2, pitch:.25, target:[0,.9,0]}, f: t => { const u = (t/.95)%1;
+      const crouch = ss(0,.3,u)*(1-ss(.3,.4,u)) + ss(.8,.9,u)*(1-ss(.9,1,u))*.7, air = hop(ss(.38,.8,u)), h = .3*air;
+      const arms = ss(.25,.42,u)*(1-ss(.75,.95,u));
+      return {pelvis:V(0, .9 - .2*crouch + h, -.04*crouch), lean:V(0,0,.03 + .12*crouch), lf:V(-.12, .085 + h*.9, 0), rf:V(.12, .085 + h*.9, 0),
+              lh:V(-.3, .75 + .9*arms - .1*crouch + h, -.25 + .4*arms), rh:V(.3, .75 + .9*arms - .1*crouch + h, -.25 + .4*arms), ball:null}; }}
+  });
+  // ---------- もも・足・頭リフティング: foot → thigh → head → foot, the ball flying between the touches ----------
+  const T6 = (() => {
+    const g = 9.8, touches = [
+      {at:V(.1, .28, .6), part:"foot"},                     // ball centre at each touch
+      {at:V(.1, 1.07 + .05, .24), part:"thigh"},
+      {at:V(0, 1.82 + .05, .03), part:"head"}];
+    const flight = (A, B, apex) => { const up = Math.sqrt(2*(apex - A.y)/g), dn = Math.sqrt(2*(apex - B.y)/g); return {A, B, apex, up, dn, T: up + dn}; };
+    const legs = touches.map((tc, i) => { const nx = touches[(i+1) % touches.length]; return flight(tc.at, nx.at, Math.max(tc.at.y, nx.at.y) + .32); });
+    const total = legs.reduce((s,l)=>s+l.T, 0);
+    return {touches, legs, total, ballAt(t){ let tt = t % total, i = 0; while(tt > legs[i].T){ tt -= legs[i].T; i++; }
+      const L1 = legs[i], vy = g*L1.up, y = L1.A.y + vy*tt - g/2*tt*tt, f = tt / L1.T; const p = L1.A.clone().lerp(L1.B, f); p.y = y;
+      return {p, i, tt, f}; }};
+  })();
+  // how close (in seconds) the move is to the next touch of a part: 1 at the touch, 0 far away
+  function nearTouch(t, part, w){ let best = 0; const T = T6.total; let acc = 0;
+    for(let i=0;i<T6.legs.length;i++){ if(T6.touches[i].part === part){ for(const k of [-1,0,1]){ const at = acc + k*T, d = Math.abs(((t % T) + T) % T - at); best = Math.max(best, 1 - ss(0, w, d)); } } acc += T6.legs[i].T; }
+    return best; }
+  MOVES.t6 = {view:"side", vb:null, cam:{dist:4.4, pitch:.2, target:[0,1,.3]}, f: t => {
+    const b = T6.ballAt(t).p, foot = nearTouch(t, "foot", .3), thigh = nearTouch(t, "thigh", .4), head = nearTouch(t, "head", .35);
+    // foot touch: leg out almost straight under the ball (like リフティング); thigh: knee up so the thigh is level under it
+    let rf = V(.12,.085,.06).lerp(V(.1, .28 - BALL_R - .02, .48), foot).lerp(V(.1, .44 + .05, .42), thigh);
+    return {pelvis:V(-.012*(foot+thigh), .87 - .02*head, 0), lean:V(0, -.01*head, .025 - .05*head), lf:V(-.11,.085,0), rf,
+            lh:V(-.38,.92+.1*head,.1), rh:V(.37,.92+.1*head,.12), ball:b, ballFree: b.y > .55 && thigh < .5}; }};
+  // ---------- ジンガではこぶ: ginga sway while carrying the ball forward along a loop ----------
+  const G4 = makePath([[0,0],[0,2.5],[.9,3.6],[1.9,2.6],[1.9,.4],[1,-.7]], true);
+  MOVES.g4 = {view:"diag", cam:{dist:7, pitch:.55, target:[.9,.3,1.4]}, f: t => {
+    const d = t*.9, pos = G4.pos(d), yaw = G4.heading(d), phi = d/STEP, beat = t*GINGA_BPM/60;
+    const s = stride(phi, .55), sway = Math.sin(beat*Math.PI);
+    s.pelvis.x += .05*sway; s.pelvis.y -= .04; s.lean.add(V(-.07*sway, 0, .02));
+    // touched every second step (inside of the foot, a little to the side it sways to), rolling straight between
+    const touchAt = k => { const dk = STEP*(1 + 2*k); return toWorld(V(TOUCH_X + .05*Math.sin(dk/.9*GINGA_BPM/60*Math.PI*.5), BALL_R, touchLead(1, .55)), G4.pos(dk), G4.heading(dk)); };
+    const k = Math.floor((phi - 1)/2), x = (phi - 1)/2 - k;
+    const ball = toLocal(touchAt(k).lerp(touchAt(k+1), 1.4*x - .4*x*x), pos, yaw); ball.y = BALL_R;
+    s.lh = V(-.42-.04*sway, .88+.05*sway, .15); s.rh = V(.42-.04*sway, .88-.05*sway, .15);
+    return Object.assign(s, {ball}, world(pos, yaw)); }};
+
+  // ---------- the hips a little higher in every move ----------
+  // (the moves were written with the hips 5 cm too low for these legs: standing knees were bent 45°, real players
+  // stand with 10–30°). The hands go up with them; moves can keep their hands where they are (hands on the ball).
+  const LIFT = .05;
+  // posture for the moves on the spot (from video of real players: trunk 8–16° forward, arms 25–45° out to the side)
+  const POSTURE = {t1:[.08,.42], t2:[.08,.42], t3:[.08,.42], t4:[.08,.42], t5:[.07,.42], t6:[0,.44], t7:[.08,.42],
+                   g1:[.06,0], g2:[.06,0], g3:[.06,0], k4:[.08,.42], d5:[.09,.4], d7:[.09,.4]};
+  for(const id of Object.keys(MOVES)){ const f0 = MOVES[id].f, PO = POSTURE[id];
+    MOVES[id].f = t => { const p = f0(t); if(p.root && p.root.pitch) return p;
+      const q = Object.assign({}, p, {pelvis:p.pelvis.clone().add(V(0,LIFT,0))});
+      if(PO){ const ln = (p.lean || V(0,0,0)).clone(); ln.z = Math.max(ln.z, PO[0]); q.lean = ln; }
+      if(!p.handsFixed){ for(const [k, sx] of [["lh",-1],["rh",1]]){ if(!p[k]) continue; const h = p[k].clone().add(V(0,LIFT,0));
+          if(PO && PO[1] && h.y < 1.2 && sx*h.x < PO[1]) h.x = sx*PO[1];
+          q[k] = h; } }
+      return q; }; }
+
+  // ---------- smoothing and the loop ----------
+  const cam = {yaw:Math.PI, pitch:.14, dist:3.5};
+  const VIEWS = {back:Math.PI, side:Math.PI/2, front:0, diag:Math.PI*.78};
+  let current = null, host = null, t0 = 0, paused = false, pauseAt = 0, SM = {}, last = 0, raf = 0;
+  let vt = 0, speed = 1;                                                   // the move's own clock (runs at half speed in slow motion)
+  // ---------- what touched the ball: the ball's speed or direction changed (or it is being rolled under a foot) ----------
+  const glow = {bootL:0, bootR:0, thighL:0, thighR:0, head:0};
+  const segDist = (a, b, c) => { const ab = b.clone().sub(a), t = Math.max(0, Math.min(1, c.clone().sub(a).dot(ab)/ab.lengthSq())); return a.clone().add(ab.multiplyScalar(t)).distanceTo(c); };
+  const ballWorld = p => { const r = p.root || {}, yaw = r.yaw || 0, b = p.ball.clone().applyAxisAngle(UP, yaw);
+    return b.add(r.pos ? r.pos : r.pivot ? r.pivot.clone().sub(r.pivot.clone().applyAxisAngle(UP, yaw)) : V(0,0,0)); };
+  const toWorldP = (p, v) => { const r = p.root || {}, yaw = r.yaw || 0, w = v.clone().applyAxisAngle(UP, yaw);
+    return w.add(r.pos ? r.pos : r.pivot ? r.pivot.clone().sub(r.pivot.clone().applyAxisAngle(UP, yaw)) : V(0,0,0)); };
+  // each body part that can touch the ball: how far it is from the ball, and where it is (for its speed)
+  function partsOf(p){
+    const bl = p.ball, lean = p.lean || V(0,0,0), out = {};
+    for(const [s, ft, sx] of [["L", p.lf, -1], ["R", p.rf, 1]]){
+      const a = footAngles(p, s, ft), q = bootQ(ft, a.yaw, a.tilt); let g = 9;
+      for(const pt of BOOT_PTS) g = Math.min(g, pt.clone().applyQuaternion(q).add(ft).distanceTo(bl) - BALL_R);
+      out["boot"+s] = {gap:g, at:toWorldP(p, ft)};
+      const hip = p.pelvis.clone().add(V(sx*.095,-.01,0)), knee = ik(hip, ft, L.thigh, L.shin, V(0,0,1));
+      out["thigh"+s] = {gap:segDist(hip, knee, bl) - BALL_R - .075, at:toWorldP(p, knee)};
+    }
+    const hd = p.pelvis.clone().add(V(0,.75,0)).add(lean.clone().multiplyScalar(1.25));
+    out.head = {gap:hd.distanceTo(bl) - BALL_R - .115, at:toWorldP(p, hd)};
+    return out;
+  }
+  function touching(mv, t){
+    const h = 1/60, ps = [mv.f(t), mv.f(t - h), mv.f(t - 2*h)];
+    if(ps.some(p => !p.ball || (p.ballScale ?? 1) < .5)) return null;
+    const [b0, b1, b2] = ps.map(ballWorld), acc = b0.clone().sub(b1.clone().multiplyScalar(2)).add(b2).length()/(h*h), vel = b0.distanceTo(b1)/h;
+    const P0 = partsOf(ps[0]), P1 = partsOf(ps[1]);
+    let near = null, ng = 9; for(const k in P0) if(P0[k].gap < ng){ ng = P0[k].gap; near = k; }
+    // the ball's speed changed: of the parts close to it, the one that was moving is the one that hit it
+    // (the standing foot is just as close when kicking, but it is still)
+    if(acc > 8){ let best = null, bs = -1;
+      for(const k in P0){ const g = Math.min(P0[k].gap, P1[k].gap); if(g > .14) continue; const sp = P0[k].at.distanceTo(P1[k].at)/h; if(sp > bs){ bs = sp; best = k; } }
+      if(best) return bs > .3 ? best : near; }
+    if(ng < .025 && vel > .25) return near;                               // rolling it under the foot
+    if(ng < .015){ const sp = P0[near].at.distanceTo(P1[near].at)/h; if(sp > .4) return near; }   // a foot arriving on the ball
+    return null;
+  }
+  function smooth(p, dt, crisp){
+    const a = 1 - Math.exp(-dt*(crisp ? 40 : 22)), out = {};
+    for(const k of Object.keys(p)){
+      const v = p[k];
+      if(k === "root" && v && v.pos){                                       // the figure's place and direction on the ground
+        const b = 1 - Math.exp(-dt*14);
+        SM.rootPos = SM.rootPos ? SM.rootPos.lerp(v.pos, b) : v.pos.clone();
+        let dy = v.yaw - (SM.rootYaw ?? v.yaw); dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+        SM.rootYaw = (SM.rootYaw ?? v.yaw) + dy*b;
+        out.root = {pos:SM.rootPos.clone(), yaw:SM.rootYaw, pitch:v.pitch}; continue;
+      }
+      if(!(v instanceof THREE.Vector3)){ out[k] = v; continue; }
+      SM[k] = SM[k] ? SM[k].lerp(v, a) : v.clone(); out[k] = SM[k].clone();
+    }
+    return out;
+  }
+  function resize(){ if(!host) return; const w = host.clientWidth, h = host.clientHeight; if(!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+  function frame(now){
+    raf = 0;
+    if(!host || !document.body.contains(renderer.domElement)){ host = null; return; }
+    const dt = Math.min(.05, (now - (last||now))/1000); last = now;
+    if(!paused) vt += dt*speed;
+    const tt = vt, mv = MOVES[current];
+    setBody(smooth(mv.f(tt), paused ? 1 : dt*speed, mv.beat));
+    // the part that touched the ball lights up for a moment
+    if(!paused){ const hit = touching(mv, tt); for(const k in glow) glow[k] = k === hit ? 1 : Math.max(0, glow[k] - dt*speed/.4); }
+    for(const k in glow){ const m = glowMat[k]; m.emissive.setHex(0xffd23d); m.emissiveIntensity = 1.1*glow[k]; }
+    const c = mv.cam || {}, target = c.target ? V(...c.target) : V(0,.8,.12);
+    const dist = c.dist || cam.dist;
+    camera.position.set(target.x + Math.sin(cam.yaw)*Math.cos(cam.pitch)*dist, target.y + Math.sin(cam.pitch)*dist, target.z + Math.cos(cam.yaw)*Math.cos(cam.pitch)*dist);
+    camera.lookAt(target);
+    renderer.render(scene, camera);
+    raf = requestAnimationFrame(frame);
+  }
+  addEventListener("resize", resize);
+  // the drill's things on the ground (cones = plastic bottles in real life)
+  let coneGeo = null, coneMat = null, stripeMat = null;
+  function setProps(mv){
+    while(props.children.length) props.remove(props.children[0]);
+    if(!coneGeo){ coneGeo = new THREE.ConeGeometry(.085, .26, 20); coneMat = M({color:0xff6b2c, roughness:.5}); stripeMat = M({color:0xffffff, roughness:.5}); }
+    if(mv.wall){ const w = new THREE.Mesh(new THREE.BoxGeometry(mv.wall.w || 3.2, mv.wall.h || 1.3, .18), M({color:0x9aa1a8, roughness:.9}));
+      w.position.set(mv.wall.x || 0, (mv.wall.h || 1.3)/2, mv.wall.z + .09); w.receiveShadow = true; w.castShadow = true; props.add(w); }
+    if(mv.line){ const l = new THREE.Mesh(new THREE.PlaneGeometry(mv.line.w || 1.6, .05), M({color:0xffd23d, roughness:.6}));
+      l.rotation.x = -Math.PI/2; if(mv.line.along === "z") l.rotation.z = Math.PI/2; l.position.set(mv.line.x || 0, .006, mv.line.z || 0); props.add(l); }
+    for(const [x,z] of (mv.goal || [])){ const g = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, .9, 14), M({color:0xffffff, roughness:.5})); g.position.set(x, .45, z); g.castShadow = true; props.add(g); }
+    for(const [x,z] of (mv.cones || [])){
+      const c = new THREE.Mesh(coneGeo, coneMat); c.position.set(x, .13, z); c.castShadow = true; props.add(c);
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(.048, .056, .03, 18), stripeMat); st.position.set(x, .16, z); props.add(st);
+    }
+    fig.position.set(0,0,0); fig.rotation.set(0,0,0);
+  }
+
+  // ---------- the beat (Web Audio): drum on the beat (accent on 1), shaker on the off-beats, in time with the move ----------
+  let AC = null, beatOn = false, nextBeat = 0, beatBpm = GINGA_BPM;
+  function drum(time, accent){ const o = AC.createOscillator(), g = AC.createGain(); o.type = "sine";
+    o.frequency.setValueAtTime(accent ? 120 : 95, time); o.frequency.exponentialRampToValueAtTime(45, time + .18);
+    g.gain.setValueAtTime(accent ? .9 : .6, time); g.gain.exponentialRampToValueAtTime(.001, time + .25); o.connect(g).connect(AC.destination); o.start(time); o.stop(time + .26); }
+  function shaker(time, vol){ const buf = AC.createBuffer(1, AC.sampleRate*.05, AC.sampleRate), d = buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i] = (Math.random()*2-1) * (1 - i/d.length);
+    const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); src.buffer = buf; f.type = "highpass"; f.frequency.value = 6000; g.gain.value = vol;
+    src.connect(f).connect(g).connect(AC.destination); src.start(time); }
+  setInterval(() => {
+    if(!beatOn || !AC || paused) return;
+    const spb = 60/beatBpm;
+    while(nextBeat < AC.currentTime + .2){ const b = Math.round((nextBeat - AC.t0) / (spb/2)); if(b % 2 === 0){ drum(nextBeat, (b/2) % 2 === 0); shaker(nextBeat, .12); } else shaker(nextBeat, .25); nextBeat += spb/2; }
+  }, 50);
+  function syncBeat(){ if(!AC) return; const spb = 60/beatBpm, ab = (performance.now() - t0)/1000/spb; AC.t0 = AC.currentTime - ab*spb; nextBeat = AC.t0 + Math.ceil(ab*2)*spb/2; }
+
+  return {
+    has: id => !!MOVES[id],
+    isBeat: id => !!(MOVES[id] && MOVES[id].beat),
+    show(container, id){
+      if(!renderer) init();
+      // the practice screen re-draws itself often: keep the move running if it is the same one
+      if(id !== current){ current = id; t0 = performance.now(); vt = 0; paused = false; SM = {}; last = 0; for(const k in glow) glow[k] = 0; cam.yaw = VIEWS[MOVES[id].view] ?? Math.PI; cam.pitch = (MOVES[id].cam && MOVES[id].cam.pitch) || .14; setProps(MOVES[id]); }
+      host = container;
+      beatBpm = id === "g3" ? 90 : GINGA_BPM;
+      container.appendChild(renderer.domElement); resize();
+      if(beatOn) syncBeat();
+      if(!raf) raf = requestAnimationFrame(frame);
+    },
+    view(v){ cam.yaw = VIEWS[v]; },
+    togglePause(){ paused = !paused; if(paused) pauseAt = performance.now(); else { t0 += performance.now() - pauseAt; if(beatOn) syncBeat(); } return paused; },
+    // slow motion: the move runs at half speed
+    toggleSlow(){ speed = speed === 1 ? .5 : 1; return speed < 1; },
+    toggleBeat(){ beatOn = !beatOn; if(beatOn){ AC = AC || new (window.AudioContext||window.webkitAudioContext)(); AC.resume(); syncBeat(); } return beatOn; },
+    stopBeat(){ beatOn = false; },
+    // a still picture of a pose with a transparent background (used to make the app icons)
+    _still(make, {yaw=Math.PI*.85, pitch=.12, dist=3.2, target=[0,.95,.1], size=512, fov=30}={}){
+      if(!renderer) init();
+      const r2 = new THREE.WebGLRenderer({antialias:true, alpha:true, preserveDrawingBuffer:true});
+      r2.setSize(size, size); r2.outputEncoding = THREE.sRGBEncoding; r2.shadowMap.enabled = false;
+      const bg = scene.background; scene.background = null; ground.visible = false; setProps({});
+      for(const k in glowMat) glowMat[k].emissiveIntensity = 0;
+      setBody(Object.assign(make(V, BALL_R), {marks:false}));
+      const cam2 = new THREE.PerspectiveCamera(fov, 1, .1, 50), tg = V(...target);
+      cam2.position.set(tg.x + Math.sin(yaw)*Math.cos(pitch)*dist, tg.y + Math.sin(pitch)*dist, tg.z + Math.cos(yaw)*Math.cos(pitch)*dist); cam2.lookAt(tg);
+      r2.render(scene, cam2); const url = r2.domElement.toDataURL("image/png");
+      scene.background = bg; ground.visible = true; r2.dispose(); current = null;
+      return url;
+    },
+    // the 戦術ドリル icon: part of a pitch seen from above at an angle, several players (ours dark, theirs blue), a run arrow
+    _pitchStill({size=1024}={}){
+      if(!renderer) init();
+      const r2 = new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true});
+      r2.setSize(size, size); r2.outputEncoding = THREE.sRGBEncoding; r2.shadowMap.enabled = true; r2.shadowMap.type = THREE.PCFSoftShadowMap;
+      const tmp = new THREE.Group(); scene.add(tmp); ground.visible = false; setProps({});
+      // pitch: 30 m × 30 m in front of a goal (goal line at z = 13), mown stripes and the lines
+      const c = document.createElement("canvas"); c.width = c.height = 2048; const x = c.getContext("2d"), m = v => (v + 30) / 60 * 2048;   // 60 m × 60 m so the pitch fills the picture
+      for(let i=0;i<20;i++){ x.fillStyle = i % 2 ? "#2f7a4b" : "#2a6e43"; x.fillRect(0, i*102.4, 2048, 102.4); }
+      x.strokeStyle = "rgba(255,255,255,.92)"; x.lineWidth = 8;
+      // (the plane lies with its top edge towards -z, so the canvas runs from z = -15 at the top to +15 at the bottom)
+      const line = (x1,z1,x2,z2) => { x.beginPath(); x.moveTo(m(x1), m(z1)); x.lineTo(m(x2), m(z2)); x.stroke(); };
+      line(-30,13,30,13);                                           // goal line
+      line(-11,13,-11,1); line(11,13,11,1); line(-11,1,11,1);       // penalty area (12 m deep)
+      line(-5,13,-5,9); line(5,13,5,9); line(-5,9,5,9);             // goal area
+      x.beginPath(); x.arc(m(0), m(5), 6, 0, Math.PI*2); x.fillStyle = "#fff"; x.fill();   // penalty mark
+      x.beginPath(); x.arc(m(0), m(5), (8/60)*2048, Math.PI*1.2, Math.PI*1.8); x.stroke();  // arc, outside the area
+      const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 8;
+      const pitch = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({map:tex, roughness:.95}));
+      pitch.rotation.x = -Math.PI/2; pitch.receiveShadow = true; tmp.add(pitch);
+      // the goal (8人制: 5 m × 2.15 m)
+      const white = M({color:0xffffff, roughness:.4}), post = (px, h=2.15) => { const g = new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,h,12), white); g.position.set(px, h/2, 13); g.castShadow = true; tmp.add(g); };
+      post(-2.5); post(2.5); const bar = new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,5,12), white); bar.rotation.z = Math.PI/2; bar.position.set(0, 2.15, 13); tmp.add(bar);
+      const net = new THREE.Mesh(new THREE.PlaneGeometry(5, 2.15), new THREE.MeshStandardMaterial({color:0xffffff, transparent:true, opacity:.18, side:THREE.DoubleSide})); net.position.set(0, 1.07, 14); tmp.add(net);
+      // players: a pose → a copy of the figure, placed and turned; theirs get a blue kit
+      const theirShirt = M({color:0x2f6fe0, metalness:.05, roughness:.5}), theirShorts = M({color:0x15306b, metalness:.05, roughness:.55});
+      const keeperShirt = M({color:0xffd23d, metalness:.05, roughness:.5});
+      for(const k in glowMat) glowMat[k].emissiveIntensity = 0;
+      const put = (pose, at, yaw, team="ours") => {
+        setBody(Object.assign(pose, {marks:false})); fig.updateMatrixWorld(true);
+        const g = fig.clone(true); g.position.set(at[0], 0, at[1]); g.rotation.set(0, yaw, 0);
+        g.traverse(o => { if(o.isMesh){ if(o.material === ball.material) o.visible = false;
+          if(team !== "ours" && o.material === shirtMat) o.material = team === "keeper" ? keeperShirt : theirShirt;
+          if(team !== "ours" && o.material === shortsMat) o.material = theirShorts; } });
+        tmp.add(g);
+      };
+      const run = (phi, a=1) => Object.assign(stride(phi, a), {ball:null});
+      const ready = {pelvis:V(0,.82,0), lean:V(0,-.02,.08), lf:V(-.2,.085,0), rf:V(.2,.085,.05), lh:V(-.42,.9,.18), rh:V(.42,.9,.18), ball:null};
+      put(run(.35), [0, 3], 0);                      // ours: on the ball, going at goal
+      put(run(1.2), [-6.2, 5.2], .5);                // ours: running in behind on the left
+      put(run(.8), [6, 1.5], -.25);                  // ours: supporting on the right
+      put(ready, [.8, 7.4], Math.PI - .15, "theirs"); // theirs: the defender in front of the ball
+      put(ready, [-3.2, 8.4], Math.PI + .35, "theirs");
+      put(Object.assign({}, ready, {lh:V(-.48,1.0,.2), rh:V(.48,1.0,.2)}), [0, 12.2], Math.PI, "keeper");
+      fig.visible = false;
+      const b = ball.clone(); b.visible = true; b.scale.setScalar(1); b.position.set(.05, BALL_R, 3.75); tmp.add(b);
+      // the run arrow: from the left player into the space behind the defenders
+      const shape = new THREE.Shape(), pts = []; for(let i=0;i<=24;i++){ const u = i/24; pts.push([-6 + 5.2*u, 5.8 + 4.4*u - 1.4*u*u]); }
+      const w = .22; pts.forEach(([px,pz],i)=>{ if(!i) shape.moveTo(px - w, pz); else shape.lineTo(px - w, pz); });
+      for(let i=pts.length-1;i>=0;i--) shape.lineTo(pts[i][0] + w, pts[i][1]);
+      const tip = pts[pts.length-1], prev = pts[pts.length-3], ang = Math.atan2(tip[0]-prev[0], tip[1]-prev[1]);
+      const arrowMat = new THREE.MeshBasicMaterial({color:new THREE.Color(0xff6b2c).convertSRGBToLinear(), side:THREE.DoubleSide});
+      const body = new THREE.Mesh(new THREE.ShapeGeometry(shape), arrowMat); body.rotation.x = Math.PI/2; body.position.y = .02; tmp.add(body);
+      const head = new THREE.Shape(); head.moveTo(0, .9); head.lineTo(-.6, 0); head.lineTo(.6, 0); head.lineTo(0, .9);
+      const hm = new THREE.Mesh(new THREE.ShapeGeometry(head), arrowMat); hm.rotation.set(Math.PI/2, 0, 0); hm.position.set(tip[0], .021, tip[1]);
+      const hg = new THREE.Group(); hg.add(hm); hm.position.set(0,0,0); hg.position.set(tip[0], .021, tip[1]); hg.rotation.y = ang; hm.rotation.x = Math.PI/2; tmp.add(hg);
+      // camera: high and behind our attackers, looking at the goal
+      const cam2 = new THREE.PerspectiveCamera(33, 1, .1, 100), tg = V(-2.5, .3, 6.2);
+      cam2.position.set(-5.4, 11.3, -6.6); cam2.lookAt(tg);
+      const bg = scene.background; scene.background = new THREE.Color(0x2a6e43).convertSRGBToLinear();
+      r2.render(scene, cam2); const url = r2.domElement.toDataURL("image/png");
+      scene.background = bg; scene.remove(tmp); ground.visible = true; fig.visible = true; r2.dispose(); current = null;
+      return url;
+    },
+    // for checks: which part lights up at time t
+    _touching: (id, t) => touching(MOVES[id], t),
+    // for checks: the move's state at time t, with the boots kept out of the ball
+    _sample(id, t){ const p = MOVES[id].f(t); const ang = (f, side) => footAngles(p, side, f);
+      return {p, keep: (f, side) => { const a = ang(f, side); return p.ball && !p.ballFree ? keepOut(f.clone(), p.ball, a.yaw, a.tilt) : f.clone(); }, q: (orig, side) => { const g = ang(orig, side); return bootQ(orig, g.yaw, g.tilt); },   /* angles from the move's foot, as in setBody */ ik, L, BOOT_PTS, bootTilt, BALL_R}; }
+  };
+})();
+
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Oswald:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: one column. Tabs (きょう / れんしゅう / きろく) on top; the practice screen takes the whole column with a big timer. */
+:root{
+  --bg:#0b1310; --surface:#121c18; --surface-2:#1a2620; --line:#26362e;
+  --fg:#eef5f0; --muted:#8fa498; --accent:#ff6b2c; --accent-ink:#1b0a03;
+  --good:#3ddc8c; --good-bg:rgba(61,220,140,.14); --warn:#ffc53d; --warn-bg:rgba(255,197,61,.14);
+  --mate:#ffd23d; --opp:#4b8dff; --grass:#1f6a41; --chalk:rgba(255,255,255,.85);
+  --c-touch:#ffd23d; --c-ginga:#ff7ab6; --c-dribble:#ff6b2c; --c-kick:#4b8dff; --c-wall:#5fd4ff; --c-body:#3ddc8c;
+  --display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+  --num:"Oswald","Dela Gothic One","Hiragino Sans",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.7;margin:0;padding:16px 16px 48px}
+.wrap{max-width:760px;margin:0 auto;display:grid;gap:14px}
+header{display:flex;align-items:center;gap:12px}
+header h1{font-family:var(--display);font-weight:400;font-size:1.35rem;margin:0;line-height:1.2}
+header h1 small{display:block;font-family:var(--body);font-size:.78rem;color:var(--muted);font-weight:500}
+header .me{margin-left:auto;flex:none}
+header h1{min-width:0}
+h2{font-family:var(--display);font-weight:400;font-size:1.1rem;margin:0;line-height:1.4}
+p{margin:0}
+.muted{color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:12px;min-width:0}
+.tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:5px}
+.tabs button{flex:1;min-height:44px;border:0;border-radius:10px;background:transparent;color:var(--muted);font:inherit;font-weight:700;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--surface-2);color:var(--fg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;border-radius:14px;border:0;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:700;font-size:1.05rem;padding:10px 22px;cursor:pointer;text-decoration:none}
+.btn.wide{width:100%}
+.ghost{min-height:44px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--fg);font:inherit;font-weight:700;padding:8px 14px;cursor:pointer}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{min-height:46px;padding:6px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font:inherit;font-weight:700;cursor:pointer}
+.seg button[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--surface-2))}
+.check{display:flex;gap:10px;align-items:center;font-weight:700;min-height:40px}
+.check input{width:22px;height:22px;accent-color:var(--accent)}
+input[type=text],select,input[type=number]{font:inherit;color:var(--fg);background:var(--surface-2);border:1px solid var(--line);border-radius:12px;min-height:48px;padding:8px 12px}
+input[type=number]{width:110px;font-family:var(--num);font-size:1.4rem;text-align:center}
+.label{font-size:.82rem;font-weight:700;color:var(--muted)}
+.note{font-size:.88rem;background:var(--warn-bg);border-radius:10px;padding:10px 12px}
+.chip{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;min-height:44px;padding:6px 14px 6px 6px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font:inherit;font-weight:700;cursor:pointer}
+.chip .av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-weight:700}
+.chip small{color:var(--muted);font-weight:500;margin-left:2px}
+/* drill list */
+.drill{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-left:5px solid var(--cc);border-radius:14px;padding:12px;color:inherit;text-align:left;font:inherit;cursor:pointer;width:100%}
+.drill .ic{width:48px;height:48px;border-radius:12px;background:color-mix(in srgb,var(--cc) 20%,transparent);display:grid;place-items:center}
+.drill .ic svg{width:30px;height:30px}
+.drill b{display:block;font-size:1rem}
+.drill small{color:var(--muted)}
+.drill .t{font-family:var(--num);font-weight:600;color:var(--muted);white-space:nowrap}
+.drill.done{opacity:.6}
+.drill.done .t{color:var(--good)}
+.cat{display:inline-block;font-size:.72rem;font-weight:700;border-radius:999px;padding:1px 9px;background:color-mix(in srgb,var(--cc) 22%,transparent);color:var(--cc)}
+/* practice screen */
+.steps{margin:0;padding-left:1.4em;display:grid;gap:4px}
+.point{background:color-mix(in srgb,var(--cc) 14%,var(--surface-2));border-radius:12px;padding:10px 12px;font-size:.95rem}
+.timer{display:grid;place-items:center;gap:6px;padding:8px 0}
+.ring{position:relative;width:min(260px,70vw);aspect-ratio:1}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .num{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--num);font-weight:700;font-size:clamp(3rem,16vw,4.6rem);line-height:1}
+.ring .sub{position:absolute;left:0;right:0;bottom:22%;text-align:center;font-weight:700;color:var(--muted);font-size:.95rem}
+.flash{color:var(--mate)!important}
+.big{font-family:var(--num);font-weight:700;font-size:2.4rem;line-height:1}
+/* records */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:.8rem}
+.cal .h{color:var(--muted);font-weight:700}
+.cal .d{aspect-ratio:1;border-radius:10px;display:grid;place-items:center;background:var(--surface-2);font-family:var(--num)}
+.cal .d.on{background:var(--good-bg);color:var(--good);font-weight:700;border:1px solid var(--good)}
+.cal .d.today{outline:2px solid var(--accent)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--surface-2);border-radius:12px;padding:10px;text-align:center}
+.stat .big{font-size:1.8rem}
+.stat small{display:block;color:var(--muted);font-weight:700;font-size:.78rem}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+td,th{padding:8px 4px;border-bottom:1px solid var(--line);text-align:left}
+td.n{font-family:var(--num);font-size:1.1rem;text-align:right;white-space:nowrap}
+.foot{font-size:.85rem;color:var(--muted)}
+.foot a{color:var(--accent);font-weight:700}
+.del{border:0;background:none;color:var(--muted);text-decoration:underline;font:inherit;font-size:.82rem;cursor:pointer;padding:4px}
+@media (max-width:420px){header h1{font-size:1.1rem}header h1 small{display:none}.drill{grid-template-columns:40px 1fr auto;gap:10px;padding:10px}.drill .ic{width:40px;height:40px}.stats .big{font-size:1.5rem}}
+</style>
+
+<div class="wrap">
+  <header>
+    <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" rx="11" fill="var(--grass)"/><circle cx="22" cy="27" r="9" fill="#fff" stroke="#111" stroke-width="1.4"/><path d="M22 21l4 3-1.5 4.5h-5L18 24z" fill="#111"/><path d="M10 13h8M26 13h8" stroke="var(--mate)" stroke-width="2.6" stroke-linecap="round"/></svg>
+    <h1>自主練メニュー<small>ひとりでできる サッカーのれんしゅう</small></h1>
+    <span class="me" id="me"></span>
+  </header>
+  <nav class="tabs" id="tabs" role="tablist">
+    <button role="tab" data-tab="today" aria-selected="true">きょう</button>
+    <button role="tab" data-tab="list" aria-selected="false">れんしゅう</button>
+    <button role="tab" data-tab="log" aria-selected="false">きろく</button>
+  </nav>
+  <main id="view"></main>
+  <p class="foot"><a href="../">ほかのアプリ</a>　｜　きろくは、この端末の中だけにのこります。</p>
+</div>
+
+<script>
+// ---------- Practice data ----------
+// cat: touch / ginga / dribble / kick / wall / body.  g: grades [from, to] (9 = U-9 … 12 = U-12).
+// pl: places it fits (in = 家の中, front = 家の前・にわ, park = 公園・グラウンド).  need: ball / cone (ペットボトルでOK) / wall.
+// secs: one set; sets: how many; side: change foot halfway through each set; beat: play a rhythm (BPM).
+// rec: what to write down afterwards — "count" (回数), "best" (さいこう記録), "hit" (10回中何回), or none.
+const CATS = {
+  touch:{name:"ボールタッチ", c:"var(--c-touch)"}, ginga:{name:"ジンガ", c:"var(--c-ginga)"}, dribble:{name:"ドリブル", c:"var(--c-dribble)"},
+  kick:{name:"キック", c:"var(--c-kick)"}, wall:{name:"かべ当て", c:"var(--c-wall)"}, body:{name:"体づくり", c:"var(--c-body)"}
+};
+const D = [
+  // ボールタッチ
+  {id:"t1", cat:"touch", name:"足うらタッチ", g:[9,12], pl:["in","front","park"], need:["ball"], secs:30, sets:2,
+    how:["ボールの前に立つ","右・左の足うらで、ボールの上をかわりばんこにかるくさわる","なれてきたら、だんだん速く"],
+    pt:"かかとをうかせて、つま先でリズムよく。ときどき顔を上げて前を見よう。", rec:"count", recQ:"1回目の30秒で、何回さわれた？（だいたいでOK）"},
+  {id:"t2", cat:"touch", name:"インサイド タッチ", g:[9,12], pl:["in","front","park"], need:["ball"], secs:30, sets:2,
+    how:["ボールを両足のあいだにおく","右足の内がわ→左足の内がわで、ボールを行ったり来たりさせる","ボールが足からはなれないように"],
+    pt:"ひざを少しまげて、小さく・速く。足の内がわの、くるぶしの下あたりでさわる。", rec:"count", recQ:"30秒で何回できた？"},
+  {id:"t3", cat:"touch", name:"足うら ロール", g:[9,12], pl:["in","front","park"], need:["ball"], secs:30, sets:2, side:true,
+    how:["足うらでボールを横にころがす","反対の足の内がわで止める","止めたら、その足の足うらでまた反対へころがす"],
+    pt:"とちゅうで「足をかえて！」が鳴ったら、反対まわりにしよう。", rec:null},
+  {id:"t4", cat:"touch", name:"引いて インサイド", g:[10,12], pl:["in","front","park"], need:["ball"], secs:30, sets:2, side:true,
+    how:["足うらでボールを自分のほうへ引く","引いた足の内がわで、ななめ前へおし出す","右足で続けたら、合図で左足にかえる"],
+    pt:"引くときは、ボールのてっぺんをさわる。おし出したら、すぐ次のタッチのじゅんび。", rec:null},
+  {id:"t5", cat:"touch", name:"リフティング", g:[9,12], pl:["front","park"], need:["ball"], secs:60, sets:2,
+    how:["ボールを手からおとして、足の甲でける","U-9は、1回バウンドさせてからけってもOK","おちたら、もう一度。さいこう記録をめざそう"],
+    pt:"足首をのばしてかためる。ボールのまん中を、まっすぐ上にけり上げる。", rec:"best", recQ:"さいこう何回つづいた？", goal:{9:10,10:20,11:50,12:100}},
+  {id:"t6", cat:"touch", name:"もも・足・頭 リフティング", g:[11,12], pl:["front","park"], need:["ball"], secs:60, sets:2,
+    how:["足→もも→足→頭…と、ちがう場所を使ってつづける","右足と左足、右ももと左もも、両方つかう","できたら、きめた順番どおりにやってみる"],
+    pt:"ももは、ひざを90度くらいまで上げて、まっすぐ上へ。頭はおでこで。", rec:"best", recQ:"さいこう何回つづいた？"},
+  {id:"t7", cat:"touch", name:"ボールのまわりを1周", g:[9,11], pl:["in","front","park"], need:["ball"], secs:30, sets:2, side:true,
+    how:["片足の足うらをボールの上にのせる","ボールをおさえたまま、もう片方の足でぴょんぴょんまわる","合図で足をかえて、反対まわり"],
+    pt:"ボールはうごかさない。体の向きがかわっても、ボールを見なくてもできるように。", rec:null},
+  // ジンガ（リズムに合わせて体をゆらす）
+  {id:"g1", cat:"ginga", name:"ジンガ ステップ", g:[9,12], pl:["in","front","park"], need:[], secs:60, sets:1, beat:100,
+    how:["「イチ・ニ」と心の中でリズムをとって、右・左と体をゆらしながらステップ","うでも大きくふって、リズムにのる","まえ・うしろにもうごいてみる"],
+    pt:"ひざをやわらかく。おどるように、楽しくゆれよう。ボールなしでOK。", rec:null},
+  {id:"g2", cat:"ginga", name:"ジンガ＋足うら", g:[9,12], pl:["in","front","park"], need:["ball"], secs:60, sets:1, beat:96,
+    how:["見本と同じリズムで、体を右・左にゆらす","ゆれながら、足うらでボールを右・左にころがす","リズムをくずさないように"],
+    pt:"体がゆれると、相手は次の動きがわからない。ボールと体を、いっしょにうごかそう。", rec:null},
+  {id:"g3", cat:"ginga", name:"その場で またぎ", g:[10,12], pl:["in","front","park"], need:["ball"], secs:30, sets:2, beat:90,
+    how:["ボールの前を、足で外から内へまたぐ（シザース）","またいだ足をついたら、反対の足でもまたぐ","リズムよく、体を大きくゆらす"],
+    pt:"上半身を、またいだほうへぐっとたおす。足だけでなく体でだます。", rec:null},
+  {id:"g4", cat:"ginga", name:"ジンガで はこぶ", g:[10,12], pl:["front","park"], need:["ball"], secs:60, sets:1, beat:96,
+    how:["ゆれながら、足うら・インサイド・アウトサイドでボールを前へはこぶ","10mくらい行ったら、もどってくる","ときどき、またぎを入れてみる"],
+    pt:"止まらずにリズムをつづける。顔を上げて、前を見ながら。", rec:null},
+  // ドリブル（コーンはペットボトルでOK）
+  {id:"d1", cat:"dribble", name:"ジグザグ ドリブル", g:[9,12], pl:["front","park"], need:["ball","cone"], secs:60, sets:2,
+    how:["ペットボトルを5本、1mおきにならべる","あいだを、ジグザグにドリブルでぬける","さいごまで行ったら、またジグザグでもどる"],
+    pt:"右へ行くときは右足のアウトサイド、左へは右足のインサイド…と、小さなタッチで。", rec:"count", recQ:"60秒で何往復できた？"},
+  {id:"d2", cat:"dribble", name:"引いて ターン", g:[9,12], pl:["front","park"], need:["ball","cone"], secs:45, sets:2,
+    how:["ペットボトルを5mはなして2本おく","1本目から2本目までドリブル","ペットボトルの手前で、足うらでボールを引いて、くるっともどる"],
+    pt:"引いたら、すぐに体を回して、ボールを自分の前におく。右足・左足どちらでも。", rec:null},
+  {id:"d3", cat:"dribble", name:"アウトサイド ドリブル", g:[10,12], pl:["front","park"], need:["ball","cone"], secs:45, sets:2, side:true,
+    how:["ペットボトルを大きな円になるようにおく","円のまわりを、足のアウトサイドだけでドリブル","合図で足をかえて、反対まわり"],
+    pt:"小指のつけねあたりで、おすように。1歩に1回さわるくらい、こまかく。", rec:null},
+  {id:"d4", cat:"dribble", name:"スピード→ピタッ", g:[9,12], pl:["front","park"], need:["ball"], secs:45, sets:2,
+    how:["10mくらい、速いドリブルで進む","合図をきめて（10歩ごとなど）、足うらでピタッと止める","止まったら、すぐにまた速く"],
+    pt:"止まる前に、歩はばを小さくする。止めたボールが体からはなれないように。", rec:null},
+  {id:"d5", cat:"dribble", name:"クライフ ターン", g:[11,12], pl:["front","park"], need:["ball","cone"], secs:45, sets:2,
+    how:["ペットボトルに向かってドリブル","けるふりをして、足の内がわでボールを、立ち足のうしろへ通す","くるっと回って、反対へドリブル"],
+    pt:"「ける」と思わせる大きなふりあげが大事。通したら、すぐスピードアップ。", rec:null},
+  {id:"d6", cat:"dribble", name:"顔を上げて ドリブル", g:[9,12], pl:["front","park"], need:["ball"], secs:60, sets:1,
+    how:["自由にドリブルする","5歩に1回、顔を上げて、見えた物を声に出して言う（「木！」「車！」など）","だれかいたら、指で出した数を言ってもらう"],
+    pt:"試合では、まわりを見ながらドリブルする。ボールは足のうらがわの感じでさわる。", rec:null},
+  {id:"d7", cat:"dribble", name:"またぎで ぬく", g:[10,12], pl:["front","park"], need:["ball","cone"], secs:60, sets:2,
+    how:["ペットボトルを相手だと思って、ゆっくり近づく","1mくらい手前で、またぎ（シザース）","またいだのと反対がわへ、アウトサイドでぬける"],
+    pt:"相手の近くまで行ってから、フェイント。ぬけたら、いっきにスピードを上げる。", rec:null},
+  // キック
+  {id:"k1", cat:"kick", name:"インサイドで当てる", g:[9,12], pl:["front","park"], need:["ball","cone"], secs:0, sets:1,
+    how:["ペットボトルを5mはなしておく","足の内がわ（インサイド）でけって、ペットボトルに当てる","10回けって、何回当たったかかぞえる。右足と左足の両方で"],
+    pt:"立ち足はボールの横。足首をかためて、ねらう方へ体を向ける。", rec:"hit", recQ:"10回中、何回当たった？（右足）"},
+  {id:"k2", cat:"kick", name:"インステップで 遠くへ", g:[10,12], pl:["park"], need:["ball"], secs:0, sets:1,
+    how:["足の甲（くつひものところ）でける","助走はななめから2〜3歩","10回けって、まっすぐ遠くへとぶのをめざす"],
+    pt:"足首をのばしてかためる。ボールのまん中をけって、けった足はそのまま前へふりぬく。", rec:"hit", recQ:"10回中、まっすぐとんだのは何回？"},
+  {id:"k3", cat:"kick", name:"すみを ねらって シュート", g:[10,12], pl:["park"], need:["ball","cone"], secs:0, sets:1,
+    how:["ペットボトル2本でゴールをつくる（3mくらい）","ゴールのすみ（ペットボトルのすぐ内がわ）をねらってける","10回中、すみに入ったのをかぞえる"],
+    pt:"強さより、ねらう場所。けるまえに、ゴールをちらっと見ておく。", rec:"hit", recQ:"10回中、すみに入ったのは何回？"},
+  {id:"k4", cat:"kick", name:"うかせて トラップ", g:[9,12], pl:["in","front","park"], need:["ball"], secs:0, sets:1,
+    how:["ボールを手で、自分の頭くらいまで投げ上げる","おちてきたボールを、足のうら・インサイド・ももで止める","10回やって、ピタッと止まった回数をかぞえる"],
+    pt:"ボールが当たる瞬間に、足を少し引いてクッションにする。家の中ではやさしく、ひくめに。", rec:"hit", recQ:"10回中、ピタッと止まったのは何回？"},
+  // かべ当て
+  {id:"w1", cat:"wall", name:"かべ当て パス", g:[9,12], pl:["front","park"], need:["ball","wall"], secs:60, sets:2,
+    how:["かべから3mはなれる","インサイドでかべにけって、もどってきたボールを止める","1セット目は右足、2セット目は左足"],
+    pt:"止めたら、ける足の前にボールをおく。止める→けるを、なめらかに。", rec:"count", recQ:"60秒で何回かべに当てた？（右足）"},
+  {id:"w2", cat:"wall", name:"止めて 向きをかえる", g:[10,12], pl:["front","park"], need:["ball","wall"], secs:60, sets:2,
+    how:["かべからもどってきたボールを、右足で止めながら右へ向きをかえる","向いた方へ1〜2歩ドリブルして、またかべにける","次は左へ向きをかえる"],
+    pt:"止めるときに、行きたい方向へボールをおく。止まってから向きをかえない。", rec:null},
+  {id:"w3", cat:"wall", name:"ダイレクト かべ当て", g:[11,12], pl:["front","park"], need:["ball","wall"], secs:45, sets:2,
+    how:["かべから2〜3mはなれる","もどってきたボールを止めずに、そのままインサイドでける","右足・左足、交互にけってもいい"],
+    pt:"ボールが来る前に、ける足の準備。足首をかためて、かべのきめた場所をねらう。", rec:"count", recQ:"何回つづけられた？"},
+  {id:"w4", cat:"wall", name:"うかせて かべ当て", g:[11,12], pl:["park"], need:["ball","wall"], secs:60, sets:1,
+    how:["かべにけって、うきあがったボールを止める","ももや胸でも止めてみる","止めたら、地面にパスしてまたかべへ"],
+    pt:"ボールの下の方をけると、うく。止めるときは、体全体でクッション。", rec:null},
+  // 体づくり（ボールなし）
+  {id:"b1", cat:"body", name:"線またぎ ステップ", g:[9,12], pl:["in","front","park"], need:[], secs:30, sets:2,
+    how:["床や地面に線があると思って、その前に立つ","線を、前・うしろ・右・左と、小さく速くまたぐ","2セット目は、片足ずつ"],
+    pt:"つま先で、音をたてないように軽く。うでもふる。", rec:null},
+  {id:"b2", cat:"body", name:"ケンケン", g:[9,12], pl:["in","front","park"], need:[], secs:20, sets:2, side:true,
+    how:["片足で、その場でとぶ","前・うしろ、右・左にもとんでみる","合図で足をかえる"],
+    pt:"ひざを少しまげて着地。ころばないように、まわりに物がないところで。", rec:null},
+  {id:"b3", cat:"body", name:"プランク", g:[9,12], pl:["in","front","park"], need:[], secs:20, sets:2, secsByGrade:{11:30,12:30},
+    how:["ひじとつま先で体をささえる","頭からかかとまで、まっすぐの板のように","おしりが上がったり、下がったりしないように"],
+    pt:"おなかに力を入れる。息は止めずに、ゆっくりすう・はく。", rec:null},
+  {id:"b4", cat:"body", name:"ダッシュ＆ストップ", g:[9,12], pl:["front","park"], need:[], secs:30, sets:3,
+    how:["5mダッシュして、ピタッと止まる","止まったら、くるっと向きをかえて、またダッシュ","くりかえす"],
+    pt:"止まるときは、歩はばを小さく、ひくい姿勢で。スタートは1歩目を速く。", rec:null},
+  {id:"b5", cat:"body", name:"片足立ち タッチ", g:[9,12], pl:["in","front","park"], need:["ball"], secs:30, sets:2, side:true,
+    how:["片足で立つ","うかせた足の足うらで、ボールの上をトン・トンとさわる","合図で足をかえる"],
+    pt:"立っている足のひざを少しまげて、ぐらぐらしないように。", rec:null},
+  {id:"b6", cat:"body", name:"両足ジャンプ", g:[9,12], pl:["in","front","park"], need:[], secs:20, sets:2,
+    how:["その場で、両足でできるだけ高くとぶ","着地したら、すぐにまたとぶ","うでを大きくふり上げる"],
+    pt:"着地はつま先から、やわらかく。ひざが内がわに入らないように。", rec:null}
+];
+const DBY = Object.fromEntries(D.map(d=>[d.id,d]));
+
+// ---------- Moving examples: a person made of circles (head, body, hands, feet) and the ball ----------
+// v: "back" = seen from behind (the player's right is on the right, so kids copy it as is), "side" = facing right, "top" = from above.
+// f: key frames [state, ms to the next one]; the last one loops back to the first. back/side states: h b lh rh lf rf ball (x, y);
+// top states: p (player) and ball — without ball, the ball rides just in front of the player in the running direction.
+// scene: cones [[x,y]…], wall x, goal [[x,y],[x,y]], line (x of a line on the floor), ground y.
+const BK = {h:[100,26], b:[100,56], lh:[79,78], rh:[121,78], lf:[86,110], rf:[114,110], ball:[100,94]};
+const SD = {h:[80,26], b:[80,56], lh:[68,68], rh:[94,66], lf:[74,108], rf:[86,108], ball:[100,108]};
+const bk = o => Object.assign({}, BK, o), sd = o => Object.assign({}, SD, o);
+const up = (o, dy) => Object.fromEntries(Object.entries(o).map(([k,v])=>[k, k==="ball"?v:[v[0], v[1]-dy]]));
+const sway = (dx, o={}) => bk(Object.assign({h:[100+dx,26], b:[100+dx*.8,56], lh:[80+dx*.3,58], rh:[120+dx*.3,74], lf:[90+(dx<0?-4:2),108], rf:[110+(dx>0?4:-2),108]}, o));
+const ring = (cx, cy, r, n, a0=0) => Array.from({length:n}, (_,i)=>{ const a=a0+i/n*2*Math.PI; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; });
+const ANIM = {
+  t1:{v:"back", f:[[bk({}),180],[bk({rf:[104,88]}),220],[bk({}),180],[bk({lf:[96,88]}),220]]},
+  t2:{v:"back", f:[[bk({lf:[84,108], rf:[116,108], ball:[92,100]}),360],[bk({lf:[84,108], rf:[112,104], ball:[108,100]}),360],[bk({lf:[88,104], rf:[116,108], ball:[92,100]}),0]]},
+  t3:{v:"back", f:[[bk({rf:[112,96], ball:[112,102]}),600],[bk({rf:[94,98], lf:[82,108], ball:[88,102]}),250],[bk({rf:[112,108], lf:[84,106], ball:[86,102]}),350],[bk({lf:[88,96], ball:[88,102]}),600],[bk({lf:[106,98], rf:[118,108], ball:[112,102]}),250],[bk({lf:[88,108], rf:[116,106], ball:[114,102]}),350]]},
+  t4:{v:"side", vb:"36 6 112 120", f:[[sd({rf:[100,98], ball:[102,106]}),450],[sd({rf:[88,100], ball:[90,108]}),250],[sd({rf:[86,108], ball:[92,108]}),250],[sd({rf:[104,106], ball:[116,108]}),500],[sd({rf:[86,108], ball:[116,108]}),300]]},
+  t5:{v:"side", vb:"36 6 112 120", f:[[sd({rf:[98,98], ball:[100,94]}),420],[sd({ball:[100,40]}),420],[sd({rf:[96,104], ball:[100,96]}),60]]},
+  t6:{v:"side", vb:"36 6 112 120", f:[[sd({rf:[96,84], ball:[92,74]}),420],[sd({ball:[90,28]}),420],[sd({rf:[96,84], ball:[92,74]}),120],[sd({lf:[92,98], ball:[96,92]}),380],[sd({ball:[94,40]}),380],[sd({lf:[92,98], ball:[96,92]}),120],[sd({h:[84,24], ball:[84,10]}),500],[sd({h:[82,25], ball:[84,12]}),120]]},
+  t7:{v:"top", scene:{}, f:ring(100,65,22,8,Math.PI).map(p=>[{p, ball:[100,65]},260])},
+  g1:{v:"back", fixed:true, f:[[sway(-12,{ball:null}),420],[sway(12,{ball:null}),420]]},
+  g2:{v:"back", fixed:true, f:[[sway(-10,{lf:[88,96], ball:[90,100]}),440],[sway(10,{rf:[112,96], ball:[110,100]}),440]]},
+  g3:{v:"back", fixed:true, f:[[sway(0),200],[sway(-6,{rf:[118,98]}),150],[sway(-8,{rf:[104,88]}),150],[sway(-12,{rf:[92,96]}),150],[sway(-10,{rf:[104,108]}),250],[sway(6,{lf:[82,98]}),150],[sway(8,{lf:[96,88]}),150],[sway(12,{lf:[108,96]}),150],[sway(10,{lf:[96,108]}),250]]},
+  g4:{v:"top", scene:{}, f:[[{p:[20,65]},500],[{p:[50,55]},500],[{p:[80,75]},500],[{p:[110,55]},500],[{p:[140,75]},500],[{p:[175,65]},300],[{p:[175,66]},0]]},
+  d1:{v:"top", scene:{cones:[[40,65],[70,65],[100,65],[130,65],[160,65]]}, f:[[{p:[18,65]},380],[{p:[55,45]},380],[{p:[85,85]},380],[{p:[115,45]},380],[{p:[145,85]},380],[{p:[182,65]},300],[{p:[182,66]},0]]},
+  d2:{v:"top", scene:{cones:[[36,65],[164,65]]}, f:[[{p:[40,65]},1000],[{p:[146,65]},200],[{p:[146,65], ball:[150,65]},300],[{p:[147,65], ball:[140,65]},150],[{p:[142,65], ball:[128,65]},900],[{p:[40,65], ball:[26,65]},200],[{p:[40,65], ball:[30,65]},300],[{p:[39,65], ball:[48,65]},150]]},
+  d3:{v:"top", scene:{cones:ring(100,65,48,6)}, f:ring(100,65,32,12).map(p=>[{p},220])},
+  d4:{v:"top", scene:{}, f:[[{p:[20,65]},500],[{p:[120,65]},150],[{p:[128,65], ball:[140,65]},700],[{p:[128,65], ball:[140,65]},300],[{p:[182,65]},0]]},
+  d5:{v:"top", scene:{cones:[[150,65]]}, f:[[{p:[30,65]},900],[{p:[118,65]},200],[{p:[122,65], ball:[132,66]},250],[{p:[122,65], ball:[110,70]},250],[{p:[116,68], ball:[104,68]},800],[{p:[30,65], ball:[18,65]},300]]},
+  d6:{v:"top", scene:{}, f:[[{p:[40,40]},700],[{p:[160,40]},700],[{p:[160,95]},700],[{p:[40,95]},700]]},
+  d7:{v:"top", scene:{cones:[[130,65]]}, f:[[{p:[20,65]},900],[{p:[100,65]},250],[{p:[100,58], ball:[114,62]},220],[{p:[100,72], ball:[114,66]},220],[{p:[104,60], ball:[118,58]},350],[{p:[140,38]},500],[{p:[185,38]},0]]},
+  k1:{v:"top", scene:{cones:[[165,65]]}, f:[[{p:[40,65], ball:[56,65]},250],[{p:[46,65], ball:[56,65]},120],[{p:[48,65], ball:[60,65]},900],[{p:[48,65], ball:[160,65]},500]]},
+  k2:{v:"side", scene:{ground:118}, f:[[sd({h:[40,26], b:[40,56], lh:[28,68], rh:[54,66], lf:[34,108], rf:[46,108], ball:[90,108]}),600],[sd({h:[74,28], b:[72,58], lh:[60,64], rh:[86,70], lf:[80,108], rf:[58,96], ball:[90,108]}),200],[sd({h:[78,28], b:[78,58], lh:[64,62], rh:[92,72], lf:[80,108], rf:[100,96], ball:[96,104]}),700],[sd({h:[80,26], b:[80,56], lf:[80,108], rf:[104,90], ball:[190,40]}),400]]},
+  k3:{v:"top", scene:{goal:[[172,38],[172,92]]}, f:[[{p:[60,65], ball:[76,65]},250],[{p:[66,65], ball:[76,65]},120],[{p:[68,65], ball:[80,64]},800],[{p:[68,65], ball:[170,46]},500]]},
+  k4:{v:"side", vb:"36 6 112 120", f:[[sd({lh:[78,30], rh:[86,30], ball:[82,22]}),500],[sd({lh:[72,60], rh:[92,56], ball:[88,4]}),450],[sd({rf:[98,96], ball:[98,90]}),150],[sd({rf:[92,104], ball:[96,104]}),500],[sd({ball:[100,108]}),300]]},
+  w1:{v:"top", scene:{wall:180}, f:[[{p:[60,65], ball:[74,65]},120],[{p:[64,65], ball:[76,65]},500],[{p:[62,65], ball:[176,65]},500],[{p:[60,65], ball:[74,65]},200]]},
+  w2:{v:"top", scene:{wall:180}, f:[[{p:[60,50], ball:[74,52]},500],[{p:[60,50], ball:[176,58]},500],[{p:[62,58], ball:[72,72]},250],[{p:[68,84], ball:[78,94]},450],[{p:[70,88], ball:[84,90]},400],[{p:[70,88], ball:[176,72]},500],[{p:[62,78], ball:[72,62]},250],[{p:[66,52], ball:[76,44]},450]]},
+  w3:{v:"top", scene:{wall:180}, f:[[{p:[80,58], ball:[92,60]},380],[{p:[80,58], ball:[176,66]},380],[{p:[80,72], ball:[92,70]},380],[{p:[80,72], ball:[176,64]},380]]},
+  w4:{v:"side", scene:{wall:180, ground:118}, f:[[sd({ball:[100,108]}),150],[sd({rf:[100,100], ball:[104,104]}),700],[sd({ball:[176,60]}),700],[sd({h:[82,26], b:[82,58], ball:[96,64]}),400],[sd({ball:[100,108]}),300]]},
+  b1:{v:"back", fixed:true, scene:{line:100}, f:[[bk({lf:[78,108], rf:[94,108], b:[86,56], h:[86,26], lh:[66,66], rh:[106,66], ball:null}),260],[up(bk({lf:[82,108], rf:[98,108], ball:null}),6),120],[bk({lf:[106,108], rf:[122,108], b:[114,56], h:[114,26], lh:[94,66], rh:[134,66], ball:null}),260],[up(bk({lf:[102,108], rf:[118,108], ball:null}),6),120]]},
+  b2:{v:"back", fixed:true, f:[[bk({lf:[94,94], ball:null}),220],[up(bk({lf:[94,90], ball:null}),14),220]]},
+  b3:{v:"side", fixed:true, f:[[{h:[150,86], b:[118,94], sh:[136,92], hp:[100,98], lh:[140,112], rh:[136,112], lf:[56,112], rf:[60,112], ball:null},900],[{h:[150,86.5], b:[118,94.5], sh:[136,92.5], hp:[100,97.5], lh:[140,112], rh:[136,112], lf:[56,112], rf:[60,112], ball:null},900]]},
+  b4:{v:"top", scene:{cones:[[30,65],[150,65]]}, f:[[{p:[30,65], ball:null},500],[{p:[140,65], ball:null},180],[{p:[148,65], ball:null},350],[{p:[148,64], ball:null},500],[{p:[38,65], ball:null},180],[{p:[30,65], ball:null},350]]},
+  b5:{v:"back", f:[[bk({lf:[96,92], b:[102,56], h:[102,26]}),300],[bk({lf:[98,96], b:[102,56], h:[102,26]}),300]]},
+  b6:{v:"back", fixed:true, f:[[bk({lh:[78,74], rh:[122,74], h:[100,32], b:[100,62], ball:null}),280],[up(bk({lh:[84,8], rh:[116,8], ball:null}),26),280]]}
+};
+// smooth motion: a Catmull-Rom curve through the key frames (no stop-and-go at every frame)
+const cr = (p0,p1,p2,p3,t) => { const t2=t*t, t3=t2*t; return .5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t2+(-p0+3*p1-3*p2+p3)*t3); };
+function frameAt(A, ms){
+  const ds = A.f.map(([,d])=>Math.max(d,1)), total = ds.reduce((a,b)=>a+b,0); let t = ((ms % total) + total) % total, i = 0;
+  while(t > ds[i]){ t -= ds[i]; i++; }
+  return {i, k: t/ds[i]};
+}
+function sample(A, ms){
+  const n = A.f.length, {i, k} = frameAt(A, ms), F = j => A.f[((j % n) + n) % n][0], s = {};
+  const keys = new Set(); for(const [st] of A.f) Object.keys(st).forEach(x=>keys.add(x));
+  for(const key of keys){
+    const a = F(i)[key], b = F(i+1)[key];
+    if(a==null || b==null){ s[key] = k<.5 ? (a===undefined?b:a) : (b===undefined?a:b); continue; }
+    const p0 = F(i-1)[key] || a, p3 = F(i+2)[key] || b;
+    s[key] = [cr(p0[0],a[0],b[0],p3[0],k), cr(p0[1],a[1],b[1],p3[1],k)];
+  }
+  return s;
+}
+function animState(A, ms){
+  const s = sample(A, ms);
+  if(A.v==="top"){
+    const q = sample(A, ms+40).p, dx = q[0]-s.p[0], dy = q[1]-s.p[1], len = Math.hypot(dx,dy);
+    const has = A.f.some(([st])=>"ball" in st);
+    if(len > .25) s.dir = [dx/len, dy/len];
+    else if(s.ball){ const ex=s.ball[0]-s.p[0], ey=s.ball[1]-s.p[1], l=Math.hypot(ex,ey)||1; s.dir=[ex/l, ey/l]; }
+    else s.dir = [1,0];
+    s.moving = len > .25 ? Math.min(1, len/1.2) : 0;
+    s.ms = ms;
+    if(!has || s.ball===undefined) s.ball = A.f.some(([st])=>st.ball===null) ? null : [s.p[0]+s.dir[0]*13, s.p[1]+s.dir[1]*13];
+    return s;
+  }
+  // weight on the standing foot: the body leans over the lower (grounded) foot when the other one is up
+  if(!A.fixed && s.lf && s.rf && s.b){
+    const lift = (s.rf[1]-s.lf[1]) / 20, shift = Math.max(-1, Math.min(1, lift)) * 5;   // + = left foot up → lean right
+    const sx = A.v==="side" ? 0 : -shift;
+    s.b = [s.b[0]+sx, s.b[1]+Math.abs(lift)*1.2]; s.h = [s.h[0]+sx*1.15, s.h[1]+Math.abs(lift)*1.2];
+  }
+  return s;
+}
+const BALL = (x,y,r=7) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" stroke="#111" stroke-width="1.3"/><path d="M${x} ${y-r*.45}l${r*.43} ${r*.31}-${r*.16} ${r*.5}h-${r*.54}l-${r*.16}-${r*.5}z" fill="#111"/>`;
+// two-bone leg / arm: the joint (knee, elbow) from the two ends and the bone lengths
+function joint(a, c, l1, l2, bend, squash=1){
+  const dx=c[0]-a[0], dy=c[1]-a[1], d=Math.min(Math.hypot(dx,dy), l1+l2-.01) || .01, ux=dx/d, uy=dy/d;
+  const x = (l1*l1 - l2*l2 + d*d)/(2*d), h = Math.sqrt(Math.max(0, l1*l1 - x*x)) * squash;
+  const px = -uy*bend, py = ux*bend;
+  return [a[0]+ux*x+px*h, a[1]+uy*x+py*h];
+}
+// the example player: a faceless athletic figure drawn for readability — big in the frame, a dark outline, the far arm/leg clearly darker
+const KIT = {shell:"#e6ebef", hi:"#ffffff", lo:"#8794a0", edge:"#6f7c87", boot:"#3a4652", accent:"#ff6b2c"};
+const DEFS = `<defs><radialGradient id="mq-head" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="${KIT.hi}"/><stop offset=".6" stop-color="${KIT.shell}"/><stop offset="1" stop-color="${KIT.lo}"/></radialGradient>
+<radialGradient id="mq-body" cx=".4" cy=".3" r=".85"><stop offset="0" stop-color="${KIT.hi}"/><stop offset=".55" stop-color="${KIT.shell}"/><stop offset="1" stop-color="${KIT.lo}"/></radialGradient>
+<filter id="mq-ol" x="-20%" y="-20%" width="140%" height="140%"><feMorphology in="SourceAlpha" operator="dilate" radius="1.1" result="d"/><feFlood flood-color="#0b1310"/><feComposite in2="d" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
+function animSVG(A, s){
+  const sc = A.scene || {}, ground = sc.ground || 116;
+  let g = DEFS;
+  if(A.v==="back") g += `<path d="M30 74H170L200 130H0z" fill="var(--grass)" opacity=".45"/>`;
+  else if(A.v==="side") g += `<rect x="0" y="${ground}" width="200" height="${130-ground}" fill="var(--grass)" opacity=".45"/><line x1="0" y1="${ground}" x2="200" y2="${ground}" stroke="var(--chalk)" stroke-opacity=".35" stroke-width="1.2"/>`;
+  else g += `<rect x="2" y="2" width="196" height="126" rx="10" fill="var(--grass)" opacity=".55"/>`;
+  if(sc.line!=null) g += `<line x1="${sc.line}" y1="78" x2="${sc.line}" y2="128" stroke="var(--mate)" stroke-width="2" stroke-dasharray="4 3"/>`;
+  if(sc.wall!=null) g += A.v==="top" ? `<rect x="${sc.wall}" y="8" width="10" height="114" rx="2" fill="#8a8f98"/>` : `<rect x="${sc.wall}" y="20" width="12" height="${ground-20}" fill="#8a8f98"/>`;
+  (sc.cones||[]).forEach(([x,y])=>{ g += `<path d="M${x} ${y-7}l6 11h-12z" fill="var(--accent)" stroke="#fff" stroke-width="1"/>`; });
+  (sc.goal||[]).forEach(([x,y])=>{ g += `<circle cx="${x}" cy="${y}" r="5" fill="var(--accent)" stroke="#fff" stroke-width="1"/>`; });
+  if(sc.goal) g += `<line x1="${sc.goal[0][0]}" y1="${sc.goal[0][1]}" x2="${sc.goal[1][0]}" y2="${sc.goal[1][1]}" stroke="#fff" stroke-dasharray="3 3" stroke-opacity=".6"/>`;
+  if(A.v==="top") return g + topPlayer(s);
+  const back = A.v==="back";
+  const scene = g; g = "";
+  // skeleton from the frame: shoulders and hips around the body point, the head on the neck leaning with the frame's head
+  const sh = s.sh || [s.b[0], s.b[1]-12], hp = s.hp || [s.b[0], s.b[1]+10];
+  const lean = [s.h[0]-s.b[0], s.h[1]-s.b[1]], ll = Math.hypot(...lean)||1;
+  const head = s.sh ? s.h : [sh[0]+lean[0]/ll*12.5, sh[1]+lean[1]/ll*12.5];
+  const hipL = back ? [hp[0]-7.5, hp[1]] : hp, hipR = back ? [hp[0]+7.5, hp[1]] : hp;
+  const shL = back ? [sh[0]-12, sh[1]+2] : sh, shR = back ? [sh[0]+12, sh[1]+2] : sh;
+  const legLen = back ? 23.5 : 22.5, armLen = 15;
+  const kneeL = back ? joint(hipL, s.lf, legLen, legLen, 1, .35) : joint(hipL, s.lf, legLen, legLen, -1);
+  const kneeR = back ? joint(hipR, s.rf, legLen, legLen, -1, .35) : joint(hipR, s.rf, legLen, legLen, -1);
+  const elbL = joint(shL, s.lh, armLen, armLen, 1, back ? .8 : 1), elbR = joint(shR, s.rh, armLen, armLen, back ? -1 : 1, back ? .8 : 1);
+  // a limb part: a tapered capsule, plus a soft highlight on the lit side so it looks round
+  const part = (a, b, w1, w2, far) => {
+    const dx=b[0]-a[0], dy=b[1]-a[1], l=Math.hypot(dx,dy)||1, nx=-dy/l, ny=dx/l, r1=w1/2, r2=w2/2;
+    const fill = far ? KIT.lo : KIT.shell, hl = far ? KIT.shell : KIT.hi, sx = nx < 0 ? -1 : 1;
+    // round ends + the tapered side, so joints never show a gap
+    return `<circle cx="${a[0]}" cy="${a[1]}" r="${r1}" fill="${fill}"/><circle cx="${b[0]}" cy="${b[1]}" r="${r2}" fill="${fill}"/>`
+         + `<path d="M${a[0]+nx*r1} ${a[1]+ny*r1}L${b[0]+nx*r2} ${b[1]+ny*r2}L${b[0]-nx*r2} ${b[1]-ny*r2}L${a[0]-nx*r1} ${a[1]-ny*r1}z" fill="${fill}"/>`
+         + `<line x1="${a[0]-nx*r1*.45*sx}" y1="${a[1]-ny*r1*.45*sx}" x2="${b[0]-nx*r2*.45*sx}" y2="${b[1]-ny*r2*.45*sx}" stroke="${hl}" stroke-width="${Math.min(w1,w2)*.28}" stroke-linecap="round" opacity=".7"/>`;
+  };
+  // football boots (no brand marks). The ankle is at ft. From the side: toe box, laces, heel counter, sole plate with studs;
+  // from behind: the heel with its counter, the heel tab and two studs.
+  const boot = (ft, knee, far) => {
+    const up = KIT.boot, dk = "#1a1f24", stud = "#c9d1d8";
+    if(back) return `<g transform="translate(${ft[0]} ${ft[1]+1}) scale(.68)">`
+      + `<path d="M-5.2 -4.5Q-6 2.5 -4.3 5.2H4.3Q6 2.5 5.2 -4.5Q0 -6.6 -5.2 -4.5z" fill="${up}" stroke="#cfd6dc" stroke-width=".5"/>`
+      + `<path d="M-5.3 0.5Q0 2.2 5.3 0.5L4.3 5.2H-4.3z" fill="${dk}"/>`
+      + `<ellipse cx="0" cy="-4.6" rx="3.6" ry="1.2" fill="${dk}"/>`
+      + `<rect x="-0.8" y="-4" width="1.6" height="5.5" rx=".8" fill="${KIT.accent}"/>`
+      + `<rect x="-5" y="5" width="10" height="1.6" rx=".8" fill="#0d1013"/><rect x="-4" y="6.4" width="2" height="1.6" fill="${stud}"/><rect x="2" y="6.4" width="2" height="1.6" fill="${stud}"/></g>`;
+    // flat on the ground while standing; follows the shin only once the foot is lifted
+    const a = Math.atan2(ft[1]-knee[1], ft[0]-knee[0]) * 180/Math.PI - 90, lifted = Math.min(1, Math.max(0, (ground - 8 - ft[1]) / 8));
+    const tilt = Math.max(-60, Math.min(60, a)) * lifted;
+    return `<g transform="translate(${ft[0]} ${ft[1]+1.5}) rotate(${tilt}) scale(.66)" ${far?'opacity=".8"':""}>`
+      + `<path d="M-5 -3.2Q-6.4 2 -4.6 4H10.4Q13.4 3.6 12.8 1.4Q11.8 -1.2 6.2 -2.6L2.2 -4.6Q-1.2 -5.8 -5 -3.2z" fill="${up}" stroke="#cfd6dc" stroke-width=".5"/>`
+      + `<path d="M-5 -3.2Q-6.4 2 -4.6 4H-1Q-2.2 0 -1.4 -4.8Q-3.4 -4.4 -5 -3.2z" fill="${dk}"/>`
+      + `<path d="M-0.5 1.4Q5 -0.2 10.5 1.2" fill="none" stroke="${KIT.accent}" stroke-width="1.1" stroke-linecap="round"/>`
+      + `<path d="M3 -3.6l1.4 1.6M4.6 -3.1l1.4 1.6M6.2 -2.5l1.3 1.5" stroke="#e8edf1" stroke-width=".7" stroke-linecap="round"/>`
+      + `<rect x="-4.8" y="4" width="16.6" height="1.5" rx=".7" fill="#0d1013"/>`
+      + [-3.6,-0.8,4.4,7.4,10].map(x=>`<rect x="${x}" y="5.3" width="1.6" height="1.7" rx=".4" fill="${stud}"/>`).join("")
+      + `</g>`;
+  };
+  // a seam across a limb (like a jointed doll): a short curved line at a joint
+  const seam = (p, dirFrom, w) => { const dx=p[0]-dirFrom[0], dy=p[1]-dirFrom[1], l=Math.hypot(dx,dy)||1, nx=-dy/l*w/2, ny=dx/l*w/2, bx=dx/l*1.2, by=dy/l*1.2;
+    return `<path d="M${p[0]+nx} ${p[1]+ny}Q${p[0]+bx} ${p[1]+by} ${p[0]-nx} ${p[1]-ny}" fill="none" stroke="${KIT.edge}" stroke-width=".7" opacity=".85"/>`; };
+  // chunky, rounded limbs: thick thigh and calf, a round knee, a slim ankle into the boot
+  const leg = (hip, knee, ft, far) => {
+    const t = back ? .92 : 1;   // a bit slimmer from behind so the two legs stay apart
+    const thigh = [hip[0]+(knee[0]-hip[0])*.45, hip[1]+(knee[1]-hip[1])*.45], calfTop = [knee[0]+(ft[0]-knee[0])*.3, knee[1]+(ft[1]-knee[1])*.3];
+    return part(hip, thigh, 11*t, 11.6*t, far) + part(thigh, knee, 11.4*t, 7*t, far) + part(knee, calfTop, 7*t, 9*t, far) + part(calfTop, ft, 8.8*t, 4.4*t, far) + boot(ft, knee, far);
+  };
+  const arm = (shp, elb, hand, far) => { const mid = [shp[0]+(elb[0]-shp[0])*.5, shp[1]+(elb[1]-shp[1])*.5], fore = [elb[0]+(hand[0]-elb[0])*.3, elb[1]+(hand[1]-elb[1])*.3];
+    return `<circle cx="${shp[0]}" cy="${shp[1]}" r="5.2" fill="${far?KIT.lo:KIT.shell}"/>` + part(shp, mid, 9, 7.6, far) + part(mid, elb, 7.6, 5, far) + part(elb, fore, 5.2, 6, far) + part(fore, hand, 5.8, 3.6, far)
+    + `<circle cx="${hand[0]}" cy="${hand[1]}" r="2.9" fill="${far?KIT.lo:KIT.shell}" stroke="${KIT.edge}" stroke-width=".6"/>` ; }
+  const ballFirst = s.ball && back;
+  if(!back) g += arm(shL, elbL, s.lh, true) + leg(hipL, kneeL, s.lf, true);
+  // torso and hips in one shape: shoulders → chest → waist → hips → seat, so the bottom flows into the legs
+  // (from the side the near leg is drawn first and the seat covers the top of the thigh)
+  const ux = hp[0]-sh[0], uy = hp[1]-sh[1], ul = Math.hypot(ux,uy)||1, nx = -uy/ul, ny = ux/ul, ex = ux/ul, ey = uy/ul;
+  const at = (k, w) => [sh[0]+ux*k+nx*w, sh[1]+uy*k+ny*w];
+  // [k along the body, half-width on the +n side, on the −n side]. From the side +n is the back, so the seat sticks out there.
+  const T = back ? [[-.08,5.4,5.4],[.05,14,14],[.3,13.2,13.2],[.64,8.2,8.2],[.92,9.8,9.8],[1.12,8.8,8.8]]
+                 : [[-.08,3.8,3.4],[.06,7.8,7.4],[.3,7.8,10],[.64,6.4,7.2],[.92,8.2,7.2],[1.1,6.8,6]];
+  const side1 = T.map(([k,w])=>at(k,w)), side2 = T.map(([k,,w])=>at(k,-w)).reverse();
+  const ring = [at(-.1,0), ...side1, at(1.18, 0), ...side2];
+  // a closed smooth curve through all points (Catmull-Rom as cubic Béziers)
+  const bez = pts => { const n = pts.length; let d = `M${pts[0]}`; for(let k=0;k<n;k++){ const p0=pts[(k-1+n)%n], p1=pts[k], p2=pts[(k+1)%n], p3=pts[(k+2)%n];
+    d += `C${p1[0]+(p2[0]-p0[0])/6} ${p1[1]+(p2[1]-p0[1])/6} ${p2[0]-(p3[0]-p1[0])/6} ${p2[1]-(p3[1]-p1[1])/6} ${p2[0]} ${p2[1]}`; } return d+"z"; };
+  g += `<path d="${bez(ring)}" fill="url(#mq-body)" stroke="${KIT.edge}" stroke-width=".7"/>`;
+  // panel lines like a jointed doll: across the chest and the waist
+  const across = (k, w, sag) => `<path d="M${at(k,w)}Q${at(k+sag,0)} ${at(k,-w)}" fill="none" stroke="${KIT.edge}" stroke-width=".7" opacity=".8"/>`;
+  if(back){ const blade = sd2 => `<path d="M${at(.16,sd2*3)}Q${at(.3,sd2*9.5)} ${at(.44,sd2*6)}" fill="none" stroke="${KIT.lo}" stroke-width=".8" stroke-linecap="round" opacity=".4"/>`; g += blade(1) + blade(-1); }
+  if(back){ const sp1 = at(.08,0), sp2 = at(.8,0); g += `<path d="M${sp1}L${sp2}" stroke="${KIT.lo}" stroke-width="1.2" stroke-linecap="round" opacity=".7"/>`
+    + `<path d="M${at(.98,0)}L${at(1.12,0)}" stroke="${KIT.lo}" stroke-width="1" stroke-linecap="round" opacity=".6"/>`; }
+  g += back ? leg(hipL, kneeL, s.lf) + leg(hipR, kneeR, s.rf) + arm(shL, elbL, s.lh) + arm(shR, elbR, s.rh)
+            : leg(hipR, kneeR, s.rf) + arm(shR, elbR, s.rh);
+  // neck and a smooth, faceless head; from the side a faint line shows where it looks
+  const nk = [sh[0]+(head[0]-sh[0])*.45, sh[1]+(head[1]-sh[1])*.45];
+  g += part([sh[0]-ex*1, sh[1]-ey*1], nk, 5.4, 5, false);
+  g += `<ellipse cx="${head[0]}" cy="${head[1]}" rx="5.5" ry="6.8" fill="url(#mq-head)" stroke="${KIT.edge}" stroke-width=".7"/>`;
+  if(!back) g += `<path d="M${head[0]+1.5} ${head[1]-1}h5" stroke="${KIT.accent}" stroke-width="1.6" stroke-linecap="round" opacity=".9"/>`;
+  return scene + (ballFirst ? BALL(s.ball[0], s.ball[1], 8) : "") + `<g filter="url(#mq-ol)">${g}</g>` + (s.ball && !ballFirst ? BALL(s.ball[0], s.ball[1], 8) : "");
+}
+// from above: shoulders, head and the boots stepping while the player runs
+function topPlayer(s){
+  const [x,y] = s.p, [dx,dy] = s.dir, px=-dy, py=dx, step = Math.sin(s.ms/95) * 6 * s.moving, a = Math.atan2(dy,dx)*180/Math.PI;
+  const boot = (side, fwd) => { const cx=x+px*4.5*side+dx*fwd, cy=y+py*4.5*side+dy*fwd; return `<g transform="translate(${cx} ${cy}) rotate(${a}) scale(.8)"><path d="M-4.5 -2.2Q-5.6 0 -4.5 2.2H2.5Q6.5 2 6.6 0Q6.5 -2 2.5 -2.2z" fill="${KIT.boot}" stroke="#cfd6dc" stroke-width=".4"/><path d="M-1 0H4.5" stroke="${KIT.accent}" stroke-width=".8"/></g>`; };
+  const ball = s.ball ? BALL(s.ball[0], s.ball[1], 6.5) : "";
+  let g = `<g filter="url(#mq-ol)" transform="translate(${x} ${y}) scale(1.45) translate(${-x} ${-y})">`;
+  g += boot(-1, 2+step) + boot(1, 2-step);
+  g += `<ellipse cx="${x+px*11.5}" cy="${y+py*11.5}" rx="3" ry="3.4" transform="rotate(${a} ${x+px*11.5} ${y+py*11.5})" fill="${KIT.shell}" stroke="${KIT.edge}" stroke-width=".6"/><ellipse cx="${x-px*11.5}" cy="${y-py*11.5}" rx="3" ry="3.4" transform="rotate(${a} ${x-px*11.5} ${y-py*11.5})" fill="${KIT.shell}" stroke="${KIT.edge}" stroke-width=".6"/>`;
+  g += `<ellipse cx="${x}" cy="${y}" rx="6" ry="12" transform="rotate(${a} ${x} ${y})" fill="url(#mq-body)" stroke="${KIT.edge}" stroke-width=".8"/>`;
+  g += `<ellipse cx="${x+dx*1.2}" cy="${y+dy*1.2}" rx="5.2" ry="4.6" transform="rotate(${a} ${x+dx*1.2} ${y+dy*1.2})" fill="url(#mq-head)" stroke="${KIT.edge}" stroke-width=".7"/><path d="M${x+dx*4+px*2.5} ${y+dy*4+py*2.5}L${x+dx*5.6} ${y+dy*5.6}L${x+dx*4-px*2.5} ${y+dy*4-py*2.5}" fill="none" stroke="${KIT.accent}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+  return ball + g;
+}
+let animRAF = null, animT0 = 0, animPaused = false;
+function runAnim(){
+  cancelAnimationFrame(animRAF);
+  const step = now => {
+    const el = document.getElementById("demo"); if(!el){ animRAF = null; return; }
+    const A = ANIM[el.dataset.id]; if(!A) return;
+    if(!animPaused) el.innerHTML = animSVG(A, animState(A, now - animT0));
+    animRAF = requestAnimationFrame(step);
+  };
+  animT0 = performance.now(); animRAF = requestAnimationFrame(step);
+}
+const VIEWNAME = {back:"うしろから見た動き", side:"よこから見た動き", top:"上から見た動き"};
+// the 3D example (when the move exists in 3D), otherwise the 2D drawing
+const has3D = id => typeof FIG3D !== "undefined" && FIG3D.has(id);
+const demo3DBox = id => `<figure style="margin:0;display:grid;gap:6px"><div id="demo3d" data-id="${id}" style="width:100%;aspect-ratio:4/3;max-height:min(360px,46vh);border-radius:14px;overflow:hidden;background:#2a3832"></div>
+  <div class="row" style="justify-content:center;gap:6px">${["back","side","front","diag"].map((v,i)=>`<button class="ghost" data-v3="${v}" style="min-height:36px;padding:4px 10px;font-size:.85rem">${["うしろ","よこ","まえ","ななめ"][i]}</button>`).join("")}<button class="ghost" id="pause3d" style="min-height:36px;padding:4px 10px;font-size:.85rem">止める</button><button class="ghost" id="slow3d" aria-pressed="false" style="min-height:36px;padding:4px 10px;font-size:.85rem">スロー</button></div>
+  <figcaption class="muted" style="font-size:.8rem;text-align:center;line-height:1.5">ボールにさわった所が<b style="color:var(--mate)">光る</b>　・　黄色い輪＝軸足　・　うすい黄色＝見ている方向<br>指でなぞると、まわして見られます</figcaption></figure>`;
+const demoBox = id => has3D(id) ? demo3DBox(id) : ANIM[id] ? `<figure style="margin:0;display:grid;gap:4px"><svg id="demo" data-id="${id}" viewBox="${ANIM[id].vb || (ANIM[id].v==="back"?"42 14 116 112":"0 0 200 130")}" role="img" aria-label="見本の動き" style="width:100%;max-height:min(320px,42vh);background:var(--surface-2);border-radius:14px;cursor:pointer"></svg><figcaption class="muted" style="font-size:.8rem;text-align:center">${VIEWNAME[ANIM[id].v]}　・　さわると止まる</figcaption></figure>` : "";
+const PLACES = {in:"家の中", front:"家の前・にわ", park:"公園・グラウンド"};
+const ICON = {
+  touch:'<circle cx="15" cy="19" r="7" fill="#fff" stroke="#111" stroke-width="1.2"/><path d="M7 9l5 4M23 9l-5 4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+  ginga:'<path d="M5 20q5-12 10 0t10 0" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><circle cx="15" cy="9" r="3.4" fill="currentColor"/>',
+  dribble:'<path d="M5 25l6-6 4 4 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="9" r="4.5" fill="#fff" stroke="#111" stroke-width="1.2"/>',
+  kick:'<circle cx="21" cy="15" r="6" fill="#fff" stroke="#111" stroke-width="1.2"/><path d="M4 15h9M7 10l6 5-6 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  wall:'<rect x="22" y="4" width="5" height="22" rx="1.5" fill="currentColor"/><circle cx="10" cy="19" r="5" fill="#fff" stroke="#111" stroke-width="1.2"/><path d="M14 13l5-3M14 10l5-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  body:'<circle cx="15" cy="6" r="3.4" fill="currentColor"/><path d="M15 10v8M8 13l7 1 7-1M15 18l-5 8M15 18l5 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>'
+};
+const icon = cat => `<span class="ic" style="--cc:${CATS[cat].c};color:${CATS[cat].c}"><svg viewBox="0 0 30 30" aria-hidden="true">${ICON[cat]}</svg></span>`;
+const secsOf = (d,g) => (d.secsByGrade && d.secsByGrade[g]) || d.secs;
+const minsOf = (d,g) => d.secs ? Math.ceil(secsOf(d,g)*d.sets/60 + 1) : 3;   // + setup / rest
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const dayKey = t => { const d=new Date(t); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+
+// ---------- Saved on this device only ----------
+const KEY = "jt_practice";
+const load = () => { try{ return Object.assign({players:[], cur:null, log:[], set:{}}, JSON.parse(localStorage.getItem(KEY)||"{}")); }catch(e){ return {players:[], cur:null, log:[], set:{}}; } };
+let DB = load();
+const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} };
+const me = () => DB.players.find(p=>p.id===DB.cur) || null;
+const myLog = () => { const p=me(); return p ? DB.log.filter(l=>l.pid===p.id) : []; };
+
+// ---------- State ----------
+const S = {tab:"today", place:(DB.set.place||"front"), mins:(DB.set.mins||15), cone:DB.set.cone!==false, wall:!!DB.set.wall, plan:null, i:0, run:null, catFilter:"all", adding:false};
+const view = document.getElementById("view");
+
+function fits(d, g, place, cone, wall){
+  if(g<d.g[0] || g>d.g[1]) return false;
+  if(!d.pl.includes(place)) return false;
+  if(d.need.includes("cone") && !cone) return false;
+  if(d.need.includes("wall") && !wall) return false;
+  return true;
+}
+// today's menu: warm up with the body, then ginga + touch, then dribble / kick / wall, until the minutes are used
+function makePlan(){
+  const g = me().grade, ok = D.filter(d=>fits(d,g,S.place,S.cone,S.wall));
+  const pick = cats => shuffle(ok.filter(d=>cats.includes(d.cat)));
+  const order = [pick(["body"]), pick(["ginga"]), pick(["touch"]), pick(["dribble"]), pick(["kick","wall"]), pick(["touch"]), pick(["dribble","kick","wall"]), pick(["body"])];
+  const plan = [], used = new Set(); let t = 0;
+  for(const pool of order){
+    const d = pool.find(x=>!used.has(x.id)); if(!d) continue;
+    if(t + minsOf(d,g) > S.mins && plan.length >= 3) continue;
+    plan.push(d.id); used.add(d.id); t += minsOf(d,g);
+    if(t >= S.mins) break;
+  }
+  S.plan = {ids:plan, done:[]}; S.i = 0;
+}
+
+// ---------- Sounds (no files: short beeps made in the browser) ----------
+let AC = null;
+function beep(f=880, ms=120, vol=.18){
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const o=AC.createOscillator(), g=AC.createGain(); o.frequency.value=f; o.type="sine";
+    g.gain.setValueAtTime(vol, AC.currentTime); g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime+ms/1000);
+    o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime+ms/1000);
+  }catch(e){}
+}
+const buzz = p => { try{ navigator.vibrate && navigator.vibrate(p); }catch(e){} };
+
+// ---------- Screens ----------
+function renderMe(){
+  const p = me();
+  document.getElementById("me").innerHTML = p ? `<button class="chip" id="who"><span class="av">${esc([...p.name][0]||"?")}</span>${esc(p.name)}<small>U-${p.grade}</small></button>` : "";
+}
+function gradeSelect(id, v){ return `<select id="${id}" aria-label="学年">${[9,10,11,12].map(g=>`<option value="${g}" ${g===v?"selected":""}>U-${g}</option>`).join("")}</select>`; }
+
+function renderWho(){
+  return `<section class="card">
+    <h2>きみはだれ？</h2>
+    ${DB.players.length?`<div class="row">${DB.players.map(p=>`<button class="chip" data-pid="${esc(p.id)}"><span class="av">${esc([...p.name][0]||"?")}</span>${esc(p.name)}<small>U-${p.grade}</small></button>`).join("")}</div>`:""}
+    <form class="row" id="addp"><input type="text" id="pname" maxlength="16" placeholder="なまえ（ニックネームでOK）" autocomplete="off" aria-label="なまえ" style="flex:1;min-width:160px">${gradeSelect("pgrade",10)}<button class="ghost" type="submit">＋ はじめる</button></form>
+    <p class="muted" style="font-size:.88rem">きょうだいで使うときは、ひとりずつ名前を入れてね。きろくは、この端末の中だけにのこります。</p>
+  </section>`;
+}
+
+function renderToday(){
+  const p = me(), g = p.grade;
+  if(S.plan) return renderPlan();
+  return `<section class="card">
+    <h2>きょうは、どこで れんしゅうする？</h2>
+    <div class="seg" role="group" aria-label="場所">${Object.entries(PLACES).map(([k,v])=>`<button data-place="${k}" aria-pressed="${S.place===k}">${v}</button>`).join("")}</div>
+    ${S.place==="in"?`<p class="note">家の中では、やわらかいボールか、まわりに物がない広いところで。キックはしないメニューになるよ。おうちの人にきいてからやろう。</p>`:""}
+    <p class="label">じかん</p>
+    <div class="seg" role="group" aria-label="時間">${[10,15,20,30].map(m=>`<button data-mins="${m}" aria-pressed="${S.mins===m}">${m}分</button>`).join("")}</div>
+    ${S.place!=="in"?`<p class="label">つかえる物</p>
+    <label class="check"><input type="checkbox" id="cone" ${S.cone?"checked":""}> ペットボトルやコーン（2〜5本）</label>
+    <label class="check"><input type="checkbox" id="wall" ${S.wall?"checked":""}> ボールをけってもいい かべ</label>`:""}
+    <button class="btn wide" id="make">きょうのメニューを つくる</button>
+  </section>
+  ${renderStreak()}`;
+}
+
+function renderPlan(){
+  const g = me().grade, ids = S.plan.ids, total = ids.reduce((s,id)=>s+minsOf(DBY[id],g),0);
+  const allDone = ids.every(id=>S.plan.done.includes(id));
+  return `<section class="card">
+    <div class="row"><h2>きょうのメニュー</h2><span class="muted" style="margin-left:auto">${PLACES[S.place]}・やく${total}分</span></div>
+    ${ids.map((id,i)=>{ const d=DBY[id], done=S.plan.done.includes(id); return `<button class="drill ${done?"done":""}" data-go="${i}" style="--cc:${CATS[d.cat].c}">${icon(d.cat)}<span><span class="cat" style="--cc:${CATS[d.cat].c}">${CATS[d.cat].name}</span><b>${i+1}. ${esc(d.name)}</b><small>${d.secs?`${secsOf(d,g)}秒 × ${d.sets}`:"10回"}${d.side?"（とちゅうで足をかえる）":""}</small></span><span class="t">${done?"✓ できた":"›"}</span></button>`; }).join("")}
+    ${allDone?`<p class="note" style="background:var(--good-bg)">ぜんぶできた！ スタンプをおしたよ。</p>`:`<button class="btn wide" data-go="${Math.max(0,ids.findIndex(id=>!S.plan.done.includes(id)))}">${S.plan.done.length?"つづきから":"スタート"}</button>`}
+    <div class="row"><button class="ghost" id="reroll">ほかのメニューにする</button><button class="ghost" id="replan">場所・時間をかえる</button></div>
+  </section>`;
+}
+
+function renderStreak(){
+  const days = new Set(myLog().map(l=>dayKey(l.at)));
+  let streak=0; const t=new Date(); if(!days.has(dayKey(t))) t.setDate(t.getDate()-1);
+  while(days.has(dayKey(t))){ streak++; t.setDate(t.getDate()-1); }
+  return `<section class="card"><div class="stats">
+    <div class="stat"><span class="big">${streak}</span><small>れんぞく日数</small></div>
+    <div class="stat"><span class="big">${days.size}</span><small>れんしゅうした日</small></div>
+    <div class="stat"><span class="big">${myLog().length}</span><small>やったメニュー</small></div>
+  </div></section>`;
+}
+
+// the practice screen: how-to, the big timer, then the record
+function renderRun(){
+  const r = S.run, d = DBY[r.id], g = me().grade, cc = CATS[d.cat].c;
+  const sec = secsOf(d,g), totalSets = d.secs ? d.sets : 1;
+  const best = bestOf(d.id), goal = d.goal && d.goal[g];
+  let timer = "";
+  if(r.phase==="ready" || r.phase==="go" || r.phase==="pause" || r.phase==="rest"){
+    const left = r.phase==="rest" ? r.rest : r.left, full = r.phase==="rest" ? 10 : sec;
+    const C = 2*Math.PI*54, off = C*(1-left/full);
+    const sub = r.phase==="ready" ? `${totalSets}セット` : r.phase==="rest" ? "やすみ" : r.phase==="pause" ? "とめています" : `${r.set}／${totalSets}セット`;
+    timer = d.secs ? `<div class="timer"><div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" fill="none" stroke="var(--surface-2)" stroke-width="10"/><circle cx="60" cy="60" r="54" fill="none" stroke="${r.phase==="rest"?"var(--muted)":cc}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}"/></svg><span class="num" id="num">${r.phase==="ready"?sec:left}</span><span class="sub ${r.flash?"flash":""}" id="sub">${r.flash||sub}</span></div>
+      <div class="row" style="justify-content:center">${r.phase==="go"?`<button class="btn" id="pause">いったん止める</button>`:r.phase==="pause"?`<button class="btn" id="resume">つづける</button>`:r.phase==="rest"?`<button class="btn" id="skiprest">次のセットへ</button>`:`<button class="btn" id="start">スタート</button>`}</div></div>`
+      : `<div class="row" style="justify-content:center"><button class="btn" id="finish">できた！</button></div>`;
+  }
+  let after = "";
+  if(r.phase==="record"){
+    after = `<section class="card"><h2>おつかれさま！</h2>
+      ${d.rec?`<label class="label" for="recn">${esc(d.recQ)}</label><div class="row"><input type="number" id="recn" inputmode="numeric" min="0" max="${d.rec==="hit"?10:9999}" placeholder="—"><span class="muted">${d.rec==="hit"?"／10回":"回"}</span></div>`:""}
+      ${best!=null&&d.rec?`<p class="muted">これまでの さいこう：<b>${best}</b>${d.rec==="hit"?"／10回":"回"}</p>`:""}
+      <button class="btn wide" id="saverec">きろくして 次へ</button>
+    </section>`;
+  }
+  return `<section class="card" style="border-top:5px solid ${cc}">
+    <div class="row"><span class="cat" style="--cc:${cc}">${CATS[d.cat].name}</span>${S.plan?`<span class="muted" style="margin-left:auto">${S.i+1}／${S.plan.ids.length}</span>`:""}</div>
+    <h2 style="font-size:1.35rem">${esc(d.name)}</h2>
+    ${r.phase!=="record"?demoBox(d.id):""}
+    <ol class="steps">${d.how.map(h=>`<li>${esc(h)}</li>`).join("")}</ol>
+    <p class="point" style="--cc:${cc}"><b>ポイント</b>　${esc(d.pt)}</p>
+    ${goal?`<p class="muted">U-${g}のめあて：<b style="color:var(--fg)">${goal}回</b>${best!=null?`　きみのさいこう：<b style="color:var(--fg)">${best}回</b>`:""}</p>`:""}
+    ${r.phase!=="record"?timer:""}
+  </section>
+  ${after}
+  <div class="row"><button class="ghost" id="back">← もどる</button>${r.phase!=="record"&&S.plan?`<button class="del" id="skip" style="margin-left:auto">このメニューはとばす</button>`:""}</div>`;
+}
+
+function renderList(){
+  const g = me().grade, f = S.catFilter;
+  const list = D.filter(d=>g>=d.g[0] && g<=d.g[1] && (f==="all"||d.cat===f));
+  return `<section class="card">
+    <h2>れんしゅう いちらん<span class="muted" style="font-family:var(--body);font-size:.85rem;margin-left:8px">U-${g}</span></h2>
+    <div class="seg" role="group" aria-label="しゅるい"><button data-cat="all" aria-pressed="${f==="all"}">ぜんぶ</button>${Object.entries(CATS).map(([k,v])=>`<button data-cat="${k}" aria-pressed="${f===k}">${v.name}</button>`).join("")}</div>
+    ${list.map(d=>`<button class="drill" data-one="${d.id}" style="--cc:${CATS[d.cat].c}">${icon(d.cat)}<span><b>${esc(d.name)}</b><small>${d.pl.map(x=>PLACES[x]).join("・")}${d.need.includes("cone")?"・ペットボトル":""}${d.need.includes("wall")?"・かべ":""}</small></span><span class="t">${d.secs?`${secsOf(d,g)}秒×${d.sets}`:"10回"}</span></button>`).join("")}
+  </section>`;
+}
+
+function bestOf(id){ const v = myLog().filter(l=>l.id===id && typeof l.n==="number").map(l=>l.n); return v.length ? Math.max(...v) : null; }
+
+function renderLog(){
+  const log = myLog(), days = new Set(log.map(l=>dayKey(l.at)));
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth(), first = new Date(y,m,1).getDay(), n = new Date(y,m+1,0).getDate();
+  let cal = ["日","月","火","水","木","金","土"].map(h=>`<span class="h">${h}</span>`).join("");
+  for(let i=0;i<first;i++) cal += "<span></span>";
+  for(let d=1; d<=n; d++){ const k = dayKey(new Date(y,m,d)); cal += `<span class="d ${days.has(k)?"on":""} ${d===now.getDate()?"today":""}">${days.has(k)?"⚽":d}</span>`; }
+  const recs = D.filter(d=>d.rec).map(d=>({d, best:bestOf(d.id), last:log.filter(l=>l.id===d.id && typeof l.n==="number").sort((a,b)=>b.at-a.at)[0]})).filter(x=>x.best!=null);
+  return `${renderStreak()}
+  <section class="card"><h2>${m+1}月の スタンプ</h2><div class="cal">${cal}</div></section>
+  <section class="card"><h2>さいこう きろく</h2>
+    ${recs.length?`<table><thead><tr><th>れんしゅう</th><th style="text-align:right">さいこう</th><th style="text-align:right">さいご</th></tr></thead><tbody>${recs.map(x=>`<tr><td>${esc(x.d.name)}</td><td class="n">${x.best}${x.d.rec==="hit"?"/10":""}</td><td class="n" style="color:var(--muted)">${x.last.n}${x.d.rec==="hit"?"/10":""}</td></tr>`).join("")}</tbody></table>`:`<p class="muted">まだきろくがありません。リフティングやかべ当てで、回数を入れるとここにならびます。</p>`}
+  </section>
+  <p><button class="del" id="switch">ほかの人にかえる</button>　<button class="del" id="wipe">${esc(me().name)} のきろくを消す</button></p>`;
+}
+
+function render(){
+  renderMe();
+  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===S.tab));
+  document.getElementById("tabs").hidden = !me() || !!S.run;
+  if(!me()){ view.innerHTML = renderWho(); return; }
+  if(S.run){ view.innerHTML = renderRun(); if(document.getElementById("demo") && !animRAF) runAnim();
+    const d3 = document.getElementById("demo3d"); if(d3) FIG3D.show(d3, d3.dataset.id); return; }
+  if(typeof FIG3D !== "undefined") FIG3D.stopBeat();
+  view.innerHTML = S.tab==="today" ? renderToday() : S.tab==="list" ? renderList() : renderLog();
+}
+
+// ---------- Timer ----------
+let tick = null, beatT = null;
+function stopTimers(){ clearInterval(tick); tick=null; clearInterval(beatT); beatT=null; }
+// no rhythm sound (たけし: 音は入れなくていい); the timer cues (start, last 3 seconds, change feet) stay
+function startBeat(){ clearInterval(beatT); }
+function startRun(id){
+  stopTimers();
+  const d = DBY[id];
+  S.run = {id, phase:"ready", set:1, left:secsOf(d,me().grade), rest:10, beat:!!d.beat, flash:""};
+  render(); scrollTo({top:0});
+}
+function go(){
+  const r = S.run, d = DBY[r.id], sec = secsOf(d,me().grade);
+  r.phase = "go"; r.flash = ""; render(); startBeat();
+  beep(1200,180); buzz(80);
+  tick = setInterval(()=>{
+    r.left--;
+    if(d.side && r.left === Math.floor(sec/2)){ r.flash="足をかえて！"; beep(700,200); buzz([60,60,60]); setTimeout(()=>{ if(S.run===r){ r.flash=""; paintTimer(); } },1600); }
+    if(r.left<=3 && r.left>0) beep(700,90);
+    if(r.left<=0){
+      clearInterval(tick); clearInterval(beatT); beep(1300,400); buzz([120,60,120]);
+      if(r.set < d.sets){ r.phase="rest"; r.rest=10; render(); tick=setInterval(()=>{ r.rest--; if(r.rest<=0){ clearInterval(tick); r.set++; r.left=sec; go(); } else paintTimer(); },1000); }
+      else { r.phase="record"; render(); const el=document.getElementById("recn"); if(el) el.focus(); }
+      return;
+    }
+    paintTimer();
+  },1000);
+}
+// update only the numbers, so the screen does not flicker every second
+function paintTimer(){
+  const r = S.run; if(!r) return;
+  const d = DBY[r.id], full = r.phase==="rest" ? 10 : secsOf(d,me().grade), left = r.phase==="rest" ? r.rest : r.left;
+  const num = document.getElementById("num"), sub = document.getElementById("sub"), ring = document.querySelector(".ring svg circle:last-child");
+  if(!num){ render(); return; }
+  num.textContent = left;
+  const C = 2*Math.PI*54; ring.setAttribute("stroke-dashoffset", C*(1-left/full));
+  sub.textContent = r.flash || (r.phase==="rest" ? "やすみ" : `${r.set}／${d.sets}セット`); sub.classList.toggle("flash", !!r.flash);
+}
+function finishRun(n){
+  const r = S.run, d = DBY[r.id];
+  DB.log.push({pid:me().id, id:d.id, at:Date.now(), secs:d.secs?secsOf(d,me().grade)*d.sets:0, ...(typeof n==="number"?{n}:{})});
+  DB.log = DB.log.slice(-3000); save();
+  stopTimers(); S.run = null;
+  if(S.plan){
+    if(!S.plan.done.includes(d.id)) S.plan.done.push(d.id);
+    const next = S.plan.ids.findIndex(id=>!S.plan.done.includes(id));
+    if(next>=0){ S.i = next; startRun(S.plan.ids[next]); return; }
+    beep(990,150); setTimeout(()=>beep(1320,300),160);
+  }
+  render(); scrollTo({top:0});
+}
+
+// ---------- Events ----------
+document.addEventListener("click", e=>{
+  if(e.target.closest("#demo")){ animPaused = !animPaused; return; }
+  const b3 = e.target.closest("[data-v3]"); if(b3){ FIG3D.view(b3.dataset.v3); return; }
+  if(e.target.closest("#slow3d")){ const on = FIG3D.toggleSlow(); const b = e.target.closest("#slow3d"); b.setAttribute("aria-pressed", on); b.textContent = on ? "ふつう" : "スロー"; return; }
+  if(e.target.closest("#pause3d")){ const p = FIG3D.togglePause(); e.target.closest("#pause3d").textContent = p ? "動かす" : "止める"; return; }
+  if(e.target.closest("#beat3d")){ const on = FIG3D.toggleBeat(); e.target.closest("#beat3d").setAttribute("aria-pressed", on); return; }
+  const t = e.target.closest("button"); if(!t) return;
+  if(t.dataset.tab){ S.tab=t.dataset.tab; render(); return; }
+  if(t.dataset.pid){ DB.cur=t.dataset.pid; save(); S.plan=null; render(); return; }
+  if(t.id==="who" || t.id==="switch"){ DB.cur=null; save(); S.plan=null; stopTimers(); S.run=null; render(); return; }
+  if(t.dataset.place){ S.place=t.dataset.place; DB.set.place=S.place; save(); render(); return; }
+  if(t.dataset.mins){ S.mins=+t.dataset.mins; DB.set.mins=S.mins; save(); render(); return; }
+  if(t.dataset.cat){ S.catFilter=t.dataset.cat; render(); return; }
+  if(t.id==="make" || t.id==="reroll"){ makePlan(); render(); return; }
+  if(t.id==="replan"){ S.plan=null; render(); return; }
+  if(t.dataset.go!=null){ S.i=+t.dataset.go; startRun(S.plan.ids[S.i]); return; }
+  if(t.dataset.one){ S.plan=null; startRun(t.dataset.one); return; }
+  if(t.id==="start"){ go(); return; }
+  if(t.id==="pause"){ clearInterval(tick); clearInterval(beatT); S.run.phase="pause"; render(); return; }
+  if(t.id==="resume"){ go(); return; }
+  if(t.id==="skiprest"){ clearInterval(tick); S.run.set++; S.run.left=secsOf(DBY[S.run.id],me().grade); go(); return; }
+  if(t.id==="finish"){ S.run.phase="record"; render(); return; }
+  if(t.id==="saverec"){ const el=document.getElementById("recn"); const v = el && el.value!=="" ? Math.max(0, Math.round(+el.value)) : undefined; finishRun(Number.isFinite(v)?v:undefined); return; }
+  if(t.id==="back"){ stopTimers(); S.run=null; render(); return; }
+  if(t.id==="skip"){ stopTimers(); const id=S.run.id; S.run=null; const ids=S.plan.ids; const next=ids.findIndex((x,i)=>i>ids.indexOf(id) && !S.plan.done.includes(x)); if(next>=0){ S.i=next; startRun(ids[next]); } else render(); return; }
+  if(t.id==="wipe"){ if(!confirm(`${me().name} のきろくを、すべて消します。元にはもどせません。消しますか？`)) return; const id=me().id; DB.log=DB.log.filter(l=>l.pid!==id); DB.players=DB.players.filter(p=>p.id!==id); DB.cur=null; save(); render(); return; }
+});
+document.addEventListener("change", e=>{
+  if(e.target.id==="cone"){ S.cone=e.target.checked; DB.set.cone=S.cone; save(); }
+  if(e.target.id==="wall"){ S.wall=e.target.checked; DB.set.wall=S.wall; save(); }
+  if(e.target.id==="beat" && S.run){ S.run.beat=e.target.checked; if(S.run.phase==="go") startBeat(); else clearInterval(beatT); }
+});
+document.addEventListener("submit", e=>{
+  if(e.target.id!=="addp") return; e.preventDefault();
+  const name = document.getElementById("pname").value.trim().slice(0,16), grade = +document.getElementById("pgrade").value;
+  if(!name) return;
+  const p = {id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), name, grade};
+  DB.players.push(p); DB.cur = p.id; save(); render();
+});
+render();
+</script>
+
+<script>
+if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script>
+</body></html>

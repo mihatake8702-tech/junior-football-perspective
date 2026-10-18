@@ -5,17 +5,18 @@
 <meta name="theme-color" content="#0b1310">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="作戦ボード">
+<meta name="apple-mobile-web-app-title" content="MAESTRO">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="description" content="8人制サッカーの作戦ボード。フォーメーションの相性、ボールに合わせた自動スライド、練習メニュー。">
+<meta name="description" content="MAESTRO BOARD — 8人制サッカーの作戦ボード。フォーメーションの相性、ボールに合わせた自動スライド、練習メニュー。">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 </head><body>
-<title>8人制 作戦ボード</title>
+<title>MAESTRO BOARD</title>
+<script>document.documentElement.setAttribute("data-theme","dark");document.documentElement.setAttribute("data-digital","");</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Oswald:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Oswald:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Chakra+Petch:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
 <style>
 /* Layout: night-match tactics board. Floodlit pitch on the left, broadcast-style coaching panel on the right; stacks on narrow screens */
 :root{
@@ -271,12 +272,73 @@ select#mine{box-shadow:inset 5px 0 0 var(--accent)} select#opp{box-shadow:inset 
 .player text,.dplayer text{font-family:var(--num);font-weight:700;letter-spacing:.02em}
 .player .pname{font-family:var(--body)}
 </style>
+<style>
+/* ===== MAESTRO BOARD: the digital look (dark only). Chakra Petch for English and numbers, Noto Sans JP for Japanese; small English
+   kickers (data-en) over the Japanese; a HUD frame over the pitch; faint code rain far behind. ===== */
+html[data-digital]{
+  --bg:#030a07; --surface:rgba(7,20,14,.86); --surface-2:rgba(12,30,21,.92); --line:rgba(80,255,170,.22);
+  --fg:#e6fff2; --muted:#7fb89a; --accent:#ff7a3c; --accent-ink:#140600; --opp:#3fa9ff; --opp-ink:#020c18;
+  --grass:#0f3b25; --grass-2:#0c321f; --chalk:rgba(230,255,240,.92); --good:#4dffa6; --warn:#ffd23d; --bad:#ff4d6a;
+  --en:"Chakra Petch",ui-monospace,monospace; --jp:"Noto Sans JP","Hiragino Sans",sans-serif;
+  color-scheme:dark;
+}
+html[data-digital] body{background:radial-gradient(1200px 600px at 20% -10%,rgba(60,255,160,.08),transparent 60%),var(--bg) !important;color:var(--fg);font-family:var(--jp) !important}
+html[data-digital] h1, html[data-digital] h2, html[data-digital] h3, html[data-digital] .brandtext, html[data-digital] .dtitle{font-family:var(--jp) !important;font-weight:700 !important;letter-spacing:.02em}
+html[data-digital] #digi-rain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.12}
+html[data-digital] body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(80,255,170,.03) 0 1px,transparent 1px 3px)}
+html[data-digital] .app{position:relative;z-index:2}
+html[data-digital] .app section, html[data-digital] .board, html[data-digital] header{
+  background:var(--surface) !important;border:1px solid var(--line) !important;border-radius:6px !important;
+  box-shadow:0 0 30px rgba(80,255,170,.06) inset !important}
+
+/* small English kickers above the Japanese (added by data-en) */
+html[data-digital] [data-en]::before{content:attr(data-en);display:block;font-family:var(--en);font-weight:600;font-size:.62rem;letter-spacing:.22em;color:var(--good);opacity:.85;line-height:1.2;margin-bottom:2px;text-transform:uppercase}
+html[data-digital] button[data-en]::before{font-size:.55rem;letter-spacing:.18em;margin-bottom:1px}
+html[data-digital] h1[data-en]::before{font-size:.72rem;letter-spacing:.32em}
+
+/* the header: brand line in English */
+html[data-digital] .brandtext small, html[data-digital] .brand small{font-family:var(--en);letter-spacing:.12em}
+html[data-digital] #scorebar, html[data-digital] .scorebar{font-family:var(--en) !important;border-radius:4px !important;overflow:hidden}
+html[data-digital] .scorebar .num, html[data-digital] .num, html[data-digital] .num8{font-family:var(--en) !important;font-weight:700;letter-spacing:.06em}
+
+/* buttons, tabs */
+html[data-digital] button, html[data-digital] select{font-family:var(--jp);border-radius:4px !important;border-color:var(--line) !important}
+html[data-digital] .seg button[aria-pressed="true"], html[data-digital] .primary{box-shadow:0 0 0 1px rgba(255,122,60,.6), 0 0 16px rgba(255,122,60,.35)}
+
+/* the pitch from above */
+html[data-digital] .board{position:relative}
+html[data-digital] svg.pitch{border-radius:4px;filter:drop-shadow(0 0 14px rgba(80,255,170,.18))}
+html[data-digital] svg.pitch g[stroke]{filter:drop-shadow(0 0 1.5px rgba(160,255,210,.8))}
+html[data-digital] svg.pitch rect[fill="url(#vig)"]{opacity:.55}
+html[data-digital] svg.pitch .plabel, html[data-digital] svg.pitch .pname{font-family:var(--en) !important;font-weight:700;letter-spacing:.04em}
+html[data-digital] svg.pitch .player circle{filter:drop-shadow(0 0 2.5px currentColor)}
+/* HUD frame over the pitch: corner brackets, a fine grid, a slow scan line, coordinates */
+html[data-digital] .hud{position:absolute;pointer-events:none;z-index:3}
+html[data-digital] .hud .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(160,255,210,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(160,255,210,.07) 1px,transparent 1px);background-size:12.5% 8.33%}
+html[data-digital] .hud .scan{position:absolute;left:0;right:0;height:18%;background:linear-gradient(to bottom,transparent,rgba(80,255,170,.10),transparent);animation:hudscan 5s linear infinite}
+@keyframes hudscan{from{top:-18%}to{top:100%}}
+html[data-digital] .hud i{position:absolute;width:18px;height:18px;border:2px solid var(--good)}
+html[data-digital] .hud i:nth-of-type(1){left:-6px;top:-6px;border-right:0;border-bottom:0}
+html[data-digital] .hud i:nth-of-type(2){right:-6px;top:-6px;border-left:0;border-bottom:0}
+html[data-digital] .hud i:nth-of-type(3){left:-6px;bottom:-6px;border-right:0;border-top:0}
+html[data-digital] .hud i:nth-of-type(4){right:-6px;bottom:-6px;border-left:0;border-top:0}
+html[data-digital] .hud b{position:absolute;font:600 9px/1 var(--en);letter-spacing:.2em;color:var(--good);opacity:.8;white-space:nowrap}
+html[data-digital] .hud b.tl{left:4px;top:-16px}
+html[data-digital] .hud b.tr{right:4px;top:-16px}
+html[data-digital] .hud b.bl{left:4px;bottom:-16px}
+/* the zone bands (人数の有利・不利): thinner colour so the pitch stays dark green */
+html[data-digital] svg.pitch rect[fill="var(--warn)"], html[data-digital] svg.pitch rect[fill="var(--bad)"]{opacity:.22}
+html[data-digital] .hud .grid{background-image:linear-gradient(rgba(160,255,210,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(160,255,210,.10) 1px,transparent 1px)}
+/* the name */
+html[data-digital] h1 .maestro{display:block;font-family:var(--en);font-weight:700;font-size:1.9rem;letter-spacing:.14em;line-height:1.05;color:#f2fff8;text-shadow:0 0 18px rgba(80,255,170,.35)}
+html[data-digital] h1 .maestro em{font-style:normal;color:var(--good);margin-left:.35em}
+</style>
 
 <div class="notice" id="notice" role="alert" hidden><span></span><button id="noticeClose" aria-label="閉じる">✕</button></div>
 <div class="app">
   <header class="brand">
     <svg class="logo" viewBox="0 0 42 42" aria-hidden="true"><rect x="1" y="1" width="40" height="40" rx="10" fill="var(--grass)"/><rect x="7" y="5" width="28" height="32" rx="1.5" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.4"/><line x1="7" y1="21" x2="35" y2="21" stroke="rgba(255,255,255,.85)" stroke-width="1.4"/><circle cx="21" cy="21" r="5" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.4"/><circle cx="15" cy="29" r="2.6" fill="var(--accent)"/><circle cx="27" cy="13" r="2.6" fill="var(--opp)"/></svg>
-    <div class="brandtext"><h1><span class="num8">8</span>人制 作戦ボード</h1><p>U-9〜U-12 コーチ用 ・ フォーメーションの相性と戦術</p></div>
+    <div class="brandtext"><h1 data-en="8-A-SIDE TACTICS // U-9–U-12"><span class="maestro">MAESTRO<em>BOARD</em></span></h1><p>U-9〜U-12 コーチ用 ・ フォーメーションの相性と戦術</p></div>
     <div class="scorebar" id="scorebar" aria-live="polite"></div>
   </header>
 
@@ -2437,7 +2499,7 @@ function renderPanel(){
 function updateScorebar(){
   const sb=document.getElementById("scorebar"); if(!sb) return;
   const poss=S.auto?(S.possession==="mine"?"自チーム保持":"相手保持"):"手動";
-  sb.innerHTML=`<span class="t m"><small>自チーム</small>${esc(nameOf(S.mine))}</span><span class="vs">VS</span><span class="t o">${esc(nameOf(S.opp))}<small>相手</small></span><span class="meta">${S.auto?'<span class="live"></span>':''}${esc(S.grade)}・${poss}</span>`;
+  sb.innerHTML=`<span class="t m"><small>HOME</small>${esc(nameOf(S.mine))}</span><span class="vs">VS</span><span class="t o">${esc(nameOf(S.opp))}<small>AWAY</small></span><span class="meta">${S.auto?'<span class="live"></span>':''}${esc(S.grade)}・${poss}</span>`;
 }
 function renderAll(){ updateScorebar(); if(DM.id) stopDemo(false); drawZones(); drawTeam("opp"); drawTeam("mine"); drawBall(); drawStrokes(); drawSelection(); updateAutoHint(); renderPanel(); }
 
@@ -2600,6 +2662,37 @@ document.getElementById("undo").addEventListener("click",()=>{S.draw.pop();drawS
 document.getElementById("clearDraw").addEventListener("click",()=>{S.draw=[];drawStrokes();});
 
 loadLocal(); loadLocalBoards(); drawPitch(); freshPositions(); renderAll(); connectDb(); connectBoards(); connectDrills();
+</script>
+<script>
+// ===== MAESTRO BOARD: English kickers, the HUD over the pitch, the code rain =====
+(() => {
+  const EN = {"ボール保持":"POSSESSION", "守り方":"PRESSING", "セットプレー":"SET PIECE", "自チームの局面":"PHASE",
+    "自チーム":"HOME", "相手":"AWAY", "学年":"GRADE", "相性分析":"MATCHUP", "自チームの戦術":"GAME PLAN", "相手の特徴":"SCOUTING", "プレー原則":"PRINCIPLES",
+    "ポジション":"POSITIONS", "選手":"SQUAD", "練習メニュー":"DRILLS", "保存した配置":"SAVED", "動かす":"MOVE", "矢印を書く":"DRAW", "実線":"SOLID", "点線":"DASH",
+    "基本":"BASE", "攻撃時":"ATTACK", "守備時":"DEFEND", "前から行く":"HIGH", "ふつう":"MID", "引いて守る":"LOW", "近い方":"NEAREST", "全画面":"FULL"};
+  const clean = s => s.replace(/[✋✏️―┄⛶\s]/g, ""), map = {}; for (const k in EN) map[clean(k)] = EN[k];
+  const label = () => document.querySelectorAll(".label, button, label").forEach(el => {
+    if (el.closest("#scorebar") || el.closest("svg")) return; const en = map[clean(el.textContent)]; if (en && el.dataset.en !== en) el.dataset.en = en; });
+  let t = 0; new MutationObserver(() => { clearTimeout(t); t = setTimeout(label, 60); }).observe(document.body, {childList:true, subtree:true}); label();
+  // HUD frame over the pitch
+  const svg = document.querySelector("svg.pitch"); if (svg) { const host = svg.parentElement;
+    const hud = document.createElement("div"); hud.className = "hud"; hud.setAttribute("aria-hidden", "true");
+    hud.append(Object.assign(document.createElement("div"), {className:"grid"}), Object.assign(document.createElement("div"), {className:"scan"}));
+    for (let i = 0; i < 4; i++) hud.append(document.createElement("i"));
+    for (const [c, txt] of [["tl","PITCH 68 × 50 M"],["tr","TOP VIEW"],["bl","▲ ATTACK"]]) { const b = document.createElement("b"); b.className = c; b.textContent = txt; hud.append(b); }
+    if (getComputedStyle(host).position === "static") host.style.position = "relative"; host.append(hud);
+    const place = () => { const r = svg.getBoundingClientRect(), h = host.getBoundingClientRect(); Object.assign(hud.style, {left:(r.left-h.left)+"px", top:(r.top-h.top)+"px", width:r.width+"px", height:r.height+"px"}); };
+    place(); addEventListener("resize", place); new ResizeObserver(place).observe(svg); }
+  // code rain, very faint, far behind (stops when the tab is hidden; off for reduced motion)
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const c = document.createElement("canvas"); c.id = "digi-rain"; c.setAttribute("aria-hidden", "true"); document.body.prepend(c);
+    const x = c.getContext("2d"), chars = "0123456789ABCDEF<>/+=-".split(""); let cols = [];
+    const fit = () => { c.width = innerWidth; c.height = innerHeight; cols = Array(Math.ceil(c.width/18)).fill(0).map(() => Math.random()*c.height/18|0); };
+    fit(); addEventListener("resize", fit);
+    setInterval(() => { if (document.hidden) return; x.fillStyle = "rgba(3,10,7,.14)"; x.fillRect(0,0,c.width,c.height); x.fillStyle = "#4dffa6"; x.font = '13px "Chakra Petch", monospace';
+      cols.forEach((y, i) => { x.fillText(chars[Math.random()*chars.length|0], i*18, y*18); cols[i] = y*18 > c.height && Math.random() > .975 ? 0 : y + 1; }); }, 80);
+  }
+})();
 </script>
 
 <script>
