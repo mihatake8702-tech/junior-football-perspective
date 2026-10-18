@@ -2993,9 +2993,17 @@ const VOICE = (() => {
   if (ok){ pick(); speechSynthesis.addEventListener ? speechSynthesis.addEventListener("voiceschanged", pick) : (speechSynthesis.onvoiceschanged = pick); }
   // phones only let a page talk after a tap: say nothing once on the first tap
   if (ok) addEventListener("pointerdown", () => { if (unlocked) return; unlocked = true; const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); }, {capture:true});
+  // position names as a Japanese voice should say them (the same words as MAESTRO BOARD's 練習メニュー voice:
+  // letters read one by one were hard to catch, e.g. CH sounded like 新聞紙), and words the voice misreads
+  const SAY = [["GK","ゴールキーパー"],["CB","センターバック"],["SB","サイドバック"],["CH","センターハーフ"],["SH","サイドハーフ"],["CF","センターフォワード"],["FW","フォワード"],["DF","ディフェンダー"],["MF","ミッドフィルダー"],["LH","左ハーフ"],["RH","右ハーフ"],["LB","左バック"],["RB","右バック"],["DM","ボランチ"],["CM","センターハーフ"],["OH","トップ下"],["→","、"],["＋","と"]];
+  const SAY2 = [["バックパス","後ろへのパス"],["こぼれ球","こぼれだま"],["ターンして","くるっと回って"],["ターン","くるっと回る"],["復帰","戻れる"],["＝","は"]];
+  const words = t => SAY2.reduce((a,[k,v]) => a.split(k).join(v), SAY.reduce((a,[k,v]) => a.split(k).join(v), t))
+    .replace(/人\s*対\s*/g, "人、たい、").replace(/(^|[、。！\s])間/g, "$1すきま").replace(/(?<![時瞬仲])間/g, "あいだ")
+    .replace(/(?<![実国交])際/g, "ぎわ").replace(/(?<![以案海国])外(?![すれしさ])/g, "そと")
+    .replace(/(?<![0-9０-９])1人(?!目)/g, "ひとり").replace(/(?<![0-9０-９])2人(?!目)/g, "ふたり");
   // marks and short forms said the way a coach says them
-  const say = t => String(t).replace(/<[^>]+>/g, " ").replace(/◎/g, "にじゅうまる、").replace(/○/g, "まる、").replace(/[✕×]/g, "ばつ、")
-    .replace(/(\d)-(\d)(?:-(\d))?(?:-(\d))?/g, (m, ...d) => d.filter(x => /\d/.test(x || "")).join("、")).replace(/[（(]/g, "、").replace(/[）)]/g, "、").replace(/\s+/g, " ").replace(/[、。\s]*。[、。\s]*/g, "。").replace(/(、\s*)+/g, "、").replace(/^[、。]+|、+$/g, "").trim();
+  const say = t => words(String(t)).replace(/<[^>]+>/g, " ").replace(/◎/g, "にじゅうまる、").replace(/○/g, "まる、").replace(/[✕×]/g, "ばつ、")
+    .replace(/(\d)-(\d)(?:-(\d))?(?:-(\d))?/g, (m, a, b, c, d) => [a, b, c, d].filter(Boolean).join("、")).replace(/[（(]/g, "、").replace(/[）)]/g, "、").replace(/\s+/g, " ").replace(/[、。\s]*。[、。\s]*/g, "。").replace(/(、\s*)+/g, "、").replace(/^[、。]+|、+$/g, "").trim();
   function speak(text, rate=1){
     if (!ok || !on) return; stop(); const t = say(text); if (!t) return;
     const u = new SpeechSynthesisUtterance(t); u.lang = "ja-JP"; if (voice) u.voice = voice; u.rate = Math.max(.7, Math.min(1.4, rate));
@@ -3255,8 +3263,8 @@ const CLIP3D = (() => {
     P.progress = () => C ? clamp(C.t/C.steps[C.i].dur) : 0;
     // the caption of the current step and the row of step buttons
     // the words read aloud for the current step: its name, then the caption
-    // (じょうきょう and もんだい are only shown, not read: たけし wants the voice for the answers and the ポイント)
-    P.sayStep = () => { const st = C.steps[C.i]; if (st.r === undefined && !st.cls) return ""; return [st.k, st.title && kj(st.title), st.text && kj(st.text)].filter(Boolean).join("。"); };
+    // (じょうきょう and もんだい: the words are read, the step names are not)
+    P.sayStep = () => { const st = C.steps[C.i], plain = st.r === undefined && !st.cls; return [plain ? "" : st.k, st.title && kj(st.title), st.text && kj(st.text)].filter(Boolean).join("。"); };
     P.capClass = () => { const st = C.steps[C.i]; return st.cls || (st.r !== undefined ? "r" + st.r : ""); };
     P.capHTML = () => { const st = C.steps[C.i]; return `<span class="k">${esc(st.k)}</span>${st.title ? `<h3>${esc(kj(st.title))}</h3>` : ""}${st.text ? `<p>${esc(kj(st.text))}</p>` : ""}`; };
     P.dotsHTML = () => C.steps.map((s, i) => `<button data-step="${i}" class="${s.r !== undefined && !s.cls ? "r" + s.r : ""}" aria-current="${i === C.i}" aria-label="${esc(s.k)}"><i class="fill" style="width:${i < C.i ? 100 : 0}%"></i><span>${esc(s.short)}</span></button>`).join("");
