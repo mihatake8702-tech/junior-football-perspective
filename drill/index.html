@@ -788,15 +788,15 @@ D({id:"g01", th:"goal", g:[9,12],
 
 // --- 1・2・3の位置（タップ） ---
 D({id:"p01", th:"pos123", type:"tap", g:[9,12],
- situ:"CBがボールを持っている。相手のFWがCBに近づいてきた。CHのきみは相手のMFの前にいる。",
+ situ:"CBがボールを持っている。相手のFWが、左がわからCBに近づいてきた。CHのきみは相手のMFの前にいる。",
  q:"CBがこまらないように、どこでパスを受ける？",
- scene:{f:"3-3-1", me:["CH",25,38], ball:[25,54], mates:M("3-3-1",{CH:null}), opps:[[25,48],[25,34],[14,30],[36,30],[25,20]],
-  arrows:[{f:[25,48],t:[25,51],k:"opp"}]},
+ scene:{f:"3-3-1", me:["CH",25,38], ball:[25,54], mates:M("3-3-1",{CH:null}), opps:[[21.5,48.5],[25,34],[14,30],[36,30],[25,20]],
+  arrows:[{f:[21.5,48.5],t:[23.3,51.6],k:"opp"}]},
  zones:[
-  {c:[31,47], rad:4, r:2, why:"相手FWのよこで、CBのななめ前。相手にじゃまされずに、すぐパスをもらえる「1の位置」。"},
+  {c:[31,47], rad:4, r:2, why:"相手FWは左から来て、左のパスコースをふさいでいる。反対の右がわ、CBのななめ前なら、相手にじゃまされずにすぐパスをもらえる「1の位置」。"},
   {c:[37,42], rad:4, r:1, why:"パスは通る。でも少し遠くて、パスが長くなるぶん相手がよってくる。"}],
- miss:"そこは相手のかげ（うしろ）か、遠すぎる。CBのななめ前で、相手にじゃまされない場所をさがそう。",
- point:"こまっている味方の近く、ななめの場所が1の位置。"});
+ miss:"そこは相手のかげ（うしろ）か、相手FWが来ている左がわか、遠すぎる。相手が来るのと反対がわの、CBのななめ前をさがそう。",
+ point:"相手が来るのと反対がわ、味方のななめ前が1の位置。"});
 
 // --- レーンと相手のわき（タップ、2-3-2） ---
 D({id:"l01", th:"lane", type:"tap", g:[10,12],
@@ -11605,8 +11605,9 @@ function pitchSVG(q, reveal){
     const col = a.k==="opp"?"var(--opp)":a.k==="run"?"var(--mate)":"var(--chalk)";
     return `<line x1="${a.f[0]}" y1="${a.f[1]}" x2="${a.t[0]}" y2="${a.t[1]}" stroke-width=".45" ${a.k==="pass"?'stroke-dasharray="1 .8"':'stroke-dasharray="1.6 .7"'} style="stroke:${col}" marker-end="url(#ah-${a.k})"/>`;
   }).join("");
-  const opps = [...BASE_OPP_DEF, ...sc.opps].filter((p,i,arr)=>arr.findIndex(o=>o[0]===p[0]&&o[1]===p[1])===i)
-    .map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="1.25" fill="${p[0]===25&&p[1]===4?"url(#kitGO)":"url(#kitO)"}" fill-opacity=".85" stroke="rgba(255,255,255,.95)" stroke-width=".26" filter="url(#tok)"/>`).join("");
+  const oppList = [...BASE_OPP_DEF, ...sc.opps].filter((p,i,arr)=>arr.findIndex(o=>o[0]===p[0]&&o[1]===p[1])===i);
+  const opps = oppList.map((p,i)=>{ const v=((S.cur||{}).opps||{})[i]||[0,0];
+      return `<g class="mover" id="mvO${i}" style="transform:translate(${v[0]}px,${v[1]}px);transition:none"><circle cx="${p[0]}" cy="${p[1]}" r="1.25" fill="${p[0]===25&&p[1]===4?"url(#kitGO)":"url(#kitO)"}" fill-opacity=".85" stroke="rgba(255,255,255,.95)" stroke-width=".26" filter="url(#tok)"/></g>`; }).join("");
   // our players: the same kit tokens as MAESTRO BOARD (orange, the GK yellow), role in Chakra Petch
   const mate = (p,x,y)=>`<g><circle cx="${x}" cy="${y}" r="1.25" fill="${p==="GK"?"url(#kitGM)":"url(#kitM)"}" fill-opacity=".9" stroke="rgba(255,255,255,.95)" stroke-width=".26" filter="url(#tok)"/><text x="${x}" y="${y+.36}" text-anchor="middle" font-size="1" font-weight="700" style="fill:${p==="GK"?"#1a1406":"var(--mate-ink)"};font-family:var(--en,var(--num))">${p}</text></g>`;
   const hasBall = sc.ball[0]===me[1] && sc.ball[1]===me[2];
@@ -11635,6 +11636,10 @@ function pitchSVG(q, reveal){
     if(q.target==="ball") tgt.ball=[S.tap[0]-bp[0],S.tap[1]-bp[1]];
     else { tgt.me=[S.tap[0]-me[1],S.tap[1]-me[2]]; tgt.ride=hasBall && q.target==="dribble"; }
   }
+  // the opponents with an arrow (k:"opp") move along it at the same time as the answer (as in the 3D)
+  tgt.opps = {};
+  if((q.type==="pick" && (reveal ? S.picked : S.preview)!=null) || S.tap || reveal)
+    (sc.arrows||[]).forEach(a=>{ if(a.k!=="opp") return; let bi=-1, bd=2.5; oppList.forEach((p,i)=>{ const d=Math.hypot(p[0]-a.f[0],p[1]-a.f[1]); if(d<bd){bd=d;bi=i;} }); if(bi>=0) tgt.opps[bi]=[a.t[0]-oppList[bi][0], a.t[1]-oppList[bi][1]]; });
   S.tgt=tgt;
   const cur=S.cur||{me:[0,0],ball:[0,0],mates:{}};
   const hidden = S.hide && !reveal;
@@ -12302,7 +12307,7 @@ const V3D = (() => {
     while (actors.children.length) actors.remove(actors.children[0]);
     const sc = q.scene; mates = sc.mates.map(m => { const g = makePlayer(m[0] === "GK" ? COL.gk : COL.mate, m[0]); actors.add(g); return g; });
     const op = [...BASE_OPP_DEF, ...sc.opps].filter((p,i,arr) => arr.findIndex(o => o[0]===p[0] && o[1]===p[1]) === i);
-    opps = op.map(p => { const g = makePlayer(p[0] === 25 && p[1] === 4 ? COL.ogk : COL.opp, ""); g.position.copy(W(p[0], p[1])); actors.add(g); return g; });
+    opps = op.map(p => { const g = makePlayer(p[0] === 25 && p[1] === 4 ? COL.ogk : COL.opp, ""); g.position.copy(W(p[0], p[1])); g.userData.p0 = p; actors.add(g); return g; });
     (sc.arrows||[]).forEach(a => actors.add(arrow(a.f, a.t, a.k === "opp" ? COL.opp : a.k === "run" ? COL.mate : "#ffffff", a.k === "pass")));
     if (meG) scene.remove(meG); meG = makePlayer(sc.me[0] === "GK" ? COL.gk : COL.mate, "");
     const ml = label("きみ", "#ffffff"); ml.position.y = 2.2; meG.add(ml); meG.userData.lab = ml;
@@ -12411,6 +12416,10 @@ const V3D = (() => {
     const hasBall = sc.ball[0] === me[1] && sc.ball[1] === me[2];
     // our players first (one of them may have the ball)
     sc.mates.forEach((m, i) => { const v = t.mates[i] || [0,0], c = cur.mates[i] || [0,0]; cur.mates[i] = [ease(c[0], v[0], k), ease(c[1], v[1], k)]; const o = ov.get(mates[i]); mates[i].position.copy(o ? W(o[0], o[1]) : W(m[1] + cur.mates[i][0], m[2] + cur.mates[i][1])); });
+    // the opponents with an arrow move along it with the answer (the same moves as the top view)
+    cur.opps = cur.opps || {};
+    opps.forEach((g, i) => { const v = (t.opps || {})[i] || [0,0], c = cur.opps[i] || [0,0]; cur.opps[i] = [ease(c[0], v[0], k), ease(c[1], v[1], k)];
+      if (!ov.get(g)) g.position.copy(W(g.userData.p0[0] + cur.opps[i][0], g.userData.p0[1] + cur.opps[i][1])); });
     actors.visible = !hidden;
     { const on = !hidden && (S.preview !== null || !!S.tap || done), now = performance.now();
       starts.forEach(s => { const g = s.i < 0 ? meG : mates[s.i], p = g ? [g.position.x + 25, g.position.z + 34] : s.at, moved = Math.hypot(p[0] - s.at[0], p[1] - s.at[1]) > 1;
@@ -12775,12 +12784,13 @@ function render(){
   const active = document.activeElement && document.activeElement.id==="newname" ? document.getElementById("newname").value : null;
   view.innerHTML = S.step==="name"?renderName():S.step==="pick"?renderPick():S.step==="quiz"?renderQuiz():renderResult();
   if(S.step==="quiz" && S.tgt){
-    const t=S.tgt; S.cur={me:t.me, ball:t.ride?[0,0]:t.ball, mates:t.mates};
+    const t=S.tgt; S.cur={me:t.me, ball:t.ride?[0,0]:t.ball, mates:t.mates, opps:t.opps||{}};
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
       const m=document.getElementById("mvMe"), bl=document.getElementById("mvBall");
       if(m){ m.style.transition=""; m.style.transform=`translate(${t.me[0]}px,${t.me[1]}px)`; }
       if(bl){ bl.style.transition=""; bl.style.transform=`translate(${t.ball[0]}px,${t.ball[1]}px)`; }
       document.querySelectorAll('[id^="mvT"]').forEach(g=>{ const v=t.mates[g.id.slice(3)]||[0,0]; g.style.transition=""; g.style.transform=`translate(${v[0]}px,${v[1]}px)`; });
+      document.querySelectorAll('[id^="mvO"]').forEach(g=>{ const v=(t.opps||{})[g.id.slice(3)]||[0,0]; g.style.transition=""; g.style.transform=`translate(${v[0]}px,${v[1]}px)`; });
     }));
   }
   if(typeof V3D!=="undefined" && V3D) V3D.attach();
