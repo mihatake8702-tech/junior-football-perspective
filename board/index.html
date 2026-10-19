@@ -386,7 +386,8 @@ body:not(.drilltab) .teamsel.drillsel, body.drilltab .teamsel:not(.drillsel){dis
 .eyepick button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .view3d{position:absolute;z-index:4;border-radius:4px;overflow:hidden;touch-action:none;cursor:grab;background:#000}
 .view3d canvas{display:block;width:100%;height:100%}
-.view3d .v3note{position:absolute;left:8px;bottom:8px;right:8px;font:600 .72rem/1.4 var(--jp,sans-serif);color:#e6fff2;background:rgba(3,10,7,.62);padding:5px 8px;border-radius:4px;pointer-events:none}
+.view3d .v3note.gone{opacity:0}
+.view3d .v3note{transition:opacity .6s;position:absolute;left:8px;bottom:8px;right:8px;font:600 .72rem/1.4 var(--jp,sans-serif);color:#e6fff2;background:rgba(3,10,7,.62);padding:5px 8px;border-radius:4px;pointer-events:none}
 .view3d .v3note b{font-family:var(--en,inherit);letter-spacing:.12em;color:#4dffa6;margin-right:6px}
 .view3d .v3legend{position:absolute;right:8px;top:8px;display:grid;gap:3px;font:700 .68rem/1.2 var(--jp,sans-serif);color:#e6fff2;background:rgba(3,10,7,.6);padding:5px 8px;border-radius:4px;pointer-events:none}
 .view3d .v3phase{position:absolute;left:8px;top:8px;max-width:min(360px,calc(100% - 16px));max-height:calc(100% - 52px);overflow:auto;background:rgba(3,10,7,.8);border:1px solid rgba(77,255,166,.35);border-left:4px solid #ff7a3c;border-radius:4px;padding:6px 10px;font:500 .74rem/1.45 var(--jp,sans-serif);color:#e6fff2;pointer-events:none}
@@ -1887,6 +1888,9 @@ const DRILLS=[
  {id:"side21in",name:"サイドの2対1（インナーラップ）",theme:["攻撃"],grade:["U-10","U-11","U-12"],style:"both",min:15,players:"SH＋SB＋DF1＋中にFW",area:"サイドのレーン（縦30m）",
   how:["SHはタッチライン沿いに広く立ってボールを持つ","SBはSHとDFの間を内側へ走って追い越す","DFがSHを見ている間に内側のSBへ。SBはエリアへ運んでシュートかFWへ"],
   points:["追い越す人の声（「中！」）","SHは外で持ってDFを引きつける","SBはゴールに近い内側を、スピードを落とさずに走る"],kid:"外の友だちがボールを持ったら、内側を走って追い越そう"},
+ {id:"unmark2",name:"はずす動き（チェック・入れかわり）",theme:["攻撃"],grade:["U-10","U-11","U-12"],style:"both",min:12,players:"パサー＋FW＋DF（2人組で交代）",area:"縦20m×横15m",
+  how:["パサーがボールを持つ。FWのうしろにDFがつく","FWは一度うらへ行くふりをして、DFが下がったら急にもどって足もとで受ける（チェックの動き）","DFが前に出てきたら、入れかわってうらへ。パサーはFWの前のスペースへ出す"],
+  points:["行くふりをして反対へ。相手とのきょりをつくる","相手が前に出てくるほど、うしろが空く","パスが出るまでは、相手のDFより前に出ない（オフサイド）"],kid:"行くふりをして、反対へ！"},
  {id:"box3",name:"ゴール前の3か所（ニア・ファー・折り返し）",theme:["攻撃"],grade:["U-10","U-11","U-12"],style:"en",min:15,players:"6〜8人＋GK",area:"ペナルティエリア周辺",
   how:["サイドからのクロス（またはグラウンダーの折り返し）に3人が入る","ニア・ファー・ペナルティマーク付近の3か所を役割分担","DFを1〜2人入れて実戦に近づける"],
   points:["3人が同じ場所に入らない","ボールを見てから走り出すタイミング（早すぎない）","ファーの選手は最後まであきらめずに詰める"],kid:"ニア、ファー、まんなか。3人で別々の場所へ"},
@@ -2239,6 +2243,14 @@ const DEMOS={
    {cap:"SBがエリアへ運ぶ。FWはニアへ",ball:"SB",mv:{SB:[34,10],FW:[27,6],D:[39,13],SH:[46,12],G:[27,2.5]}},
    {cap:"ニアのFWへ → シュート！",ball:"FW",mv:{FW:[26,5]}},
    {cap:"シュート！",ball:[25.5,0.5]}]},
+ "unmark2":{area:[17,16,16,36],
+  players:{P:pm("出",25,48),F:pm("FW",25,30),D:po("DF",25,27)},
+  steps:[{cap:"パサーがボールを持つ。FWのうしろにDFがつく",ball:"P"},
+   {cap:"FWは一度うら（前）へ行くふり。DFが下がる",ball:"P",mv:{F:[25,25.5],D:[25,23]}},
+   {cap:"急にもどって、足もとで受ける（チェックの動き）",ball:"F",mv:{F:[24,33],D:[24.5,27]}},
+   {cap:"パサーへもどす。DFが前に出てきて、FWにぴったりつく",ball:"P",mv:{F:[25,31],D:[25,29]}},
+   {cap:"DFが前に出てきたら、入れかわってうらへ。パサーはFWの前のスペースへ",lead:true,ball:"F",mv:{F:[28,20],D:[26,28]}},
+   {cap:"うらで前を向いて受けて、運ぶ",ball:"F",mv:{F:[28,14],D:[26,22]}}]},
  "box3":{area:[10,0,30,18],
   players:{W:pm("W",45,16),A:pm("A",32,20),B:pm("B",25,22),C:pm("C",17,20),d1:po("DF",28,8),d2:po("DF",21,9),G:po("GK",25,2.5)},
   steps:[{cap:"サイドの選手がゴールラインへ。中は3人",ball:"W"},
@@ -3391,7 +3403,7 @@ const CLIP3D = (() => {
 const B3D = (() => {
   if (typeof THREE === "undefined" || typeof CLIP3D === "undefined" || !CLIP3D) return null;
   const svg = document.getElementById("pitch"), host = svg.parentElement;
-  let eyeWall = null, fan = null, ballRing = null, showLanes = false, view = "top", renderer = null, scene, cam, root, ballM, lanes, players = {mine:[], opp:[]}, wrap, note, legend, raf = 0, eyeIdx = null;
+  let setNote = () => {}, eyeWall = null, fan = null, ballRing = null, showLanes = false, view = "top", renderer = null, scene, cam, root, ballM, lanes, players = {mine:[], opp:[]}, wrap, note, legend, raf = 0, eyeIdx = null;
   const orbit = {yaw:0, pitch:.95, zoom:1};   // zoom 1 = the whole pitch just fits
   const W = (x, y, h=0) => new THREE.Vector3(x - 25, h, y - 34);          // board metres → 3D (mine attack towards −z)
   const lin = c => new THREE.Color(c).convertSRGBToLinear();
@@ -3555,7 +3567,9 @@ const B3D = (() => {
     fan = makeFan(22); scene.add(fan);
     demoRoot = new THREE.Group(); scene.add(demoRoot);
     wrap = document.createElement("div"); wrap.className = "view3d"; wrap.hidden = true; wrap.append(renderer.domElement);
-    note = document.createElement("div"); note.className = "v3note"; legend = document.createElement("div"); legend.className = "v3legend";
+    note = document.createElement("div"); note.className = "v3note";
+    // (the how-to line: shown for 4 s when it changes, then it fades so it never hides the pitch)
+    setNote = html => { if (note.dataset.html === html) return; note.dataset.html = html; note.innerHTML = html; note.classList.remove("gone"); clearTimeout(note._t); note._t = setTimeout(() => note.classList.add("gone"), 4000); }; legend = document.createElement("div"); legend.className = "v3legend";
     legend.innerHTML = '<span><i style="background:#38c8ff"></i>パスが通る</span><span><i style="background:#ff2340"></i>相手が切っている</span>';
     wrap.append(note, legend); if (getComputedStyle(host).position === "static") host.style.position = "relative"; host.append(wrap);
     // drag a player or the ball to move it (as in the top view); drag anywhere else to turn the camera
@@ -3703,14 +3717,14 @@ const B3D = (() => {
         tg.copy(orbit.dtg); put(orbit.dfit*orbit.zoom); }
       players.mine.concat(players.opp).forEach(g => { g.userData.lab.visible = true; g.userData.lab.scale.set(3.6, 1.8, 1); g.userData.lab.position.y = 2.25; });
       demo.list.forEach(g => { g.userData.lab.visible = g.userData.hasTag; g.userData.lab.scale.set(2.2, 1.1, 1); g.userData.lab.position.y = 2.1; });
-      note.innerHTML = inDemo ? "<b>3D VIEW</b>練習の動き。黄色＝ボールを持っている選手の視野。ドラッグで回す・ホイールで寄る。" : "<b>3D VIEW</b>選手やボールをドラッグで動かす。ほかの所をドラッグで回す・ホイールで寄る。"; }
+      setNote(inDemo ? "<b>3D VIEW</b>黄色＝ボールを持つ選手の視野・ドラッグで回す" : "<b>3D VIEW</b>選手とボールはドラッグで動かす・ほかの所で回す"); }
     else if (inDemo){
       const mine = demo.list.filter(g => g.userData.t === "m"), pool = mine.length ? mine : demo.list;
       const g = pool.find(x => x.userData.pid === demo.eye) || pool[0]; demo.eyeG = g;
       const yaw = g.userData.body.rotation.y + (orbit.eyeYaw || 0), eye = g.position.clone().setY(1.45); cam.near = .1;
       cam.fov = Math.min(105, 2*Math.atan(Math.tan(100*Math.PI/360)/cam.aspect)*180/Math.PI); cam.position.copy(eye); cam.lookAt(eye.clone().add(new THREE.Vector3(Math.sin(yaw), -.2, Math.cos(yaw))));
       demo.list.forEach(x => { const d = x.position.distanceTo(eye); x.userData.lab.visible = x.userData.hasTag; eyeTag(x.userData.lab, d); });
-      note.innerHTML = `<b>PLAYER VIEW</b>${esc(String(g.userData.tag))} の目線。黄色＝見えているはんい（視野）。左右にドラッグで首を振る。`;
+      setNote(`<b>PLAYER VIEW</b>${esc(String(g.userData.tag))} の目線・左右にドラッグで首をふる`);
     }
     else {
       const side = "mine", i = eyeIdx ?? (h && h.side === "mine" ? h.i : 0), p = S.pos[side][i];
@@ -3724,7 +3738,7 @@ const B3D = (() => {
       // name tags: smaller in the player view, and hidden when someone is right in front of the eyes
       players.mine.concat(players.opp).forEach(g => { const d = g.position.distanceTo(eye); g.userData.lab.visible = true; eyeTag(g.userData.lab, d); });
       const role = F[S.mine].roles[i];
-      note.innerHTML = `<b>PLAYER VIEW</b>${role} の目線。${hasBall ? "ボールを持っている。" + (showLanes ? "青のコースが空いている。" : "") : "ボールを見ている。"}左右にドラッグで首を振る。`;
+      setNote(`<b>PLAYER VIEW</b>${role} の目線・左右にドラッグで首をふる`);
     }
     cam.updateProjectionMatrix(); renderer.render(scene, cam); raf = requestAnimationFrame(frame);
   }
