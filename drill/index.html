@@ -10988,7 +10988,9 @@ const VOICE = (() => {
   const words = t => SAY2.reduce((a,[k,v]) => a.split(k).join(v), SAY.reduce((a,[k,v]) => a.split(k).join(v), t))
     .replace(/人\s*対\s*/g, "人、たい、").replace(/(^|[、。！\s])間/g, "$1すきま").replace(/(?<![時瞬仲])間/g, "あいだ")
     .replace(/(?<![実国交])際/g, "ぎわ").replace(/(?<![以案海国])外(?![すれしさ])/g, "そと")
-    .replace(/(?<![0-9０-９])1人(?!目)/g, "ひとり").replace(/(?<![0-9０-９])2人(?!目)/g, "ふたり");
+    .replace(/(?<![0-9０-９])1人(?!目)/g, "ひとり").replace(/(?<![0-9０-９])2人(?!目)/g, "ふたり")
+    // 方 is ほう (ボールの方へ・近い方・いない方), not かた — except in a way of doing (守り方・立ち方・受け方…); 味方・両方・片方・方向 read right
+    .replace(/(?<![味両片])方(?![向法])/g, (m, i, all) => /(守り|立ち|考え|受け|使い|やり|戦い|運び|走り|見せ|行き|止め|蹴り|入り|攻め|寄せ|動き|仕)$/.test(all.slice(0, i)) ? m : "ほう");
   // marks and short forms said the way a coach says them
   const say = t => words(String(t)).replace(/<[^>]+>/g, " ").replace(/◎/g, "にじゅうまる、").replace(/○/g, "まる、").replace(/[✕×]/g, "ばつ、")
     .replace(/(\d)-(\d)(?:-(\d))?(?:-(\d))?/g, (m, a, b, c, d) => [a, b, c, d].filter(Boolean).join("、")).replace(/[（(]/g, "、").replace(/[）)]/g, "、").replace(/\s+/g, " ").replace(/[、。\s]*。[、。\s]*/g, "。").replace(/(、\s*)+/g, "、").replace(/^[、。]+|、+$/g, "").trim();
