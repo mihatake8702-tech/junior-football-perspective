@@ -2998,11 +2998,12 @@ const VOICE = (() => {
   if (ok) for (const ev of ["touchend", "click", "keydown"]) addEventListener(ev, unlock, {capture:true});
   // position names as a Japanese voice should say them (the same words as MAESTRO BOARD's 練習メニュー voice:
   // letters read one by one were hard to catch, e.g. CH sounded like 新聞紙), and words the voice misreads
-  const SAY = [["GK","ゴールキーパー"],["CB","センターバック"],["SB","サイドバック"],["CH","センターハーフ"],["SH","サイドハーフ"],["CF","センターフォワード"],["FW","フォワード"],["DF","ディフェンダー"],["MF","ミッドフィルダー"],["LH","左ハーフ"],["RH","右ハーフ"],["LB","左バック"],["RB","右バック"],["DM","ボランチ"],["CM","センターハーフ"],["OH","トップ下"],["→","、"],["＋","と"]];
+  const SAY = [["GK","ゴールキーパー"],["CB","センターバック"],["SB","サイドバック"],["CH","センターハーフ"],["SH","サイドハーフ"],["CF","センターフォワード"],["FW","フォワード"],["DF","ディフェンダー"],["MF","ミッドフィルダー"],["LH","左ハーフ"],["RH","右ハーフ"],["LB","左バック"],["RB","右バック"],["DM","ボランチ"],["CM","センターハーフ"],["OH","トップ下"],["PA","ペナルティエリア"],["同一視野","どういつしや"],["→","、"],["＋","と"]];
   const SAY2 = [["バックパス","後ろへのパス"],["こぼれ球","こぼれだま"],["ターンして","くるっと回って"],["ターン","くるっと回る"],["復帰","戻れる"],["＝","は"]];
   const words = t => SAY2.reduce((a,[k,v]) => a.split(k).join(v), SAY.reduce((a,[k,v]) => a.split(k).join(v), t))
     .replace(/人\s*対\s*/g, "人、たい、").replace(/(^|[、。！\s])間/g, "$1すきま").replace(/(?<![時瞬仲])間/g, "あいだ")
     .replace(/(?<![実国交])際/g, "ぎわ").replace(/(?<![以案海国])外(?![すれしさ])/g, "そと")
+    .replace(/(?<=[のいるたなじ])所/g, "ところ")                                          // 高い所・7mの所 (所 alone was read じょ); 場所 stays
     .replace(/(?<![0-9０-９])1人(?!目)/g, "ひとり").replace(/(?<![0-9０-９])2人(?!目)/g, "ふたり")
     // 方 is ほう (ボールの方へ・近い方・いない方), not かた — except in a way of doing (守り方・立ち方・受け方…); 味方・両方・片方・方向 read right
     .replace(/(?<![味両片])方(?![向法])/g, (m, i, all) => /(守り|立ち|考え|受け|使い|やり|戦い|運び|走り|見せ|行き|止め|蹴り|入り|攻め|寄せ|動き|仕)$/.test(all.slice(0, i)) ? m : "ほう");
@@ -3088,6 +3089,13 @@ const CLIP3D = (() => {
     let lab = null; if (text){ lab = label(text, col); lab.position.y = 2.2; g.add(lab); }
     g.userData = {lab, body, ring, limbs, text, col, phase:Math.random()*6, run:0}; return g;
   }
+  // where a player started an answer's move: a faint 残像 of the player (shown once they have moved away) and a
+  // softly pulsing orange ring on the grass
+  function ghost(col){ const g = makePlayer(col, ""); g.traverse(m => { if (m.material){ m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = .2; m.material.depthWrite = false; } });
+    g.userData.ring.visible = false; g.visible = false; return g; }
+  function startRing(){ const m = new THREE.Mesh(new THREE.RingGeometry(.75, .95, 40), new THREE.MeshBasicMaterial({color:lin(COL.mate), transparent:true, opacity:.8, side:THREE.DoubleSide, depthWrite:false}));
+    m.rotation.x = -Math.PI/2; m.position.y = .03; m.visible = false; return m; }
+  function pulseRing(m, now){ const k = .5 + .5*Math.sin(now/255); m.scale.setScalar(.9 + .3*k); m.material.opacity = .3 + .6*k; }
   // a flat arrow on the grass (pass = white dashed, run = orange, opponent = blue)
   function arrow(f, t, col, dashed, op=.9){
     const g = new THREE.Group(), dx = t[0]-f[0], dy = t[1]-f[1], L = Math.hypot(dx, dy); if (L < .5) return g;
@@ -3181,6 +3189,9 @@ const CLIP3D = (() => {
         p.seq.push({runs, from:ball.slice(), to}); if (to) ball = to;
       }
       p.spot = ball.slice(); p.move = MOVE*Math.max(1, o.seq.length*.8); return p; };
+    // a team-mate has the ball and きみ moves to get it: in a ◎ or ○ answer the pass comes once きみ is there
+    // (✕ answers only move: from there the pass does not come)
+    const passToMe = (p, r) => { if (r >= 1 && holder && holder.kind === "mate" && p.me && !p.ball && !p.ride && !p.mates[holder.i]) p.recv = true; return p; };
     const planOpt = o => { if (o.seq) return planSeq(o);
       const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:null, rad:1.1};
       if (o.at){ if (hasBall) p.ball = o.at; else p.me = o.at; p.spot = o.at; }
@@ -3188,9 +3199,9 @@ const CLIP3D = (() => {
       for (const [who, x, y] of (o.team||[])){
         if (who === "me"){ p.me = [x, y]; if (p.ball) p.oneTwo = /リターン|ワンツー|もどして|かえして/.test(o.t); if (!p.spot) p.spot = [x, y]; }
         else { const i = sc.mates.findIndex(m => m[0] === who); if (i >= 0) p.mates[i] = [x, y]; } }
-      if (!p.spot) p.spot = me0; return p; };
+      if (!p.spot) p.spot = me0; return passToMe(p, o.r); };
     const planTap = z => { const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:z.c, rad:z.rad};
-      if (q.target === "ball") p.ball = z.c; else { p.me = z.c; p.ride = hasBall && q.target === "dribble"; } return p; };
+      if (q.target === "ball") p.ball = z.c; else { p.me = z.c; p.ride = hasBall && q.target === "dribble"; } return passToMe(p, z.r); };
     // the steps of the clip
     const steps = [{k:"じょうきょう", short:"状況", text:q.situ}, {k:"もんだい", short:"問題", title:q.q}];
     if (q.type === "pick") q.opts.map((o, i) => ({o, i})).sort((a, b) => b.o.r - a.o.r || a.i - b.i).forEach(({o}) =>
@@ -3225,7 +3236,7 @@ const CLIP3D = (() => {
       Object.entries(c.arrowMoves.mates).forEach(([i, t]) => { if (!plan.mates[i]) s.mates[i] = lerp(c.mates0[i], t, pa); });
       if (c.arrowMoves.me && !plan.me) s.me = lerp(c.me0, c.arrowMoves.me, pa);
       Object.entries(plan.mates).forEach(([i, t]) => s.mates[i] = lerp(c.mates0[i], t, pa));
-      if (plan.me) s.me = lerp(c.me0, plan.me, plan.oneTwo ? sm((p - .12)/.6) : plan.ball ? sm((p - .3)/.6) : pa);
+      if (plan.me) s.me = lerp(c.me0, plan.me, plan.oneTwo ? sm((p - .12)/.6) : plan.ball ? sm((p - .3)/.6) : plan.recv ? sm(p/.55) : pa);
     }
     if (plan && plan.seq){
       const n = plan.seq.length, start = c.holder && !c.throwIn ? (() => { const h = c.holder, q = h.kind === "me" ? c.me0 : h.kind === "mate" ? c.mates0[h.i] : c.opps0[h.i]; return q; })() : c.sc.ball;
@@ -3245,7 +3256,8 @@ const CLIP3D = (() => {
     const start = H ? (c.throwIn ? at(H.kind, H.i).slice() : foot(at(H.kind, H.i), goalOf(H.kind))) : c.sc.ball.slice();
     const OVER = 1.72;                                  // the ball on the thrower's raised hands (above its normal place)
     s.throwK = c.throwIn ? 0 : null;                     // 0 = held over the head, 0–1 = being thrown
-    if (plan && plan.ride){ const dir = plan.me; s.ball = foot(s.me, dist(s.me, dir) > .4 ? dir : [25, 0]); }
+    if (plan && plan.recv){ const k = sm((p - .55)/.4), to = foot(plan.me, start); s.ball = lerp(start, to, k); const L = dist(start, to); s.bh = L > 14 ? Math.sin(Math.PI*k)*Math.min(4, L*.08) : 0; }
+    else if (plan && plan.ride){ const dir = plan.me; s.ball = foot(s.me, dist(s.me, dir) > .4 ? dir : [25, 0]); }
     else if (plan && plan.ball){
       const fly = (a, b, k) => { s.ball = lerp(a, b, k); const L = dist(a, b), shot = b[1] < 2; s.bh = shot ? k*.6 : L > 14 ? Math.sin(Math.PI*k)*Math.min(4, L*.08) : 0; };   // long passes lift, shots stay low
       // a throw-in: from over the head, a soft lob that comes down at the receiver's feet
@@ -3293,6 +3305,9 @@ const CLIP3D = (() => {
       actors.add(meG, ...matesG, ...oppsG);
       (C.sc.arrows||[]).forEach(a => arrowsG.add(arrow(a.f, a.t, a.k === "opp" ? COL.opp : a.k === "run" ? COL.mate : "#ffffff", a.k === "pass")));
       Object.assign(C, {meG, matesG, oppsG, i:0, t:0});
+      // the start of きみ and of every team-mate: a ring and a 残像 (shown while an answer moves them)
+      C.starts = [{who:-1, at:C.me0, col:C.sc.me[0] === "GK" ? COL.gk : COL.mate}, ...C.mates0.map((p, i) => ({who:i, at:p, col:C.sc.mates[i][0] === "GK" ? COL.gk : COL.mate}))]
+        .map(s => { const g = ghost(s.col), r = startRing(); g.position.copy(W(s.at[0], s.at[1])); r.position.copy(W(s.at[0], s.at[1], .03)); actors.add(g, r); return {...s, g, r}; });
       C.shown = pose(C, null, 0); C.from = clone(C.shown);
       P.go(0);
     };
@@ -3308,6 +3323,7 @@ const CLIP3D = (() => {
       // the line the answer takes: きみ's run and the ball (white dashed)
       if (p.me && dist(p.me, C.me0) > 1) marks.add(arrow(C.me0, p.me, col, false, .75));
       if (p.ball){ const H = C.holder, from = H ? (H.kind === "me" ? C.me0 : H.kind === "mate" ? C.mates0[H.i] : C.opps0[H.i]) : C.sc.ball; marks.add(arrow(from, p.ball, "#ffffff", true, .85)); }
+      if (p.recv) marks.add(arrow(C.mates0[C.holder.i], p.me, "#ffffff", true, .85));   // the pass that comes to きみ
       Object.entries(p.mates).forEach(([i, t]) => marks.add(arrow(C.mates0[i], t, COL.mate, false, .6)));
     };
     P.ended = () => !!C && C.i === C.steps.length - 1 && C.t >= C.steps[C.i].dur;
@@ -3331,6 +3347,8 @@ const CLIP3D = (() => {
       if (dist(prev.ball, bp) > 1e-4){ ball.mesh.rotation.x -= (bp[1] - prev.ball[1])*2; ball.mesh.rotation.z += (bp[0] - prev.ball[0])*2; }
       ball.ring.position.copy(W(bp[0], bp[1], .04)); ball.ring.scale.setScalar(P.ringScale*(1 + .16*Math.sin(now/220)));
       marks.children.forEach(m => { if (m.userData.pulse) m.userData.pulse.material.opacity = .22 + .12*Math.sin(now/260); });
+      (C.starts || []).forEach(s => { const at = s.who < 0 ? C.shown.me : C.shown.mates[s.who], moved = dist(at, s.at) > 1;
+        s.g.visible = moved; s.r.visible = !!st.plan && (s.who < 0 || moved); if (s.r.visible) pulseRing(s.r, now); });
       return ev;
     };
     P.progress = () => C ? clamp(C.t/C.steps[C.i].dur) : 0;
@@ -3363,7 +3381,7 @@ const CLIP3D = (() => {
   }
 
   return {W, lin, COL, RCOL, RMARK, RNAME, MOVE, clamp, sm, lerp, dist, esc,
-    pitchTexture, label, makePlayer, arrow, disc, makeBall, addPitch, run, plan, pose, player, fitBox, eyeCam};
+    pitchTexture, label, makePlayer, ghost, startRing, pulseRing, arrow, disc, makeBall, addPitch, run, plan, pose, player, fitBox, eyeCam};
 })();
 /* CLIP3D END */</script>
 <script>

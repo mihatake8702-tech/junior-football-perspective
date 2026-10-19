@@ -287,6 +287,13 @@ td .pct{min-width:58px;border-radius:999px}
 .th .medal{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:.75rem;font-weight:700;background:var(--gold);color:var(--gold-ink)}
 .prow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 @media (max-width:520px){.prow{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.prow6{grid-template-columns:repeat(3,minmax(0,1fr))}
+.pchip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent)}
+.pchip[aria-pressed="true"] b,.pchip[aria-pressed="true"] span{color:#04120a}
+.th.cat{min-height:0}
+.th.cat .csub{grid-column:1 / -1;grid-row:auto;font-size:.72rem;line-height:1.45;color:var(--muted)}
+.th.cat small{grid-row:auto}
+.alltheme > .phase{margin-top:10px}
 .pchip{display:grid;gap:2px;text-align:left;border-radius:14px;border:2px solid var(--line);background:var(--surface-2);padding:10px 12px}
 .pchip b{font-family:var(--num);font-weight:700;font-size:1.4rem;color:var(--accent);line-height:1}
 .pchip span{font-size:.78rem;font-weight:700;color:var(--muted)}
@@ -340,6 +347,12 @@ svg.pitch.hideplayers .actors{opacity:0}
 .th:hover:not([disabled]){border-color:var(--ph)}
 .th .medal{top:auto;bottom:8px;right:10px}
 .th.done{border-color:var(--gold)}
+
+/* the start of a move: pulsing orange ring + a faint afterimage of the player (top view) */
+svg.pitch .startmark .ghost{opacity:.22}
+svg.pitch .spulse{fill:none;stroke:var(--mate);stroke-width:.35;transform-box:fill-box;transform-origin:center;animation:spulse 1.6s ease-in-out infinite}
+@keyframes spulse{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:.95;transform:scale(1.15)}}
+@media (prefers-reduced-motion:reduce){svg.pitch .spulse{animation:none;opacity:.7}}
 
 /* ===== MAESTRO look (same as MAESTRO BOARD): dark green digital, Chakra Petch for English and numbers, Noto Sans JP for Japanese,
    small English kickers over the Japanese, HUD corner brackets on the pitch, faint code rain far behind.
@@ -9197,15 +9210,15 @@ D({id:"tz22", th:"ck", ex:true, type:"tap", target:"me", g:[11,12],
  point:"場所を守る相手には、相手と相手のあいだへ。"});
 
 D({id:"tz23", th:"ck", ex:true, g:[11,12],
- situ:"右から、みかたのコーナーキック。相手は1人1人にぴったりマークしている。FWのきみはファーがわ、もう1人のFWはまん中にいて、2人ともうしろに相手がいる。",
+ situ:"右から、みかたのコーナーキック。相手は1人1人にぴったりマークしている。FWのきみはファー（遠いほうのポスト）がわ、もう1人のFWはまん中のニア寄りにいて、2人とも、ゴールがわに相手がぴったりついている。",
  q:"FWのきみは、どう動く？",
- scene:{f:"2-3-2", me:["FW",31,10], ball:[49.5,0.5],
-  mates:M("2-3-2",{FW2:null, RH:[49,1.5], FW1:[22,11], CH:[30,22], LH:[12,18], CB1:[20,40], CB2:[32,40]}),
-  opps:[[31,13],[22,14],[12,15],[29,25],[25,34],[38,8]]},
+ scene:{f:"2-3-2", me:["FW",19,10], ball:[49.5,0.5],
+  mates:M("2-3-2",{FW2:null, RH:[49,1.5], FW1:[29,11], CH:[30,22], LH:[12,18], CB1:[20,40], CB2:[32,40]}),
+  opps:[[20,7.5],[29.5,8.5],[13,15.5],[31,19.5],[25,34],[28.5,3]]},
  opts:[
-  {t:"もう1人のFWと交差するように入れかわって走り、マークの相手どうしをぶつからせる", at:[36,6], r:2, why:"ぴったりマークの相手は、自分の相手しか見ていない。2人で入れかわって動けば、相手はぶつかったり、受けわたしでまよったりして、マークがはずれる。"},
-  {t:"一度ファーへ行くふりをして、ニアへ走る", at:[38,5], r:1, why:"相手の体重の反対をつくのはいい。でも1人の動きだけだと、うしろの相手はついてきやすい。"},
-  {t:"もう1人のFWと同じニアへ、いっしょに走る", at:[37,5], r:0, why:"2人が同じ場所に行くと、ファーがだれもいなくなる。マークもついたままで、1つのボールを2人でうばい合う。"}],
+  {t:"もう1人のFWと交差するように入れかわって走り、マークの相手どうしをぶつからせる", at:[30,6], team:[["me",30,6],["FW",21,4.5]], r:2, why:"ぴったりマークの相手は、自分の相手しか見ていない。2人で入れかわって動けば、相手はぶつかったり、受けわたしでまよったりして、マークがはずれる。"},
+  {t:"一度ファーへ行くふりをして、ニアへ走る", at:[31,5], r:1, why:"相手の体重の反対をつくのはいい。でも1人の動きだけだと、うしろの相手はついてきやすい。"},
+  {t:"もう1人のFWと同じニアへ、いっしょに走る", at:[31,5], team:[["me",31,5],["FW",26,5.5]], r:0, why:"2人が同じ場所に行くと、ファーがだれもいなくなる。マークもついたままで、1つのボールを2人でうばい合う。"}],
  point:"ぴったりマークには、入れかわって動いてはずす。"});
 
 D({id:"tz24", th:"fk", ex:true, g:[11,12],
@@ -10750,6 +10763,178 @@ D({id:"nd24", th:"ko", type:"tap", target:"me", look:3, g:[12,12],
  miss:"そこの相手には、もう味方がついていた。前から行くときは、うしろでフリーの相手をつくらない。3秒で、マークされていない相手をさがそう。",
  point:"前からせめるときは、うしろの人がフリーの相手を消す。"});
 
+// ===== categories per position (MAESTRO TACTICS GUIDE and MAESTRO DRILL) =====
+// Each position has a few categories of what that position does; every drill question is in one of them, chosen by
+// what its ◎ answer teaches (sorted 2026-10-19). A new question without an entry here is not shown in the guide.
+const GUIDE_CATS = {
+ "GK": [
+  {
+   "id": "build",
+   "name": "ビルドアップ",
+   "sub": "ゴールキックやキャッチのあと、短くつなぐか大きくけるか"
+  },
+  {
+   "id": "save",
+   "name": "ゴールを守る",
+   "sub": "シュート・1対1・ニアをふさぐ・立ち位置・クロスに声を出して前に出る"
+  },
+  {
+   "id": "sweep",
+   "name": "うらのカバー",
+   "sub": "DFのうしろへのボールに飛び出す・高い位置をとる"
+  },
+  {
+   "id": "set",
+   "name": "セットプレーの守り",
+   "sub": "相手のCK・FKでの立ち位置・かべ・マーク"
+  }
+ ],
+ "FW": [
+  {
+   "id": "goal",
+   "name": "ゴールをねらう",
+   "sub": "シュート・ドリブルでゴールへ向かう・シュートを選ぶ"
+  },
+  {
+   "id": "recv",
+   "name": "受ける・うらへぬける",
+   "sub": "動き出し・ななめにずれる・相手のあいだで受ける・前を向く"
+  },
+  {
+   "id": "link",
+   "name": "味方を使う",
+   "sub": "おとり・スペースをつくる・ワンツー・落とし・パスを選ぶ"
+  },
+  {
+   "id": "press",
+   "name": "前から守る",
+   "sub": "プレス・とられた直後・守備の位置"
+  },
+  {
+   "id": "set",
+   "name": "セットプレー",
+   "sub": "キックオフ・CK・FK・スロー・ゴールキック"
+  }
+ ],
+ "CH": [
+  {
+   "id": "recv",
+   "name": "受けて前を向く",
+   "sub": "見る・ヘソの向き・相手のあいだで受ける・立ち位置"
+  },
+  {
+   "id": "pass",
+   "name": "つなぐ・運ぶ",
+   "sub": "パスの出しどころ・前へ運ぶ・突破のパス・ビルドアップ"
+  },
+  {
+   "id": "def",
+   "name": "守る",
+   "sub": "カバー・はさむ・パスコースを消す・スライド・ゴール前"
+  },
+  {
+   "id": "trans",
+   "name": "切りかえ",
+   "sub": "ボールをとられた瞬間・とった瞬間のプレー"
+  },
+  {
+   "id": "set",
+   "name": "セットプレー",
+   "sub": "キックオフ・CK・FK・スロー・ゴールキック"
+  }
+ ],
+ "SH": [
+  {
+   "id": "recv",
+   "name": "サイドで受ける",
+   "sub": "広がる・相手のわきで受ける・立ち位置・見る"
+  },
+  {
+   "id": "attack",
+   "name": "突破・クロス・シュート",
+   "sub": "ドリブル突破・クロス・シュート・ワンツー"
+  },
+  {
+   "id": "def",
+   "name": "サイドで守る",
+   "sub": "正面に立って中へ追いこむ・もどる・スライド・プレス"
+  },
+  {
+   "id": "trans",
+   "name": "切りかえ",
+   "sub": "ボールをとられた瞬間・とった瞬間のプレー"
+  },
+  {
+   "id": "set",
+   "name": "セットプレー",
+   "sub": "スローイン・CK・FK・キックオフ・ゴールキック"
+  }
+ ],
+ "SB": [
+  {
+   "id": "build",
+   "name": "ビルドアップ",
+   "sub": "受ける・つなぐ・パスの出しどころ・立ち位置"
+  },
+  {
+   "id": "up",
+   "name": "上がってせめる",
+   "sub": "運ぶ・追いこす・クロス・攻撃参加"
+  },
+  {
+   "id": "duel",
+   "name": "1対1で守る",
+   "sub": "正面に立つ・とびこまない・おくらせる・守りの順番"
+  },
+  {
+   "id": "cover",
+   "name": "カバー・ゴール前",
+   "sub": "カバー・スライド・ゴール前のマーク・切りかえの守り"
+  },
+  {
+   "id": "set",
+   "name": "セットプレー",
+   "sub": "スローイン・CK・FK・キックオフ・ゴールキック"
+  }
+ ],
+ "CB": [
+  {
+   "id": "build",
+   "name": "ビルドアップ",
+   "sub": "つなぐ・運ぶ・大きくける・受ける前に見る・とった直後の最初のパス"
+  },
+  {
+   "id": "box",
+   "name": "ゴール前を守る",
+   "sub": "マーク・シュートコースに入る・クロス・同一視野"
+  },
+  {
+   "id": "cover",
+   "name": "カバー・ラインの上げ下げ",
+   "sub": "カバー・スライド・ラインを上げる下げる・とられた直後の戻り"
+  },
+  {
+   "id": "duel",
+   "name": "1対1",
+   "sub": "とびこまない・おくらせる・守りの順番"
+  },
+  {
+   "id": "set",
+   "name": "セットプレー",
+   "sub": "CK・FK・スロー・ゴールキック・キックオフ"
+  }
+ ]
+};
+const GUIDE_CAT_OF = {"b01":"build","bo01":"recv","bo02":"build","bo03":"recv","bo04":"recv","bo05":"recv","bo06":"recv","bo07":"build","bo08":"recv","bo09":"build","bo10":"build","br01":"pass","br02":"build","br03":"attack","br04":"attack","br05":"goal","br06":"recv","br07":"pass","br08":"attack","br09":"recv","br10":"link","br11":"pass","bx01":"save","bx02":"box","bx03":"def","bx04":"box","bx05":"box","bx06":"box","bx07":"def","bx08":"box","bx09":"save","bx10":"box","ca01":"build","ca02":"pass","ca03":"up","ca04":"build","ca05":"build","ca06":"pass","ca07":"up","ca08":"pass","ca09":"pass","ca10":"build","ck01":"set","ck02":"set","ck03":"set","ck04":"set","ck05":"set","ck06":"set","ck07":"set","ck08":"set","ck09":"set","ck10":"set","ck11":"set","ck12":"set","ck13":"set","ck14":"set","ck15":"set","ck16":"set","ck17":"set","ck18":"set","ck19":"set","ck20":"set","ck21":"set","ck22":"set","ck23":"set","ck24":"set","ck25":"set","ck26":"set","ck27":"build","ck28":"set","cv01":"def","cv02":"cover","cv03":"def","cv04":"cover","cv05":"def","cv06":"def","cv07":"def","cv08":"def","cv09":"sweep","cv10":"press","ex01":"attack","ex02":"recv","ex03":"link","ex04":"pass","ex05":"recv","ex06":"build","ex07":"def","ex08a":"trans","ex08b":"trans","ex09":"def","ex10":"press","ex11":"def","ex12":"trans","ex13":"trans","ex14":"trans","ex15":"link","fk01":"set","fk02":"set","fk03":"set","fk04":"set","fk05":"set","fk06":"set","fk07":"set","fk08":"set","fk09":"set","fk10":"set","fk11":"set","fk12":"set","fk13":"set","fk14":"set","fk15":"set","fk16":"set","fk17":"set","fk18":"set","fk19":"set","fk20":"set","fk21":"set","fk22":"set","fk23":"set","fk24":"set","fk25":"set","fk26":"set","fk27":"set","fk28":"set","fr01":"recv","fr02":"pass","fr03a":"link","fr03b":"recv","fr04":"recv","fr05":"recv","fr06":"build","fr07":"recv","fr08":"build","fr09":"build","fr10":"link","fr11":"up","fr12a":"build","fr12b":"build","fr13":"up","fr14":"build","fr15":"recv","fr16":"recv","fr17":"link","fr18":"up","fr19a":"up","fr19b":"up","fr20":"recv","fr21":"pass","fr22":"recv","fr23":"recv","fr24":"build","fr25":"pass","fr26":"attack","fr27":"link","g01":"goal","ga01":"goal","ga02":"pass","ga03":"link","ga04":"build","ga05":"recv","ga06":"recv","ga07":"recv","ga08":"recv","ga09":"build","ga10":"attack","gk01":"build","gk02":"set","gk03":"build","gk04":"set","gk05":"set","gk06":"set","gk07":"set","gk08":"set","gk09":"set","gk10":"build","gk11":"set","gk12":"set","gk13":"build","gk14":"build","gk15":"build","gk16":"build","gk17":"set","gk18":"set","gk19":"set","gk20":"set","gk21":"set","gk22":"set","gk23":"set","gk24":"set","gk25":"set","gk26":"set","gk27":"set","gk28":"sweep","k01a":"pass","k01b":"pass","ko01":"set","ko02":"set","ko03":"set","ko04":"set","ko05":"set","ko06":"set","ko07":"set","ko08":"set","ko09":"set","ko10":"set","ko11":"set","ko12":"set","ko13":"set","ko14":"set","ko15":"set","ko16":"set","ko17":"set","ko18":"set","ko19":"set","ko20":"set","ko21":"set","ko22":"set","ko23":"set","ko24":"set","l01":"recv","la01":"recv","la02":"recv","la03":"build","la04":"pass","la05":"recv","la06":"up","la07":"up","la08":"recv","la09":"recv","la10":"recv","ls01":"press","ls02":"cover","ls03":"duel","ls04":"trans","ls05a":"trans","ls05b":"trans","ls06":"trans","ls07":"trans","ls08":"trans","ls09":"duel","ls10":"trans","na01":"recv","na02":"recv","na03":"recv","na04":"recv","na05":"build","na06":"recv","na07":"build","na08":"recv","na09":"link","na10":"recv","na11":"build","na12":"build","na13":"up","na14":"pass","na15":"recv","na16":"build","na17":"attack","na18":"attack","na19":"build","na20":"recv","na21":"build","na22":"pass","na23":"up","na24":"attack","nb01":"cover","nb02":"def","nb03":"cover","nb04":"def","nb05":"cover","nb06":"duel","nb07":"duel","nb08":"def","nb09":"duel","nb10":"def","nb11":"def","nb12":"def","nb13":"def","nb14":"box","nb15":"box","nb16":"cover","nb17":"sweep","nb18":"press","nb19":"def","nb20":"def","nb21":"press","nb22":"press","nb23":"def","nb24":"def","nc01":"box","nc02":"trans","nc03":"trans","nc04":"trans","nc05":"sweep","nc06":"trans","nc07":"trans","nc08":"cover","nc09":"trans","nc10":"build","nc11":"recv","nc12":"trans","nc13":"build","nc14":"recv","nc15":"trans","nc16":"trans","nc17":"trans","nc18":"trans","nc19":"goal","nc20":"recv","nc21":"goal","nc22":"recv","nc23":"recv","nc24":"recv","nd01":"set","nd02":"set","nd03":"set","nd04":"set","nd05":"set","nd06":"set","nd07":"set","nd08":"set","nd09":"set","nd10":"set","nd11":"set","nd12":"set","nd13":"set","nd14":"set","nd15":"set","nd16":"set","nd17":"build","nd18":"set","nd19":"set","nd20":"set","nd21":"set","nd22":"set","nd23":"set","nd24":"set","o01":"duel","od01":"duel","od02":"duel","od03":"duel","od04":"duel","od05":"duel","od06":"def","od07":"def","od08":"box","od09":"cover","od10":"press","p01":"recv","pa01":"recv","pa02":"recv","pa03":"build","pa04":"recv","pa05":"build","pa06":"recv","pa07":"recv","pa08":"build","pa09":"recv","pa10":"build","pa11":"recv","pr01":"press","pr02":"press","pr03":"press","pr04":"press","pr05":"def","pr06":"def","pr07":"def","pr08":"def","pr09":"def","pr10":"press","pr11":"def","pr12":"def","pr13":"def","pr14":"def","pr15":"def","pr16":"def","pr17":"press","pr18":"cover","pr19":"press","pr20":"def","pr21":"duel","pr22":"def","pr23":"def","pr24":"press","pr25":"press","pr26":"def","pr27":"def","pr28":"press","s01":"def","sl01":"def","sl02":"def","sl03":"def","sl04":"press","sl05":"def","sl06":"def","sl07":"duel","sl08":"cover","sl09":"press","sl10":"def","tb01":"recv","tb02":"recv","tb03":"build","tb04":"build","tb05":"recv","tb06":"recv","tb07":"pass","tb08":"pass","tb09":"pass","tb10":"pass","tb11":"pass","tb12":"pass","tb13":"cover","tb14":"def","tb15":"cover","tb16":"def","tb17":"duel","tb18":"duel","tb19":"trans","tb20":"cover","tb21":"cover","tb22":"press","tb23":"trans","tb24":"build","tb25":"trans","tb26":"trans","tb27":"goal","tb28":"trans","tb29":"recv","tb30":"recv","tb31":"recv","tb32":"goal","tc01":"def","tc02":"cover","tc03":"def","tc04":"def","tc05":"cover","tc06":"def","tc07":"duel","tc08":"box","tc09":"box","tc10":"box","tc11":"duel","tc12":"cover","tc13":"cover","tc14":"def","tc15":"cover","tc16":"cover","tc17":"cover","tc18":"goal","tc19":"recv","tc20":"goal","tc21":"goal","tc22":"pass","tc23":"attack","tc24":"pass","tc25":"attack","tc26":"pass","tc27":"attack","tc28":"def","tc29":"duel","tc30":"duel","tc31":"duel","tc32":"cover","te01":"attack","te02":"attack","te03":"recv","te04":"recv","te05":"recv","te06":"recv","te07":"build","te08":"up","te09":"recv","te10":"build","te11":"recv","te12":"recv","te13":"pass","te14":"pass","te15":"attack","te16":"attack","te17":"build","te18":"attack","te19":"press","te20":"def","te21":"cover","te22":"cover","te23":"def","te24":"def","te25":"def","te26":"def","te27":"cover","te28":"def","te29":"cover","te30":"press","te31":"trans","te32":"trans","te33":"trans","te34":"build","te35":"build","te36":"trans","th01":"recv","th02":"recv","th03":"recv","th04":"pass","th05":"attack","th06":"attack","th07":"up","th08":"up","th09":"build","th10":"build","th11":"build","ti01":"set","ti02":"set","ti03":"set","ti04":"set","ti05":"set","ti06":"set","ti07":"set","ti08":"set","ti09":"set","ti10":"set","ti11":"set","ti12":"set","ti13":"set","ti14":"set","ti15":"set","ti16":"set","ti17":"set","ti18":"set","ti19":"set","ti20":"set","ti21":"set","ti22":"set","ti23":"set","ti24":"set","ti25":"set","ti26":"set","ti27":"set","ti28":"set","tn01":"goal","tn02":"up","tn03":"link","tn04":"recv","tn05":"recv","tn06":"recv","tn07":"build","tn08":"recv","tn09":"build","tn10":"recv","tn11":"build","tn12":"build","tn13":"build","tn14":"pass","tn15":"up","tn16":"attack","tn17":"goal","tn18":"link","tn19":"press","tn20":"save","tn21":"def","tn22":"cover","tn23":"def","tn24":"def","tn25":"cover","tn26":"cover","tn27":"def","tn28":"cover","tn29":"box","tn30":"def","tn31":"cover","tn32":"trans","tn33":"trans","tn34":"trans","tn35":"recv","tn36":"build","tw01":"attack","tw02":"set","tw03":"attack","tw04":"set","tw05":"set","tw06":"build","tw07":"recv","tw08":"recv","tw09":"recv","tw10":"set","tw11":"recv","tw12":"recv","tw13":"pass","tw14":"pass","tw15":"pass","tw16":"link","tw17":"build","tw18":"attack","tw19":"box","tw20":"cover","tw21":"cover","tw22":"def","tw23":"cover","tw24":"cover","tw25":"cover","tw26":"press","tw27":"press","tw28":"set","tw29":"cover","tw30":"def","tw31":"trans","tw32":"press","tw33":"press","tw34":"trans","tw35":"trans","tw36":"build","tz01":"trans","tz02":"trans","tz03":"trans","tz04":"trans","tz05":"trans","tz06":"trans","tz07":"build","tz08":"trans","tz09":"goal","tz10":"goal","tz11":"goal","tz12":"up","tz13":"attack","tz14":"attack","tz15":"up","tz16":"pass","tz17":"recv","tz18":"recv","tz19":"cover","tz20":"press","tz21":"set","tz22":"set","tz23":"set","tz24":"set","tz25":"set","tz26":"build","tz27":"set","tz28":"cover","tz29":"cover","tz30":"trans","tz31":"pass","tz32":"recv","ua01":"attack","ua02":"goal","ua03":"attack","ua04":"recv","ua05":"goal","ua06":"goal","ua07":"attack","ua08":"recv","ua09":"recv","ua10":"recv","ua11":"recv","ua12":"recv","ua13":"build","ua14":"attack","ua15":"recv","ua16":"recv","ua17":"recv","ua18":"pass","ua19":"recv","ua20":"recv","ua21":"recv","ua22":"attack","ua23":"attack","ua24":"attack","ua25":"link","ua26":"goal","ua27":"build","ua28":"recv","ub01":"duel","ub02":"duel","ub03":"duel","ub04":"duel","ub05":"def","ub06":"press","ub07":"def","ub08":"save","ub09":"sweep","ub10":"save","ub11":"build","ub12":"box","ub13":"box","ub14":"cover","ub15":"trans","ub16":"trans","ub17":"trans","ub18":"trans","ub19":"trans","ub20":"press","ub21":"trans","ub22":"build","ub23":"build","ub24":"trans","ub25":"trans","ub26":"build","ub27":"goal","ub28":"trans","uc01":"attack","uc02":"link","uc03":"goal","uc04":"attack","uc05":"goal","uc06":"goal","uc07":"build","uc08":"recv","uc09":"recv","uc10":"recv","uc11":"recv","uc12":"build","uc13":"pass","uc14":"build","uc15":"build","uc16":"pass","uc17":"build","uc18":"pass","uc19":"goal","uc20":"goal","uc21":"link","uc22":"recv","uc23":"def","uc24":"def","uc25":"duel","uc26":"duel","uc27":"cover","uc28":"box","uc29":"duel","uc30":"box","uc31":"cover","uc32":"save","ud01":"trans","ud02":"cover","ud03a":"trans","ud03b":"trans","ud04":"press","ud05":"duel","ud06":"link","ud07a":"recv","ud07b":"recv","ud08":"trans","ud09":"link","ud10":"build","ud11":"set","ud12":"set","ud13":"set","ud14":"set","ud15":"set","ud16":"set","ud17":"set","ud18":"set","ud19":"set","ud20":"set","ud21":"set","ud22":"set","ud23":"set","ud24":"set","ud25":"set","ud26":"build","ud27":"set","ud28":"set","ud29":"set","ud30":"set","v01":"pass","w01":"trans","wn01":"build","wn02":"trans","wn03":"recv","wn04":"trans","wn05":"trans","wn06a":"build","wn06b":"build","wn07":"trans","wn08":"build","wn09":"recv","wn10":"trans","xe01":"link","xe02":"goal","xe03":"build","xe04":"recv","xe05":"pass","xe06":"link","xe07":"duel","xe08":"cover","xe09":"def","xe10":"box","xe11":"trans","xe12":"trans","xe13":"pass","xe14":"recv","yg01":"recv"};
+// きみ's position in the scene, grouped the way a team talks about them
+const GUIDE_POS = [["FW","フォワード",["FW","CF"]], ["CH","センターハーフ",["CH","CM","DM","OH"]], ["SH","サイドハーフ",["LH","RH"]],
+                   ["SB","サイドバック",["LB","RB"]], ["CB","センターバック",["CB"]], ["GK","ゴールキーパー",["GK"]]];
+const guidePos = q => (GUIDE_POS.find(p => p[2].includes(q.scene.me[0])) || [""])[0];
+// a drill mode for one category: "C:CB:build" → its name 「CB・ビルドアップ」
+const catMode = (pos, id) => `C:${pos}:${id}`;
+const catOfMode = m => { const [, pos, id] = String(m).split(":"); const c = (GUIDE_CATS[pos] || []).find(x => x.id === id); return c ? {pos, id, name:c.name, sub:c.sub} : null; };
+const catModeName = m => { const c = catOfMode(m); return c ? `${c.pos}・${c.name}` : m; };
+
 // ---------- Kanji by grade ----------
 // School year each kanji is taught (小学校の学年別漢字配当表). Not listed = not taught in elementary school (7).
 const KG = {};
@@ -10769,7 +10954,7 @@ const KDICT = [
   ["一人","ひとり"],["二人","ふたり"],["高","たか","(?=[いく])"],["低い","ひくい"],["大","おお","(?=き[くな])"],["小","ちい","(?=さ[くな])"],["少し","すこし"],
   ["正解","せいかい"],["問題","もんだい"],["次","つぎ"],["声","こえ","(?=[をでがはにも])"],["顔","かお","(?=[をが])"],["首","くび"],["体","からだ"],["足","あし","(?=[をのもがで])"],
   ["切りかえ","きりかえ"],["時間","じかん"],["数","かず","(?=[がをで])"],["全力","ぜんりょく"],["一番","いちばん"],["反対","はんたい"],["逆","ぎゃく"],["約束","やくそく"],
-  ["大事","だいじ"],["簡単","かんたん"],["安全","あんぜん"],["転が","ころが"],["投げ","なげ","(?=[るてた])","(?<!つ)"],["止ま","とま","(?=[るりっれら])","(?<![まかた])"],["止め","とめ","(?=[るて])","(?<![まかた])"],
+  ["大事","だいじ"],["簡単","かんたん"],["安全","あんぜん"],["転が","ころが","","(?<!と)"],["投げ","なげ","(?=[るてた])","(?<!つ)"],["止ま","とま","(?=[るりっれら])","(?<![まかた])"],["止め","とめ","(?=[るて])","(?<![まかた])"],
   ["縦","たて","(?=[パ一にの])"],["囲","かこ","(?=[むんめま])"],["防","ふせ","(?=[ぐい])"],["引きつけ","ひきつけ"],["残","のこ","(?=[るりっれら])"],
   ["下が","さが","(?=[るりっれら])","(?<![ふ])"],["上が","あが","(?=[るりっれら])"],["上げ","あげ","(?=[るてた])","(?<!を)"],["入","はい","(?=[るっれら])"],["見え","みえ"],["見つけ","みつけ"],
   ["周り","まわり","(?=[をのがに])"],["回","まわ","(?=[すしっ])"],["両方","りょうほう"],["方","ほう","(?=[がへをのは])","(?<![たうょ])"],["背中","せなか"],["最後","さいご"],["最初","さいしょ"],
@@ -10889,7 +11074,7 @@ const TEAM = (()=>{
 // ---------- Team results (coach link) ----------
 // The team spreadsheet sends back every answer; shaped like the claude.ai database so the same せいせき screen can show it.
 const REMOTE = {loaded:false, loading:false, err:"", at:0, players:[], answers:[], clears:[]};
-const THEME_BY_NAME = Object.fromEntries(THEMES.map(t=>[t.name,t.id]));
+const THEME_BY_NAME = Object.fromEntries(THEMES.map(t=>[t.name,t.id]).concat(Object.entries(GUIDE_CATS).flatMap(([p,cs])=>cs.map(c=>[`${p}・${c.name}`, catMode(p,c.id)]))));
 async function loadRemote(){
   const c=TEAM.coach; if(!c || REMOTE.loading) return;
   REMOTE.loading=true; REMOTE.err=""; render();
@@ -10903,7 +11088,7 @@ async function loadRemote(){
       const q=QBY[qid], r = typeof rate==="number" ? rate : rate ? 2 : 0;
       return q ? {pid:pid(name),name,grade:gnum(grade),qid,th:q.th,ph:q.ph,pos:q.pos,r,choiceText:choice,at} : null;
     }).filter(Boolean).sort((a,b)=>b.at-a.at);
-    REMOTE.clears=d.clears.map(([at,name,grade,level])=>{ players[name]=players[name]||{id:pid(name),name,grade:gnum(grade),last:at}; const th=TH[level]?level:THEME_BY_NAME[level]; return th?{pid:pid(name),th}:null; }).filter(Boolean);
+    REMOTE.clears=d.clears.map(([at,name,grade,level])=>{ players[name]=players[name]||{id:pid(name),name,grade:gnum(grade),last:at}; const th=TH[level]||catOfMode(level)?level:THEME_BY_NAME[level]; return th?{pid:pid(name),th}:null; }).filter(Boolean);
     REMOTE.players=Object.values(players).filter(p=>REMOTE.answers.some(a=>a.pid===p.id)).sort((a,b)=>(a.grade||99)-(b.grade||99) || a.name.localeCompare(b.name,"ja"));
     REMOTE.loaded=true; REMOTE.at=Date.now();
   }catch(e){ REMOTE.err = e.message==="code" ? "code" : "net"; }
@@ -11062,6 +11247,11 @@ function pitchSVG(q, reveal){
   S.tgt=tgt;
   const cur=S.cur||{me:[0,0],ball:[0,0],mates:{}};
   const hidden = S.hide && !reveal;
+  // where きみ (and team-mates who move) started: a softly pulsing orange ring, and once they have moved a faint
+  // 残像 of the player left standing there, so the answers can be compared from the same start
+  const startMark = (p,x,y,moved) => `<g class="startmark" aria-hidden="true">${moved?`<g class="ghost">${mate(p,x,y)}</g>`:""}<circle class="spulse" cx="${x}" cy="${y}" r="2.1"/></g>`;
+  const startMarks = (S.preview!==null || S.tap || reveal) ? startMark(me[0],me[1],me[2],Math.hypot(tgt.me[0],tgt.me[1])>1)
+    + Object.entries(tgt.mates).filter(([,v])=>Math.hypot(v[0],v[1])>1).map(([i])=>startMark(sc.mates[i][0],sc.mates[i][1],sc.mates[i][2],true)).join("") : "";
   const matesSvg = sc.mates.map((m,i)=>{ const v=(cur.mates||{})[i]||[0,0]; return `<g class="mover" id="mvT${i}" style="transform:translate(${v[0]}px,${v[1]}px);transition:none">${mate(m[0],m[1],m[2])}</g>`; }).join("");
   const st = v => `style="transform:translate(${v[0]}px,${v[1]}px);transition:none"`;
   const ballC = soccerBall(bp[0], bp[1], .75);
@@ -11086,7 +11276,7 @@ function pitchSVG(q, reveal){
     if(S.tap) marks += `<g><circle cx="${S.tap[0]}" cy="${S.tap[1]}" r="1.2" style="fill:var(--pick);stroke:var(--bg)" stroke-width=".3"/><circle cx="${S.tap[0]}" cy="${S.tap[1]}" r="2.4" style="fill:none;stroke:var(--pick)" stroke-width=".3"/></g>`;
   }
   return `<svg class="pitch${pv.part!=="all"?" half":""}${q.type==="tap"&&!reveal&&!(q.look&&!S.hide)?" tappable":""}${hidden?" hideplayers":""}" id="pitch" viewBox="-3 ${pv.y} 56 ${pv.h}" style="aspect-ratio:56/${pv.h}" role="img" aria-label="ピッチの図：黄色が味方、青が相手、白黒がボール">
-    <defs>${arrowsDef}</defs>${field}<g class="actors">${arrows}${opps}${matesSvg}</g>${marks}${meAll}${ball}</svg>`;
+    <defs>${arrowsDef}</defs>${field}${startMarks}<g class="actors">${arrows}${opps}${matesSvg}</g>${marks}${meAll}${ball}</svg>`;
 }
 
 // ---------- Drill flow ----------
@@ -11110,19 +11300,25 @@ function startSet(mode){
   if(mode==="EX") pool = visible(g, true);
   else if(mode==="MIX") pool = visible(g);
   else if(mode.startsWith("P:")) pool = visible(g).filter(q=>POS_GROUP(q.pos)===mode.slice(2));
+  else if(mode.startsWith("C:")){ const c=catOfMode(mode); pool = c ? visible(g).filter(q=>guidePos(q)===c.pos && GUIDE_CAT_OF[q.id]===c.id) : []; }
   else pool = visible(g).filter(q=>q.th===mode);
   S.mode=mode; S.set=draw(pool, PER_ROUND); S.i=0; S.results=[]; S.step="quiz"; newQuestion();
 }
 const themeCleared = (pid,th,src=store) => pid==="guest" ? S.guestClears.has(th) : src.clears.some(c=>c.pid===pid && c.th===th);
 function recordClear(){
-  if(!TH[S.mode]) return;
+  if(!TH[S.mode] && !catOfMode(S.mode)) return;   // themes and position categories can be cleared
   const got=pts(S.results), max=2*S.results.length;
   if(got < Math.ceil(max*.8)) return;
   if(S.player.guest){ S.guestClears.add(S.mode); return; }
   if(store.db) store.db.collection("clears").add({pid:S.player.id, name:S.player.name, th:S.mode, score:got, of:max, at:Date.now()}).catch(()=>{});
-  TEAM.send({type:"clear", name:S.player.name, grade:S.grade, level:TH[S.mode].name, score:got, of:max, at:Date.now()});
+  TEAM.send({type:"clear", name:S.player.name, grade:S.grade, level:TH[S.mode]?TH[S.mode].name:catModeName(S.mode), score:got, of:max, at:Date.now()});
 }
 let lookTimer=null;
+// another answer looked at (A → B, or a new tap): everyone goes back to the scene first, then moves the new way
+function restartMove(){
+  S.cur={me:[0,0],ball:[0,0],mates:{}};
+  if(typeof V3D!=="undefined" && V3D && V3D.restart) V3D.restart();
+}
 function newQuestion(){
   const q=S.set[S.i];
   S.picked=null; S.preview=null; S.tap=null; S.cur={me:[0,0],ball:[0,0],mates:{}}; S.tgt=null;
@@ -11173,11 +11369,12 @@ const VOICE = (() => {
   if (ok) for (const ev of ["touchend", "click", "keydown"]) addEventListener(ev, unlock, {capture:true});
   // position names as a Japanese voice should say them (the same words as MAESTRO BOARD's 練習メニュー voice:
   // letters read one by one were hard to catch, e.g. CH sounded like 新聞紙), and words the voice misreads
-  const SAY = [["GK","ゴールキーパー"],["CB","センターバック"],["SB","サイドバック"],["CH","センターハーフ"],["SH","サイドハーフ"],["CF","センターフォワード"],["FW","フォワード"],["DF","ディフェンダー"],["MF","ミッドフィルダー"],["LH","左ハーフ"],["RH","右ハーフ"],["LB","左バック"],["RB","右バック"],["DM","ボランチ"],["CM","センターハーフ"],["OH","トップ下"],["→","、"],["＋","と"]];
+  const SAY = [["GK","ゴールキーパー"],["CB","センターバック"],["SB","サイドバック"],["CH","センターハーフ"],["SH","サイドハーフ"],["CF","センターフォワード"],["FW","フォワード"],["DF","ディフェンダー"],["MF","ミッドフィルダー"],["LH","左ハーフ"],["RH","右ハーフ"],["LB","左バック"],["RB","右バック"],["DM","ボランチ"],["CM","センターハーフ"],["OH","トップ下"],["PA","ペナルティエリア"],["同一視野","どういつしや"],["→","、"],["＋","と"]];
   const SAY2 = [["バックパス","後ろへのパス"],["こぼれ球","こぼれだま"],["ターンして","くるっと回って"],["ターン","くるっと回る"],["復帰","戻れる"],["＝","は"]];
   const words = t => SAY2.reduce((a,[k,v]) => a.split(k).join(v), SAY.reduce((a,[k,v]) => a.split(k).join(v), t))
     .replace(/人\s*対\s*/g, "人、たい、").replace(/(^|[、。！\s])間/g, "$1すきま").replace(/(?<![時瞬仲])間/g, "あいだ")
     .replace(/(?<![実国交])際/g, "ぎわ").replace(/(?<![以案海国])外(?![すれしさ])/g, "そと")
+    .replace(/(?<=[のいるたなじ])所/g, "ところ")                                          // 高い所・7mの所 (所 alone was read じょ); 場所 stays
     .replace(/(?<![0-9０-９])1人(?!目)/g, "ひとり").replace(/(?<![0-9０-９])2人(?!目)/g, "ふたり")
     // 方 is ほう (ボールの方へ・近い方・いない方), not かた — except in a way of doing (守り方・立ち方・受け方…); 味方・両方・片方・方向 read right
     .replace(/(?<![味両片])方(?![向法])/g, (m, i, all) => /(守り|立ち|考え|受け|使い|やり|戦い|運び|走り|見せ|行き|止め|蹴り|入り|攻め|寄せ|動き|仕)$/.test(all.slice(0, i)) ? m : "ほう");
@@ -11263,6 +11460,13 @@ const CLIP3D = (() => {
     let lab = null; if (text){ lab = label(text, col); lab.position.y = 2.2; g.add(lab); }
     g.userData = {lab, body, ring, limbs, text, col, phase:Math.random()*6, run:0}; return g;
   }
+  // where a player started an answer's move: a faint 残像 of the player (shown once they have moved away) and a
+  // softly pulsing orange ring on the grass
+  function ghost(col){ const g = makePlayer(col, ""); g.traverse(m => { if (m.material){ m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = .2; m.material.depthWrite = false; } });
+    g.userData.ring.visible = false; g.visible = false; return g; }
+  function startRing(){ const m = new THREE.Mesh(new THREE.RingGeometry(.75, .95, 40), new THREE.MeshBasicMaterial({color:lin(COL.mate), transparent:true, opacity:.8, side:THREE.DoubleSide, depthWrite:false}));
+    m.rotation.x = -Math.PI/2; m.position.y = .03; m.visible = false; return m; }
+  function pulseRing(m, now){ const k = .5 + .5*Math.sin(now/255); m.scale.setScalar(.9 + .3*k); m.material.opacity = .3 + .6*k; }
   // a flat arrow on the grass (pass = white dashed, run = orange, opponent = blue)
   function arrow(f, t, col, dashed, op=.9){
     const g = new THREE.Group(), dx = t[0]-f[0], dy = t[1]-f[1], L = Math.hypot(dx, dy); if (L < .5) return g;
@@ -11356,6 +11560,9 @@ const CLIP3D = (() => {
         p.seq.push({runs, from:ball.slice(), to}); if (to) ball = to;
       }
       p.spot = ball.slice(); p.move = MOVE*Math.max(1, o.seq.length*.8); return p; };
+    // a team-mate has the ball and きみ moves to get it: in a ◎ or ○ answer the pass comes once きみ is there
+    // (✕ answers only move: from there the pass does not come)
+    const passToMe = (p, r) => { if (r >= 1 && holder && holder.kind === "mate" && p.me && !p.ball && !p.ride && !p.mates[holder.i]) p.recv = true; return p; };
     const planOpt = o => { if (o.seq) return planSeq(o);
       const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:null, rad:1.1};
       if (o.at){ if (hasBall) p.ball = o.at; else p.me = o.at; p.spot = o.at; }
@@ -11363,9 +11570,9 @@ const CLIP3D = (() => {
       for (const [who, x, y] of (o.team||[])){
         if (who === "me"){ p.me = [x, y]; if (p.ball) p.oneTwo = /リターン|ワンツー|もどして|かえして/.test(o.t); if (!p.spot) p.spot = [x, y]; }
         else { const i = sc.mates.findIndex(m => m[0] === who); if (i >= 0) p.mates[i] = [x, y]; } }
-      if (!p.spot) p.spot = me0; return p; };
+      if (!p.spot) p.spot = me0; return passToMe(p, o.r); };
     const planTap = z => { const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:z.c, rad:z.rad};
-      if (q.target === "ball") p.ball = z.c; else { p.me = z.c; p.ride = hasBall && q.target === "dribble"; } return p; };
+      if (q.target === "ball") p.ball = z.c; else { p.me = z.c; p.ride = hasBall && q.target === "dribble"; } return passToMe(p, z.r); };
     // the steps of the clip
     const steps = [{k:"じょうきょう", short:"状況", text:q.situ}, {k:"もんだい", short:"問題", title:q.q}];
     if (q.type === "pick") q.opts.map((o, i) => ({o, i})).sort((a, b) => b.o.r - a.o.r || a.i - b.i).forEach(({o}) =>
@@ -11400,7 +11607,7 @@ const CLIP3D = (() => {
       Object.entries(c.arrowMoves.mates).forEach(([i, t]) => { if (!plan.mates[i]) s.mates[i] = lerp(c.mates0[i], t, pa); });
       if (c.arrowMoves.me && !plan.me) s.me = lerp(c.me0, c.arrowMoves.me, pa);
       Object.entries(plan.mates).forEach(([i, t]) => s.mates[i] = lerp(c.mates0[i], t, pa));
-      if (plan.me) s.me = lerp(c.me0, plan.me, plan.oneTwo ? sm((p - .12)/.6) : plan.ball ? sm((p - .3)/.6) : pa);
+      if (plan.me) s.me = lerp(c.me0, plan.me, plan.oneTwo ? sm((p - .12)/.6) : plan.ball ? sm((p - .3)/.6) : plan.recv ? sm(p/.55) : pa);
     }
     if (plan && plan.seq){
       const n = plan.seq.length, start = c.holder && !c.throwIn ? (() => { const h = c.holder, q = h.kind === "me" ? c.me0 : h.kind === "mate" ? c.mates0[h.i] : c.opps0[h.i]; return q; })() : c.sc.ball;
@@ -11420,7 +11627,8 @@ const CLIP3D = (() => {
     const start = H ? (c.throwIn ? at(H.kind, H.i).slice() : foot(at(H.kind, H.i), goalOf(H.kind))) : c.sc.ball.slice();
     const OVER = 1.72;                                  // the ball on the thrower's raised hands (above its normal place)
     s.throwK = c.throwIn ? 0 : null;                     // 0 = held over the head, 0–1 = being thrown
-    if (plan && plan.ride){ const dir = plan.me; s.ball = foot(s.me, dist(s.me, dir) > .4 ? dir : [25, 0]); }
+    if (plan && plan.recv){ const k = sm((p - .55)/.4), to = foot(plan.me, start); s.ball = lerp(start, to, k); const L = dist(start, to); s.bh = L > 14 ? Math.sin(Math.PI*k)*Math.min(4, L*.08) : 0; }
+    else if (plan && plan.ride){ const dir = plan.me; s.ball = foot(s.me, dist(s.me, dir) > .4 ? dir : [25, 0]); }
     else if (plan && plan.ball){
       const fly = (a, b, k) => { s.ball = lerp(a, b, k); const L = dist(a, b), shot = b[1] < 2; s.bh = shot ? k*.6 : L > 14 ? Math.sin(Math.PI*k)*Math.min(4, L*.08) : 0; };   // long passes lift, shots stay low
       // a throw-in: from over the head, a soft lob that comes down at the receiver's feet
@@ -11468,6 +11676,9 @@ const CLIP3D = (() => {
       actors.add(meG, ...matesG, ...oppsG);
       (C.sc.arrows||[]).forEach(a => arrowsG.add(arrow(a.f, a.t, a.k === "opp" ? COL.opp : a.k === "run" ? COL.mate : "#ffffff", a.k === "pass")));
       Object.assign(C, {meG, matesG, oppsG, i:0, t:0});
+      // the start of きみ and of every team-mate: a ring and a 残像 (shown while an answer moves them)
+      C.starts = [{who:-1, at:C.me0, col:C.sc.me[0] === "GK" ? COL.gk : COL.mate}, ...C.mates0.map((p, i) => ({who:i, at:p, col:C.sc.mates[i][0] === "GK" ? COL.gk : COL.mate}))]
+        .map(s => { const g = ghost(s.col), r = startRing(); g.position.copy(W(s.at[0], s.at[1])); r.position.copy(W(s.at[0], s.at[1], .03)); actors.add(g, r); return {...s, g, r}; });
       C.shown = pose(C, null, 0); C.from = clone(C.shown);
       P.go(0);
     };
@@ -11483,6 +11694,7 @@ const CLIP3D = (() => {
       // the line the answer takes: きみ's run and the ball (white dashed)
       if (p.me && dist(p.me, C.me0) > 1) marks.add(arrow(C.me0, p.me, col, false, .75));
       if (p.ball){ const H = C.holder, from = H ? (H.kind === "me" ? C.me0 : H.kind === "mate" ? C.mates0[H.i] : C.opps0[H.i]) : C.sc.ball; marks.add(arrow(from, p.ball, "#ffffff", true, .85)); }
+      if (p.recv) marks.add(arrow(C.mates0[C.holder.i], p.me, "#ffffff", true, .85));   // the pass that comes to きみ
       Object.entries(p.mates).forEach(([i, t]) => marks.add(arrow(C.mates0[i], t, COL.mate, false, .6)));
     };
     P.ended = () => !!C && C.i === C.steps.length - 1 && C.t >= C.steps[C.i].dur;
@@ -11506,6 +11718,8 @@ const CLIP3D = (() => {
       if (dist(prev.ball, bp) > 1e-4){ ball.mesh.rotation.x -= (bp[1] - prev.ball[1])*2; ball.mesh.rotation.z += (bp[0] - prev.ball[0])*2; }
       ball.ring.position.copy(W(bp[0], bp[1], .04)); ball.ring.scale.setScalar(P.ringScale*(1 + .16*Math.sin(now/220)));
       marks.children.forEach(m => { if (m.userData.pulse) m.userData.pulse.material.opacity = .22 + .12*Math.sin(now/260); });
+      (C.starts || []).forEach(s => { const at = s.who < 0 ? C.shown.me : C.shown.mates[s.who], moved = dist(at, s.at) > 1;
+        s.g.visible = moved; s.r.visible = !!st.plan && (s.who < 0 || moved); if (s.r.visible) pulseRing(s.r, now); });
       return ev;
     };
     P.progress = () => C ? clamp(C.t/C.steps[C.i].dur) : 0;
@@ -11538,7 +11752,7 @@ const CLIP3D = (() => {
   }
 
   return {W, lin, COL, RCOL, RMARK, RNAME, MOVE, clamp, sm, lerp, dist, esc,
-    pitchTexture, label, makePlayer, arrow, disc, makeBall, addPitch, run, plan, pose, player, fitBox, eyeCam};
+    pitchTexture, label, makePlayer, ghost, startRing, pulseRing, arrow, disc, makeBall, addPitch, run, plan, pose, player, fitBox, eyeCam};
 })();
 
 
@@ -11552,6 +11766,7 @@ const V3D = (() => {
   if (typeof THREE === "undefined") return null;
   let view = (()=>{ try{ return localStorage.getItem("pd8_view") || "top"; }catch(e){ return "top"; } })();
   let renderer, scene, cam, wrap, note, raf = 0, ballM, ballRing, fan, eyeWall, actors, marks, meG = null, qid = null;
+  let startsG = null, starts = [];   // the start rings and 残像 (see build)
   let holder = null, mates = [], opps = [], cur = null, ov = new Map(), ovBall = null;   // ov / ovBall: where the viewer dragged a player or the ball (this question only)
   const orbit = {yaw:0, pitch:.82, zoom:1, key:null, eyeYaw:0};
   let clip = null, cl = null;            // the clip player (CLIP3D) and, while a clip is on, {qid, playing, last, ui}
@@ -11672,7 +11887,7 @@ const V3D = (() => {
       const svg = document.querySelector("svg.pitch.tappable"); if (!svg) return;
       const r = renderer.domElement.getBoundingClientRect(); ndc.set((e.clientX - r.left)/r.width*2 - 1, -(e.clientY - r.top)/r.height*2 + 1); ray.setFromCamera(ndc, cam);
       if (!ray.ray.intersectPlane(groundP, hit)) return;
-      S.tap = [Math.max(0, Math.min(50, hit.x + 25)), Math.max(0, Math.min(68, hit.z + 34))]; render(); });
+      S.tap = [Math.max(0, Math.min(50, hit.x + 25)), Math.max(0, Math.min(68, hit.z + 34))]; restartMove(); render(); });
     wrap.addEventListener("pointercancel", () => { dr = null; });
     wrap.addEventListener("wheel", e => { if (view !== "tv") return; e.preventDefault(); orbit.zoom = Math.max(.35, Math.min(1.6, orbit.zoom*(1 + e.deltaY*.001))); }, {passive:false});
   }
@@ -11687,6 +11902,11 @@ const V3D = (() => {
     if (meG) scene.remove(meG); meG = makePlayer(sc.me[0] === "GK" ? COL.gk : COL.mate, "");
     const ml = label("きみ", "#ffffff"); ml.position.y = 2.2; meG.add(ml); meG.userData.lab = ml;
     meG.userData.ring.material.color = lin("#ffffff"); scene.add(meG);
+    // where きみ and the team-mates start: a pulsing orange ring and a faint 残像 once an answer moves them (like the top view)
+    if (startsG) scene.remove(startsG); startsG = new THREE.Group(); scene.add(startsG); starts = [];
+    if (typeof CLIP3D !== "undefined" && CLIP3D){
+      [[sc.me[0], sc.me[1], sc.me[2]], ...sc.mates].forEach((m, i) => { const g = CLIP3D.ghost(m[0] === "GK" ? COL.gk : COL.mate), r = CLIP3D.startRing();
+        g.position.copy(W(m[1], m[2])); r.position.copy(W(m[1], m[2], .03)); startsG.add(g, r); starts.push({i:i - 1, at:[m[1], m[2]], g, r}); }); }
     // who has the ball at the start: きみ, or the nearest player within 1.5 m of it
     holder = null;
     if (sc.ball[0] === sc.me[1] && sc.ball[1] === sc.me[2]) holder = {kind:"me"};
@@ -11786,6 +12006,9 @@ const V3D = (() => {
     // our players first (one of them may have the ball)
     sc.mates.forEach((m, i) => { const v = t.mates[i] || [0,0], c = cur.mates[i] || [0,0]; cur.mates[i] = [ease(c[0], v[0], k), ease(c[1], v[1], k)]; const o = ov.get(mates[i]); mates[i].position.copy(o ? W(o[0], o[1]) : W(m[1] + cur.mates[i][0], m[2] + cur.mates[i][1])); });
     actors.visible = !hidden;
+    { const on = !hidden && (S.preview !== null || !!S.tap || done), now = performance.now();
+      starts.forEach(s => { const g = s.i < 0 ? meG : mates[s.i], p = g ? [g.position.x + 25, g.position.z + 34] : s.at, moved = Math.hypot(p[0] - s.at[0], p[1] - s.at[1]) > 1;
+        s.g.visible = on && moved; s.r.visible = on && (s.i < 0 || moved); if (s.r.visible) CLIP3D.pulseRing(s.r, now); }); }
     // the ball sits just in front of the feet of whoever has it, on the side of the goal they attack (ours y=0, theirs y=68);
     // when the answer passes or shoots it, it travels from there to the answer spot
     const gp = g => [g.position.x + 25, g.position.z + 34];
@@ -11868,13 +12091,13 @@ const V3D = (() => {
       else if (k === "prev"){ clip.go(clip.C.t > 1.2 ? clip.C.i : clip.C.i - 1); caption(); }
       else if (k === "next"){ clip.go(clip.C.i + 1); caption(); } });
     clip.load(q, true); clip.root.visible = true; orbit.eyeYaw = 0; caption();
-    [actors, marks, fan, ballM, ballRing].forEach(o => o.visible = false); if (meG) meG.visible = false;
+    [actors, marks, fan, ballM, ballRing].forEach(o => o.visible = false); if (meG) meG.visible = false; if (startsG) startsG.visible = false;
     if (!raf) raf = requestAnimationFrame(frame);
   }
   function caption(){ cl.cap.className = "v3cap " + clip.capClass(); cl.cap.innerHTML = clip.capHTML(); cl.dots.innerHTML = clip.dotsHTML(); }
   function stopClip(){ if (typeof VOICE !== "undefined") VOICE.stop();
     if (!cl) return; cl.ui.remove(); cl = null; clip.root.visible = false; cam.clearViewOffset();
-    [actors, marks, ballM, ballRing].forEach(o => o.visible = true); if (meG) meG.visible = true;
+    [actors, marks, ballM, ballRing].forEach(o => o.visible = true); if (meG) meG.visible = true; if (startsG) startsG.visible = true;
   }
   function clipFrame(now){
     const dt = Math.min(.05, (now - (cl.last || now))/1000); cl.last = now;
@@ -11895,7 +12118,9 @@ const V3D = (() => {
 
   function setView(v){ view = v; try{ localStorage.setItem("pd8_view", v); }catch(e){} orbit.zoom = 1; orbit.key = null; orbit.eyeYaw = 0; attach(); }
   document.addEventListener("click", e => { const b = e.target.closest("[data-v3]"); if (b) setView(b.dataset.v3); });
-  return {attach, gaze, HALF, play, get canClip(){ return typeof CLIP3D !== "undefined" && !!CLIP3D; }, get view(){ return view; }};
+  // back to the scene before moving the way of another answer
+  function restart(){ cur = {me:[0,0], ball:[0,0], mates:{}}; }
+  return {attach, gaze, HALF, play, restart, get canClip(){ return typeof CLIP3D !== "undefined" && !!CLIP3D; }, get view(){ return view; }};
 })();
 
 // ---------- Screens ----------
@@ -11973,20 +12198,32 @@ function renderPick(){
     const n = ts.reduce((a,t)=>a+base.filter(q=>q.th===t.id).length,0);
     return ts.length ? `<details class="phase ph-${k}" data-ph="${k}" ${S.openPh&&S.openPh.has(k)?"open":""}><summary class="phead"><b>${esc(K(p.name))}</b><span>${esc(K(p.sub))}</span><small class="pcount">${ts.length}テーマ・${n}もん</small><i class="chev" aria-hidden="true"></i></summary><div class="thgrid">${ts.map(themeCard).join("")}</div></details>` : "";
   }).join("");
-  const posBtn = k => { const n=base.filter(q=>POS_GROUP(q.pos)===k).length; return `<button class="pchip" data-mode="P:${k}" ${n?"":"disabled"}><b>${k}</b><span>${POS_NAME[k]}</span></button>`; };
+  // first the position (FW CH SH SB CB GK), then its categories (the same as MAESTRO TACTICS GUIDE); the old way by
+  // moment of the game and theme stays below, folded
+  const pos = S.pickPos || (()=>{ try{ return localStorage.getItem("pd8_pos") || "FW"; }catch(e){ return "FW"; } })();
+  const inPos = (q,p) => guidePos(q)===p;
+  const posBtn = ([k,name]) => { const n=base.filter(q=>inPos(q,k)).length; return `<button class="pchip" data-ppos="${k}" aria-pressed="${k===pos}" ${n?"":"disabled"}><b>${k}</b><span>${name}</span></button>`; };
+  const catCard = c => {
+    const mode = catMode(pos,c.id), qs = base.filter(q=>inPos(q,pos) && GUIDE_CAT_OF[q.id]===c.id), pr = progress(qs), cleared = themeCleared(pid,mode);
+    return `<button class="th cat${cleared?" done":""}" data-mode="${mode}" ${qs.length?"":"disabled"}>
+      ${cleared?`<span class="medal" aria-hidden="true">★</span>`:""}<b>${esc(K(c.name))}</b><span class="csub">${esc(K(c.sub))}</span><small>${qs.length}もん${qs.some(q=>q.type==="tap")?"・タップあり":""}</small>
+      ${pr?`<span class="bar" aria-hidden="true"><i style="width:${pr.n?Math.round(100*pr.done/pr.n):0}%"></i></span><i class="stars">◎ ${pr.done}/${pr.n}</i>`:""}</button>`;
+  };
   const exN = visible(g,true).length;
   return `<section class="card">
     <div class="row">${stepper(2,"えらぶ")}${canPick?gradeSelect("pickgrade",g):`<span class="tag me">${GLABEL(g)}</span>`}<button class="ghost" id="back-name" style="margin-left:auto">← なまえをえらびなおす</button></div>
-    <h2>${esc(S.player.name)}さん、今日のテーマは？</h2>
-    <button class="mix" data-mode="MIX"><b>おまかせ</b><span>いろんなテーマから${PER_ROUND}もん</span></button>
-    ${phases}
-    <div class="sect">POSITION　ポジションでえらぶ</div>
-    <div class="prow">${["GK","DF","MF","FW"].map(posBtn).join("")}</div>
+    <h2>${esc(S.player.name)}さん、今日はどれにする？</h2>
+    <button class="mix" data-mode="MIX"><b>おまかせ</b><span>いろんな問題から${PER_ROUND}もん</span></button>
+    <div class="sect">POSITION　ポジションをえらぶ</div>
+    <div class="prow prow6">${GUIDE_POS.map(posBtn).join("")}</div>
+    <div class="sect">CATEGORY　${pos}のカテゴリー</div>
+    <div class="thgrid">${(GUIDE_CATS[pos]||[]).map(catCard).join("")}</div>
+    <details class="phase alltheme" data-ph="ALL" ${S.openPh&&S.openPh.has("ALL")?"open":""}><summary class="phead"><b>テーマでえらぶ</b><span>こうげき・しゅび・切りかえ・セットプレーの場面ごと</span><i class="chev" aria-hidden="true"></i></summary>${phases}</details>
     ${g>=11 && exN ? `<button class="mix ex" data-mode="EX"><b>EX</b><span>エクストラ・そうとうむずかしい問題（${exN}もん）</span></button>` : ""}
-    <p class="muted" style="margin:0;font-size:.85rem">◎＝いちばん目的に合う ／ ○＝それもあり ／ ✕＝目的に合わない。テーマで5もん中、8点（◎2点・○1点）とるとクリア★</p>
+    <p class="muted" style="margin:0;font-size:.85rem">◎＝いちばん目的に合う ／ ○＝それもあり ／ ✕＝目的に合わない。カテゴリーやテーマで5もん中、8点（◎2点・○1点）とるとクリア★</p>
   </section>`;
 }
-function modeLabel(m){ return m==="MIX"?"おまかせ":m==="EX"?"EX":m.startsWith("P:")?m.slice(2):TH[m]?K(TH[m].name):m; }
+function modeLabel(m){ return m==="MIX"?"おまかせ":m==="EX"?"EX":m.startsWith("P:")?m.slice(2):m.startsWith("C:")?K(catModeName(m)):TH[m]?K(TH[m].name):m; }
 function renderQuiz(){
   const q=S.set[S.i], done = S.results.length>S.i, r = done ? S.results[S.i].r : null;
   const waiting = q.look && !S.hide && !done;            // look question before/while looking
@@ -12032,10 +12269,10 @@ function renderQuiz(){
   </div>`;
 }
 function renderResult(){
-  const got=pts(S.results), max=2*S.results.length, isTh=!!TH[S.mode], need=Math.ceil(max*.8);
+  const got=pts(S.results), max=2*S.results.length, isTh=!!TH[S.mode]||!!catOfMode(S.mode), need=Math.ceil(max*.8);
   const msg = got===max?"パーフェクト！ 試合でもやってみよう。":got>=need?"すごい！ 目的をよく考えられている。":got>=max/2?"いいね！ ○や✕の問題の「目的」を読みなおそう。":"目的を思い出して、もう1回チャレンジ！";
   const clear = !isTh ? "" : got>=need
-    ? `<div class="clear pop"><span class="medal" style="position:static;width:44px;height:44px;font-size:1.3rem;display:grid;place-items:center;border-radius:50%;background:var(--gold);color:var(--gold-ink)" aria-hidden="true">★</span><div><b>CLEAR!</b><p style="margin:0;font-weight:700">「${esc(K(TH[S.mode].name))}」をクリア！</p></div></div>`
+    ? `<div class="clear pop"><span class="medal" style="position:static;width:44px;height:44px;font-size:1.3rem;display:grid;place-items:center;border-radius:50%;background:var(--gold);color:var(--gold-ink)" aria-hidden="true">★</span><div><b>CLEAR!</b><p style="margin:0;font-weight:700">「${esc(modeLabel(S.mode))}」をクリア！</p></div></div>`
     : `<div class="verdict ng"><span class="mark">!</span><p>あと${need-got}点でクリア。もう1回やってみよう。</p></div>`;
   const saved = S.player.guest ?"ゲストなので、きろくはしていません。" : store.db ? (store.local ? "けっかはこの端末に保存されました。" : "けっかはコーチに保存されました。") : "";
   return `<section class="card">
@@ -12165,7 +12402,7 @@ view.addEventListener("click", e=>{
   const q=S.set[S.i]; if(S.results.length>S.i) return;
   const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
   const p=pt.matrixTransform(svg.getScreenCTM().inverse());
-  S.tap=[Math.max(0,Math.min(50,p.x)), Math.max(0,Math.min(68,p.y))]; render();
+  S.tap=[Math.max(0,Math.min(50,p.x)), Math.max(0,Math.min(68,p.y))]; restartMove(); render();
 });
 view.addEventListener("click", e=>{
   const t=e.target.closest("button"); if(!t) return;
@@ -12184,11 +12421,12 @@ view.addEventListener("click", e=>{
   if(t.id==="leavecoach"){ TEAM.leaveCoach(); Object.assign(REMOTE,{loaded:false,err:""}); S.tab="drill"; render(); return; }
   if(t.id==="back-name"){ S.step="name"; render(); return; }
   if(t.dataset.form){ S.form=t.dataset.form; try{ localStorage.setItem("pd8_form",S.form); }catch(e){} render(); return; }
+  if(t.dataset.ppos){ S.pickPos=t.dataset.ppos; try{ localStorage.setItem("pd8_pos", S.pickPos); }catch(e){} render(); return; }
   if(t.dataset.mode){ startSet(t.dataset.mode); return; }
   if(t.id==="lookstart"){ startLook(); return; }
   if(t.dataset.ci!==undefined && S.results.length<=S.i){
     // 1st tap = show the move, same choice again = answer
-    if(S.preview!==+t.dataset.ci){ S.preview=+t.dataset.ci; render(); return; }
+    if(S.preview!==+t.dataset.ci){ S.preview=+t.dataset.ci; restartMove(); render(); return; }
     const q=S.set[S.i]; S.picked=+t.dataset.ci; answer(q.opts[S.picked].r); return;
   }
   if(t.id==="tapok" && S.tap){ const q=S.set[S.i]; const z=rateTap(q,S.tap); answer(z?z.r:0); return; }
