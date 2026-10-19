@@ -37,7 +37,9 @@ button{font:inherit;color:inherit}
 .views button{background:rgba(3,10,7,.75);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font:600 .74rem var(--en);cursor:pointer;color:var(--muted)}
 .views button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
 .tag{position:absolute;top:10px;left:10px;font:600 .72rem var(--en);color:var(--accent);background:rgba(3,10,7,.75);border:1px solid var(--line);border-radius:8px;padding:5px 9px;max-width:55%}
-.cap{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:10px 14px;margin-top:10px;min-height:96px}
+/* the caption sits on the 3D picture (one screen, like a TV caption); the picture moves up so the play stays above it */
+.cap{position:absolute;left:10px;right:10px;bottom:10px;z-index:2;background:rgba(3,10,7,.8);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:8px 13px;max-height:36%;overflow:auto;backdrop-filter:blur(3px);cursor:auto}
+.cap:empty{display:none}
 .cap .k{display:inline-block;font:700 .78rem var(--ja);padding:2px 9px;border-radius:999px;background:var(--accent);color:#04120a;margin-bottom:4px}
 .cap h3{margin:2px 0 3px;font-size:1.02rem;line-height:1.45}
 .cap p{margin:0;font-size:.95rem;line-height:1.6;color:#d7efe3}
@@ -45,7 +47,7 @@ button{font:inherit;color:inherit}
 .cap.r1{border-left-color:var(--warn)} .cap.r1 .k{background:var(--warn)}
 .cap.r0{border-left-color:var(--bad)}  .cap.r0 .k{background:var(--bad);color:#fff}
 .cap.pt{border-left-color:#fff} .cap.pt .k{background:#fff}
-@media (max-width:600px){.stage{aspect-ratio:4/3;min-height:0}.views{top:auto;bottom:8px;right:8px}.tag{max-width:calc(100% - 20px)}.cap h3{font-size:.95rem}.cap p{font-size:.88rem}}
+@media (max-width:600px){.stage{aspect-ratio:1/1;min-height:0;max-height:none}.tag{display:none}.views{left:8px;right:8px;justify-content:flex-start}.views button{padding:4px 7px;font-size:.66rem}.cap{left:6px;right:6px;bottom:6px;padding:6px 10px;max-height:42%}.cap h3{font-size:.86rem;margin:1px 0}.cap p{font-size:.8rem;line-height:1.5}.cap .k{font-size:.7rem;margin-bottom:2px}}
 .ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
 .ctrl .b{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer;min-width:44px}
 .ctrl .b.main{background:var(--accent);color:#04120a;border-color:var(--accent);min-width:96px}
@@ -80,6 +82,10 @@ button{font:inherit;color:inherit}
 .themes button:disabled{opacity:.35;cursor:default}
 .aim{font-size:.85rem;line-height:1.6;color:#cfe8dc;margin:0;padding:8px 10px;border-radius:10px;background:rgba(77,255,166,.07)}
 .qs{display:flex;flex-direction:column;gap:6px}
+#qsel{width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;font:500 .9rem var(--ja);appearance:auto}
+.qpt{margin:0;padding:9px 11px;border-radius:10px;background:rgba(77,255,166,.07);font-size:.86rem;line-height:1.6;display:grid;gap:2px}
+.qpt b{font-size:.74rem;color:var(--accent)}
+.qpt small{color:var(--muted);font-size:.74rem}
 .qs button{text-align:left;background:none;border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer;font-size:.86rem;line-height:1.5;display:flex;gap:8px}
 .qs button b{font:700 .78rem var(--en);color:var(--muted);min-width:22px}
 .qs button[aria-current=true]{border-color:var(--accent);background:rgba(77,255,166,.08)}
@@ -100,8 +106,8 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:.84rem;color:var(--m
     <div class="stage" id="stage">
       <div class="tag" id="tag"></div>
       <div class="views" id="views"></div>
+      <div class="cap" id="cap" aria-live="polite"></div>
     </div>
-    <div class="cap" id="cap" aria-live="polite"></div>
     <div class="ctrl">
       <button class="b" id="prev" aria-label="前の手順">◀</button>
       <button class="b main" id="play">▶ 再生</button>
@@ -10902,11 +10908,16 @@ const X3 = (() => {
   function camera(now){
     const C = clip.C, r = stage.getBoundingClientRect(), w = Math.max(1, renderer.domElement.clientWidth || r.width), h = Math.max(1, renderer.domElement.clientHeight || r.height);
     if (Math.abs(w - (camera.w||0)) > .5 || Math.abs(h - (camera.h||0)) > .5){ camera.w = w; camera.h = h; renderer.setSize(w, h, false); cam.aspect = w/h; }
-    if (cv.view === "eye"){ C.meG.visible = false; CLIP3D.eyeCam(cam, C, cv.eyeYaw); }
+    if (cv.view === "eye"){ C.meG.visible = false; cam.aspect = w/h; cam.clearViewOffset(); CLIP3D.eyeCam(cam, C, cv.eyeYaw); }
     else {
       C.meG.visible = true; cam.fov = 46;
       const V = VIEWS[cv.view], sway = cv.sway && playing && cv.view !== "top" ? Math.sin(now/3200)*.18 : 0;
+      // the caption covers the bottom of the picture and the buttons the top: fit the play into the free band between them
+      // (the camera frames a shorter picture, which is then drawn at the top of the free band)
+      const top = Math.min(h*.15, 44), bot = Math.min(h*.45, ui.cap.offsetHeight + 14), free = Math.max(h*.4, h - top - bot);
+      cam.aspect = w/free; cam.clearViewOffset();
       CLIP3D.fitBox(cam, C.box, V.yaw + cv.dyaw + sway, Math.max(.25, Math.min(1.52, V.pitch + cv.dpitch)), cv.zoom);
+      cam.setViewOffset(w, free, 0, -top, w, h); cam.updateProjectionMatrix();
     }
     clip.labels(cv.view === "eye" ? .7 : 1);
     // the ball a little bigger than real so it is easy to follow (smaller through the eyes)
@@ -10979,12 +10990,16 @@ const X3 = (() => {
   }
   function scenes(){
     $("aim").hidden = true;   // (each category button already says what it is about)
-    $("qs").innerHTML = list.map((q, i) => `<button data-qi="${i}" aria-current="${i === qi}"><b>${String(i + 1).padStart(2, "0")}</b><span>${esc(K(q.q))}<br><small style="color:var(--muted)">きみ：${esc(q.scene.me[0])}　${q.scene.f}</small></span></button>`).join("");
+    // each scene by what happens in it (the first sentence of situ; many questions just ask 「どうする？」) and its point
+    const head = q => { const t = K(q.situ), i = t.indexOf("。"); const f = i > 0 ? t.slice(0, i + 1) : t; return f.length > 44 ? f.slice(0, 43) + "…" : f; };
+    // a pull-down of the scenes, and the point of the one shown
+    $("qs").innerHTML = `<select id="qsel" aria-label="場面をえらぶ">${list.map((q, i) => `<option value="${i}" ${i === qi ? "selected" : ""}>${String(i + 1).padStart(2, "0")}　${esc(head(q))}</option>`).join("")}</select>`
+      + (list[qi] ? `<p class="qpt"><b>ポイント</b>${esc(K(list[qi].point))}<small>きみ：${esc(list[qi].scene.me[0])}　${list[qi].scene.f}</small></p>` : "");
   }
   function show(i, autoplay=true){
     qi = i; const q = list[qi];
     X3.load(q, `${pos} ・ ${K(catOf(cat).name)}  ${qi + 1}/${list.length}  ・ きみ：${q.scene.me[0]}  ・ ${q.scene.f}`, autoplay);
-    scenes(); const b = document.querySelector(`#qs [data-qi="${qi}"]`); if (b && window.innerWidth > 900) b.scrollIntoView({block:"nearest"});
+    scenes();
   }
   function pickCat(id, autoplay=true){
     if (!catOf(id)) id = cats()[0].id;
@@ -10997,7 +11012,7 @@ const X3 = (() => {
   $("grades").addEventListener("click", e => { const b = e.target.closest("[data-g]"); if (!b) return; S.grade = +b.dataset.g; try{ localStorage.setItem("x3_grade", S.grade); }catch(err){} grades(); pickCat(cat); });
   $("pos").addEventListener("click", e => { const b = e.target.closest("[data-pos]"); if (!b || b.disabled) return; pos = b.dataset.pos; try{ localStorage.setItem("x3_pos", pos); }catch(err){} pickCat(null); });
   $("themes").addEventListener("click", e => { const b = e.target.closest("[data-th]"); if (b && !b.disabled) pickCat(b.dataset.th); });
-  $("qs").addEventListener("click", e => { const b = e.target.closest("[data-qi]"); if (b) show(+b.dataset.qi); });
+  $("qs").addEventListener("change", e => { if (e.target.id === "qsel") show(+e.target.value); });
   X3.onEnd = () => { if ($("auto").checked && qi < list.length - 1) show(qi + 1); };
   grades(); pickCat(null, false);
 })();
