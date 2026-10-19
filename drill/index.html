@@ -734,7 +734,37 @@ const TH = Object.fromEntries(THEMES.map(t=>[t.id,t]));
 //  pair: questions with the same pair id are played back to back (same scene, the opponent moves differently)
 const Q = [];
 const BASE_OPP_DEF = [[25,4]]; // their GK is always drawn
+// No team-mate stands in an offside place in a scene where we have the ball (kids copy what they see):
+//  - a little beyond (≤3 m) the second-last defender → the mate steps back level with that defender (+0.8 m)
+//  - far beyond → the scene simply left out their back line: a defender is added just goal-side of the mate
+//    (not on an answer spot or another player), or, when there is no room, the mate steps back
+// Not for throw-ins, corners, goal kicks and kick-offs (no offside), not for きみ, and not for questions about offside.
+const NO_OFFSIDE_THEMES = new Set(["throw","ck","gkick","ko"]);
+function onsideFix(q){
+  const sc = q.scene; if(!sc || NO_OFFSIDE_THEMES.has(q.th) || /オフサイド/.test(JSON.stringify([q.situ,q.q,q.opts,q.zones,q.miss]))) return;
+  const dist = (a,b) => Math.hypot(a[0]-b[0], a[1]-b[1]), me = [sc.me[1], sc.me[2]], ours = [me].concat(sc.mates.map(m => [m[1], m[2]]));
+  if(!ours.some(p => dist(p, sc.ball) < 1.3)) return;
+  const spots = [].concat((q.opts||[]).map(o => o.at).filter(Boolean), (q.zones||[]).map(z => z.c));
+  const secondLast = () => sc.opps.map(p => p[1]).concat([4]).sort((a,b) => a-b)[1];
+  sc.mates.forEach(m => {
+    if(dist([m[1],m[2]], sc.ball) < 1.3) return;
+    const sl = secondLast(); if(!(m[2] < sl - .3 && m[2] < sc.ball[1] - .3)) return;
+    if(sl - m[2] > 3 && sc.opps.length < 7){
+      const all = ours.concat(sc.mates.map(x => [x[1],x[2]]), sc.opps);
+      for(const [dx,dy] of [[1.5,-2.4],[-1.5,-2.4],[0,-2.6],[3,-2.4],[-3,-2.4]]){
+        const c = [Math.max(1, Math.min(49, m[1]+dx)), Math.max(5.5, m[2]+dy)];
+        if(c[1] >= m[2] - .3) continue;
+        if(all.every(p => dist(p, c) >= 2.2) && spots.every(p => dist(p, c) >= 2.4)){ sc.opps.push(c); return; }
+      }
+    }
+    // step back level with the defender, to a free place (not on top of anyone)
+    const others = ours.concat(sc.mates.filter(x => x !== m).map(x => [x[1],x[2]]), sc.opps), y = Math.round((sl + .8)*10)/10;
+    for(const dx of [0, 2.4, -2.4, 4, -4]){ const c = [Math.max(1, Math.min(49, m[1]+dx)), y]; if(others.every(p => dist(p, c) >= 2.2)){ m[1] = c[0]; m[2] = c[1]; return; } }
+    m[2] = Math.round((sl + 2.4)*10)/10;
+  });
+}
 function D(q){
+  onsideFix(q);
   q.type = q.type || "pick";
   q.g = q.g || [TH[q.th].g, 12];
   q.ph = TH[q.th].ph;
@@ -10116,7 +10146,7 @@ D({id:"uk09", th:"unmark", g:[10,12],
  situ:"CBがボールを持っている。CHのきみとCBのあいだに、相手のFWがいる。このままだと、CBからパスが出せない。",
  q:"CHのきみは、どうする？",
  scene:{f:"3-3-1", me:["CH",25,42], ball:[25,54], mates:M("3-3-1",{CH:null}),
-  opps:[[25,47],[22,34],[34,36],[14,40],[25,24]]},
+  opps:[[25,47],[22,34],[34,36],[14,40],[25,21]]},
  opts:[
   {t:"相手FWのかげから横にはなれて、CBからのパスコースをつくる", at:[30,43], r:2,
    why:"相手FWのうしろにいると、CBからは見えない。横に数歩はなれるだけで、パスコースができる。"},

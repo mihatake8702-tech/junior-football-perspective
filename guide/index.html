@@ -165,6 +165,7 @@ const THEMES = [
   {id:"carry", ph:"atk",  g:10, name:"運ぶ・ひきつける",   aim:"前があいていたら運ぶ。相手が寄ってきたら、その相手が見ていた味方があく。"},
   {id:"free",  ph:"atk",  g:10, name:"スペースをつくる・使う", aim:"マークされている人は、相手をつれて動いてスペースをつくる。フリーの人が、そのスペースで受ける。"},
   {id:"third", ph:"atk",  g:9,  name:"3人目・4人目の動き", aim:"ボールが次の味方に入る前に、その次をよんで動く。パスを受ける人だけでなく、その次に受ける人（3人目）、さらに次の人（4人目）が先に走りだすと、相手はついてこられない。"},
+  {id:"unmark",ph:"atk",  g:9,  name:"はずす動き",          aim:"ボールを受ける前に、マークしている相手からはなれる。相手がボールを見たすきに背中がわへ、一度行くふりをしてもどる、急に止まる。自分で受けるスペースをつくる。"},
   {id:"order", ph:"def",  g:9,  name:"守りの順番",         aim:"①ゴールを守る ②前に進ませない ③ボールにせまる ④うばう。とびこまずに、この順番で考える。"},
   {id:"cover", ph:"def",  g:10, name:"チャレンジ＆カバー", aim:"1人がボールへ行き、ほかの人はその〔ディアゴナーレ|ななめうしろでカバー〕。2人で1つのボールを守る。"},
   {id:"slide", ph:"def",  g:11, name:"スライドと追いこみ", aim:"みんなでボールの方へずれる。まん中では外へ、サイドでは中へ追いこんで、うばう場所を決める。"},
@@ -188,7 +189,37 @@ const TH = Object.fromEntries(THEMES.map(t=>[t.id,t]));
 //  pair: questions with the same pair id are played back to back (same scene, the opponent moves differently)
 const Q = [];
 const BASE_OPP_DEF = [[25,4]]; // their GK is always drawn
+// No team-mate stands in an offside place in a scene where we have the ball (kids copy what they see):
+//  - a little beyond (≤3 m) the second-last defender → the mate steps back level with that defender (+0.8 m)
+//  - far beyond → the scene simply left out their back line: a defender is added just goal-side of the mate
+//    (not on an answer spot or another player), or, when there is no room, the mate steps back
+// Not for throw-ins, corners, goal kicks and kick-offs (no offside), not for きみ, and not for questions about offside.
+const NO_OFFSIDE_THEMES = new Set(["throw","ck","gkick","ko"]);
+function onsideFix(q){
+  const sc = q.scene; if(!sc || NO_OFFSIDE_THEMES.has(q.th) || /オフサイド/.test(JSON.stringify([q.situ,q.q,q.opts,q.zones,q.miss]))) return;
+  const dist = (a,b) => Math.hypot(a[0]-b[0], a[1]-b[1]), me = [sc.me[1], sc.me[2]], ours = [me].concat(sc.mates.map(m => [m[1], m[2]]));
+  if(!ours.some(p => dist(p, sc.ball) < 1.3)) return;
+  const spots = [].concat((q.opts||[]).map(o => o.at).filter(Boolean), (q.zones||[]).map(z => z.c));
+  const secondLast = () => sc.opps.map(p => p[1]).concat([4]).sort((a,b) => a-b)[1];
+  sc.mates.forEach(m => {
+    if(dist([m[1],m[2]], sc.ball) < 1.3) return;
+    const sl = secondLast(); if(!(m[2] < sl - .3 && m[2] < sc.ball[1] - .3)) return;
+    if(sl - m[2] > 3 && sc.opps.length < 7){
+      const all = ours.concat(sc.mates.map(x => [x[1],x[2]]), sc.opps);
+      for(const [dx,dy] of [[1.5,-2.4],[-1.5,-2.4],[0,-2.6],[3,-2.4],[-3,-2.4]]){
+        const c = [Math.max(1, Math.min(49, m[1]+dx)), Math.max(5.5, m[2]+dy)];
+        if(c[1] >= m[2] - .3) continue;
+        if(all.every(p => dist(p, c) >= 2.2) && spots.every(p => dist(p, c) >= 2.4)){ sc.opps.push(c); return; }
+      }
+    }
+    // step back level with the defender, to a free place (not on top of anyone)
+    const others = ours.concat(sc.mates.filter(x => x !== m).map(x => [x[1],x[2]]), sc.opps), y = Math.round((sl + .8)*10)/10;
+    for(const dx of [0, 2.4, -2.4, 4, -4]){ const c = [Math.max(1, Math.min(49, m[1]+dx)), y]; if(others.every(p => dist(p, c) >= 2.2)){ m[1] = c[0]; m[2] = c[1]; return; } }
+    m[2] = Math.round((sl + 2.4)*10)/10;
+  });
+}
 function D(q){
+  onsideFix(q);
   q.type = q.type || "pick";
   q.g = q.g || [TH[q.th].g, 12];
   q.ph = TH[q.th].ph;
@@ -9137,7 +9168,7 @@ D({id:"na24", th:"goal", g:[10,11],
   {t:"スピードを落として、うしろから来るFWを待ってパス", at:[22,20], r:0, why:"1人でうてる場面なのに、待っているあいだに相手がもどってきて、チャンスがなくなる。"}],
  point:"追いつかれる前に、うてるときにうつ。"});
 
-// ===== 3人目・4人目の動き（third）: th01〜th11 =====
+// ===== 3人目・4人目の動き（third）: th01〜th19 =====
 // seq：答えの動きを順番に（1つめのパス → 2つめのパス・走りこみ …）。3Dはこの順に動く。上から見た図は最後の形へ動く。
 //   {ball:"CH"|"CM2"|"me"|[x,y], run:[["me",x,y], ["LH",x,y]]}  （"CM2" = 2人目のCM）。at は最後にボールが行く所（図の印）。
 
@@ -9149,8 +9180,8 @@ D({id:"th01", th:"third", g:[9,12],
   opps:[[25,18],[14,20],[36,20],[12,34],[30,32],[20,46]],
   arrows:[{f:[8,50], t:[19,41], k:"pass"}]},
  opts:[
-  {t:"CHがボールを受けるのに合わせて、相手CBのうしろ（うら）へ走る", at:[29,9], seq:[{ball:"CH", run:[["me",27,17]]}, {ball:[29,9], run:[["me",29,9]]}], r:2,
-   why:"CHは前を向いて受けられる。きみが先に走りだしていれば、CHはすぐうらへパスを出せる。パスの次をよんで動くと、相手はついてこられない。"},
+  {t:"CHがボールを受けるのに合わせて、相手CBのうしろ（うら）へ走る", at:[29,9], seq:[{ball:"CH", run:[["me",27,18.6]]}, {ball:[29,9], run:[["me",29,9]]}], r:2,
+   why:"CHは前を向いて受けられる。きみが先に走りだしていれば、CHはすぐうらへパスを出せる。パスの次をよんで動くと、相手はついてこられない。パスが出るまでは、相手のDFより前に出ない。前にいると〔オフサイド|反則〕になる。"},
   {t:"CHの前まで下りてきて、足もとでパスを受ける", at:[22,30], r:1,
    why:"CHのパスコースが近くにできる。でもゴールからはなれるし、相手CBもついてくる。"},
   {t:"ボールを持っているLBのほうへ下りて、パスをもらいに行く", at:[14,40], r:0,
@@ -9165,8 +9196,8 @@ D({id:"th02", th:"third", g:[10,12],
   opps:[[20,29],[31,18],[14,18],[27,40],[38,30],[12,32]],
   arrows:[{f:[25,44], t:[21,33], k:"pass"}]},
  opts:[
-  {t:"FWにパスが入るのに合わせて、相手CBのうしろへななめに走る", at:[26,10], seq:[{ball:"FW", run:[["me",29,17]]}, {ball:[26,10], run:[["me",26,10]]}], r:2,
-   why:"パスを受けるFWは、うしろに相手がいて前を向けない。でもダイレクトで、先に走りだしたきみに出せる。〔3人目の動き|パスの次をよんで先に走る動き〕で、うらがとれる。"},
+  {t:"FWにパスが入るのに合わせて、相手CBのうしろへななめに走る", at:[26,10], seq:[{ball:"FW", run:[["me",29,18.6]]}, {ball:[26,10], run:[["me",26,10]]}], r:2,
+   why:"パスを受けるFWは、うしろに相手がいて前を向けない。でもダイレクトで、先に走りだしたきみに出せる。〔3人目の動き|パスの次をよんで先に走る動き〕で、うらがとれる。パスが出るまでは、相手のDFより前に出ない。前にいると〔オフサイド|反則〕になる。"},
   {t:"FWの横によって、落としのパスを受けられるようにする", at:[27,30], r:1,
    why:"FWを助けられる。でも相手のうしろはあかないまま。"},
   {t:"FWのほうへ下りて、2人ならんでボールをもらいに行く", at:[24,27], r:0,
@@ -9214,7 +9245,7 @@ D({id:"th05", th:"third", g:[9,12],
   arrows:[{f:[25,54], t:[27,43], k:"pass"}]},
  opts:[
   {t:"CHがボールを受ける前から、相手SBのうしろをねらって走りだす", at:[45,22], seq:[{ball:"CH", run:[["me",44,33]]}, {ball:[45,22], run:[["me",45,22]]}], r:2,
-   why:"CHが前を向いて受けたとき、きみはもう走っている。CHはすぐうらへ出せるので、相手SBはついてこられない。"},
+   why:"CHが前を向いて受けたとき、きみはもう走っている。CHはすぐうらへ出せるので、相手SBはついてこられない。パスが出るまでは、相手のDFより前に出ない。前にいると〔オフサイド|反則〕になる。"},
   {t:"CHに寄って、近くでパスを受ける", at:[36,40], r:1,
    why:"パスはつながる。でも相手SBの前で受けるので、前に進みにくい。"},
   {t:"下がって、CBから直接パスをもらいに行く", at:[44,46], r:0,
@@ -9230,7 +9261,7 @@ D({id:"th06", th:"third", g:[11,12],
   arrows:[{f:[33,54], t:[26,31], k:"pass"}]},
  opts:[
   {t:"CFにパスが入ったら、CMに落とすのをよんで、相手SBのうしろへ走りだす", at:[42,17], seq:[{ball:"CF"}, {ball:"CM2", run:[["me",45,30]]}, {ball:[42,17], run:[["me",42,17]]}], r:2,
-   why:"CFが落として、CMが前を向く。そのときにはもう走りだしているので、CMはダイレクトでうらに出せる。4人目の動きは、相手がいちばんついてこられない。"},
+   why:"CFが落として、CMが前を向く。そのときにはもう走りだしているので、CMはダイレクトでうらに出せる。4人目の動きは、相手がいちばんついてこられない。パスが出るまでは、相手のDFより前に出ない。前にいると〔オフサイド|反則〕になる。"},
   {t:"CMがボールを持ってから、うらへ走りだす", at:[42,17], seq:[{ball:"CF"}, {ball:"CM2"}, {ball:[42,17], run:[["me",42,17]]}], r:1,
    why:"通ることもある。でもスタートがおそいと、相手SBも先にもどれる。"},
   {t:"CFの近くへ寄っていって、パスをもらいに行く", at:[34,31], r:0,
@@ -9261,7 +9292,7 @@ D({id:"th08", th:"third", g:[11,12],
   opps:[[36,29],[46,46],[24,30],[44,26],[22,42],[30,22]]},
  opts:[
   {t:"FWにたてパスを入れて、すぐ前へ走る", at:[44,22], seq:[{ball:"FW2", run:[["me",44,44]]}, {ball:"CM2", run:[["me",45,36]]}, {ball:[44,22], run:[["me",44,22]]}], r:2,
-   why:"FWが落として、CMが前を向く。パスを出したきみがそのまま走っていれば、CMはうらに出せる。パスを出したら止まらないのが大事。"},
+   why:"FWが落として、CMが前を向く。パスを出したきみがそのまま走っていれば、CMはうらに出せる。パスを出したら止まらないのが大事。パスが出るまでは、相手のDFより前に出ない。前にいると〔オフサイド|反則〕になる。"},
   {t:"CMに横パスを出す", at:[31,42], r:1,
    why:"安全につながる。でも相手の前でボールが動くだけで、前に進まない。"},
   {t:"相手SBのうしろへ、自分で大きくける", at:[44,24], r:0,
@@ -9291,7 +9322,7 @@ D({id:"th10", th:"third", g:[11,12],
   opps:[[23,27],[42,32],[16,24],[33,22],[18,40],[31,43]]},
  opts:[
   {t:"下りてきたCFへ、たてパスを入れる", at:[42,16], seq:[{ball:"CF"}, {ball:"CH", run:[["RH",44,30]]}, {ball:[42,16], run:[["RH",42,16]]}], r:2,
-   why:"CFが落として、CHが前を向く。そのあいだにRHが走りだして、うらまでつながる。たてパスが、まわりの動きのスタートになる。"},
+   why:"CFが落として、CHが前を向く。そのあいだにRHが走りだして、うらまでつながる。たてパスが、まわりの動きのスタートになる。パスが出るまでは、相手のDFより前に出ない。前にいると〔オフサイド|反則〕になる。"},
   {t:"CHに直接パスを出す", at:[28,40], r:1,
    why:"つながる。でも相手が近く、CHは前を向きにくい。"},
   {t:"RHへ大きなパスを出す", at:[42,36], r:0,
@@ -9312,6 +9343,363 @@ D({id:"th11", th:"third", g:[10,12],
   {t:"前へ大きくける", at:[25,30], r:0,
    why:"前は相手が多く、ひろわれやすい。つなげる味方がいるのに、ボールを手ばなしてしまう。"}],
  point:"相手が来た人の、その次の人までつなぐ。"});
+
+// ----- th12〜th19（2026-10-19 追加）：落とす側・2つ先・スローイン・オーバーラップ・逆サイド・中盤から・守るときの3人目 -----
+
+// --- CF：うしろに相手。走ってくるCHへ落とす（落とす側） ---
+D({id:"th12", th:"third", g:[9,12],
+ situ:"CBから、下りてきたCFのきみにたてパスがくる。きみのすぐうしろには相手のCBがいる。CHが前を向いて走ってくる。",
+ q:"CFのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CF",25,30], ball:[25,54], mates:M("3-3-1",{CF:null, CH:[25,44], RH:[42,36]}),
+  opps:[[25,27],[42,32],[15,26],[34,24],[18,42],[33,45]],
+  arrows:[{f:[25,54], t:[25,31], k:"pass"}, {f:[25,44], t:[24,38], k:"run"}]},
+ opts:[
+  {t:"前を向かずに、走ってくるCHへダイレクトで落とす", at:[24,37], seq:[{ball:"me"}, {ball:"CH", run:[["CH",24,37]]}], r:2,
+   why:"うしろに相手がいて前を向けない。ダイレクトで落とせば、CHは前を向いたまま受けられる。そこから右のRHや、うらへもつながる。"},
+  {t:"トラップして、うしろの相手をせおってキープする", seq:[{ball:"me"}], r:1,
+   why:"うばわれにくい。でもそのあいだに相手がまわりから寄ってきて、前に進むのがおそくなる。"},
+  {t:"くるっと前を向いて、ドリブルでしかける", seq:[{ball:"me"}], r:0,
+   why:"すぐうしろに相手がいるので、前を向くあいだにうばわれやすい。前を向いている味方がいるのに、むりをしてしまう。"}],
+ point:"うしろに相手がいたら、前を向いている3人目へ落とす。"});
+
+// --- CF：4人目。RHの落とし → CH → 相手CBのあいだへ ---
+D({id:"th13", th:"third", g:[11,12],
+ situ:"RBから、下りてきたRHにパスが出る。RHのうしろには相手がいる。CHはRHの近くにいる。CFのきみの前には、相手のCBが2人。",
+ q:"CFのきみは、いつ、どこへ走る？",
+ scene:{f:"3-3-1", me:["CF",25,24], ball:[40,52], mates:M("3-3-1",{CF:null, RH:[41,40], CH:[32,42]}),
+  opps:[[41,37],[20,20],[30,20],[45,28],[25,38],[15,34]],
+  arrows:[{f:[40,52], t:[41,41], k:"pass"}]},
+ opts:[
+  {t:"RHにパスが入ったら、CHに落とすのをよんで、相手CBのあいだ（うら）へ走りだす", at:[24,10], seq:[{ball:"RH"}, {ball:"CH", run:[["me",25,20.6]]}, {ball:[24,10], run:[["me",24,10]]}], r:2,
+   why:"RHが落として、CHが前を向く。そのときにはもう走りだしているので、CHはすぐうらへ出せる。ボールの2つ先をよむと、相手CBはついてこられない。パスが出るまでは、相手のDFより前に出ない。前にいると〔オフサイド|反則〕になる。"},
+  {t:"CHがボールを持ってから、うらへ走りだす", at:[24,10], seq:[{ball:"RH"}, {ball:"CH"}, {ball:[24,10], run:[["me",24,10]]}], r:1,
+   why:"通ることもある。でもスタートがおそいと、相手CBも同時にもどれる。"},
+  {t:"RHの近くへ寄って、パスをもらいに行く", at:[36,32], r:0,
+   why:"ボールに寄ると、相手CBもついてくるだけ。うらへ走る人がいなくなる。"}],
+ point:"ボールの2つ先をよんで、先に走る。"});
+
+// --- CH：落としを前向きで受けた。次は一番先（うら）へ ---
+D({id:"th14", th:"third", g:[10,12],
+ situ:"下りてきたFWの落としを、CHのきみが前を向いて受ける。もう1人のFWが、相手CBのうしろへ走りだしている。",
+ q:"CHのきみは、どうする？",
+ scene:{f:"2-3-2", me:["CH",24,36], ball:[24,36], mates:M("2-3-2",{CH:null, FW1:[20,30], FW2:[31,22]}),
+  opps:[[20,27],[30,17],[16,18],[29,41],[37,33],[11,35]],
+  arrows:[{f:[31,22], t:[28,12], k:"run"}]},
+ opts:[
+  {t:"ダイレクトで、うらへ走るFWの前のスペースへ出す", at:[27,11], seq:[{ball:[27,11], run:[["FW2",27,11]]}], r:2,
+   why:"前を向いて受けたので、すぐにうらを見られる。FWが先に走りだしているので、1本でうらがとれる。ここで止まると、相手CBがもどってしまう。"},
+  {t:"トラップして、ドリブルで前へ運ぶ", at:[24,30], r:1,
+   why:"前に進める。でも1回止まるあいだに、相手CBがFWについてもどれる。"},
+  {t:"落としてくれたFWへ、もう一度もどす", at:[20,30], r:0,
+   why:"FWのうしろには相手がいて、前を向けない。せっかく前を向いたのに、ボールがうしろにもどってしまう。"}],
+ point:"前を向いたら、まず一番先（うら）を見る。"});
+
+// --- CH：スローインも3人目。落としを前向きで受ける ---
+D({id:"th15", th:"third", g:[9,12],
+ situ:"右のスローイン。RBが投げる。RHが近よってきて、うしろに相手がついた。CHのきみの近くには相手がいない。",
+ q:"CHのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CH",35,44], ball:[50,40], mates:M("3-3-1",{CH:null, RB:[50,40], RH:[45,36]}),
+  opps:[[45,33],[37,30],[26,38],[24,26],[42,50]],
+  arrows:[{f:[50,40], t:[46,36], k:"pass"}]},
+ opts:[
+  {t:"RHに入るのをよんで、RHのななめうしろ（前を向ける所）で落としを受ける", at:[40,41], seq:[{ball:"RH", run:[["me",40,41]]}, {ball:"me"}], r:2,
+   why:"RHは相手をせおっていて前を向けない。落としをきみが前を向いて受ければ、前にも逆サイドにも出せる。スローインも3人目でつなぐ。"},
+  {t:"相手のうしろ（タッチライン近くの前）へ走って、投げてもらう", at:[47,26], r:1,
+   why:"うらへのスローもある。でも投げたボールはゆっくりで、相手が先にとどきやすい。"},
+  {t:"RHのすぐ横まで行って、2人ならんでボールをもらいに行く", at:[44,39], r:0,
+   why:"近すぎると、相手1人で2人とも見られる。落とす場所もなくなる。"}],
+ point:"スローインも、落としを前向きで受ける3人目。"});
+
+// --- LB：LHに入るのに合わせて、外を追いこす ---
+D({id:"th16", th:"third", g:[10,12],
+ situ:"CHから、左のLHにパスが出る。LHは内がわを向いて受けそう。LHの前には相手のSBがいる。LBのきみのまわりには相手がいない。",
+ q:"LBのきみは、どうする？",
+ scene:{f:"3-3-1", me:["LB",10,52], ball:[25,40], mates:M("3-3-1",{LB:null, LH:[11,38]}),
+  opps:[[13,33],[20,28],[30,34],[18,46],[34,24]],
+  arrows:[{f:[25,40], t:[12,39], k:"pass"}]},
+ opts:[
+  {t:"LHにパスが入るのに合わせて、LHの外を追いこして前へ走る", at:[4,26], seq:[{ball:"LH", run:[["me",5,44]]}, {ball:[4,26], run:[["me",4,26]]}], r:2,
+   why:"相手SBはLHを見ているので、外を走るきみについてこられない。LHが中へ運べば、相手SBは2人を見なければならない。〔オーバーラップ|外から追いこす動き〕も3人目の動き。"},
+  {t:"LHのうしろに寄って、もどしのパスを受けられるようにする", at:[14,46], r:1,
+   why:"安全。でも前には進まない。"},
+  {t:"まん中へ入って、CHの横に立つ", at:[20,44], r:0,
+   why:"左の外にだれもいなくなる。相手SBはLHだけを見ていればいい。"}],
+ point:"味方にボールが入るのに合わせて、外を追いこす。"});
+
+// --- RH：逆サイドの4人目。LHの落とし → CH → 右のうら ---
+D({id:"th17", th:"third", g:[11,12],
+ situ:"左で、LBからLHにパスが出る。LHは前を向けず、CHに落としそう。相手はみんな、ボールのある左に寄っている。右のRHのきみの前には、相手のSBがいる。",
+ q:"右のRHのきみは、どうする？",
+ scene:{f:"3-3-1", me:["RH",42,38], ball:[10,52], mates:M("3-3-1",{RH:null, LH:[9,40], CH:[20,42]}),
+  opps:[[9,37],[18,30],[27,40],[22,22],[30,19],[38,33]],
+  arrows:[{f:[10,52], t:[9,41], k:"pass"}]},
+ opts:[
+  {t:"LHがCHに落とすのをよんで、相手SBのうしろへななめに走りだす", at:[38,18], seq:[{ball:"LH"}, {ball:"CH", run:[["me",42,30]]}, {ball:[38,18], run:[["me",38,18]]}], r:2,
+   why:"相手はボールのある左に寄っていて、右のうらはあいている。CHが前を向いたときに走りだしていれば、CHは逆サイドのうらへ出せる。パスが出るまでは、相手のDFより前に出ない。前にいると〔オフサイド|反則〕になる。"},
+  {t:"CHがボールを持ってから、うらへ走りだす", at:[38,18], seq:[{ball:"LH"}, {ball:"CH"}, {ball:[38,18], run:[["me",38,18]]}], r:1,
+   why:"通ることもある。でもスタートがおそいと、相手SBが先にもどれる。"},
+  {t:"ボールのある左のほうへ寄っていく", at:[32,38], r:0,
+   why:"みんながボールに寄ると、右があいていても使えない。逆サイドは、うらをねらう。"}],
+ point:"ボールが遠くても、2つ先をよんで逆サイドのうらへ。"});
+
+// --- CM：中盤から4人目。CFの落とし → もう1人のCM → 相手CBのあいだへ ---
+D({id:"th18", th:"third", g:[11,12],
+ situ:"CBから、下りてきたCFにたてパスが出る。CFのうしろには相手がいる。CFの近くには、もう1人のCMがいる。右のCMのきみは、少しうしろにいる。",
+ q:"CMのきみは、いつ、どこへ走る？",
+ scene:{f:"2-4-1", me:["CM",31,42], ball:[17,54], mates:M("2-4-1",{CM2:null, CF:[24,30], CM1:[19,40]}),
+  opps:[[24,27],[15,20],[34,20],[27,37],[12,40],[39,30]],
+  arrows:[{f:[17,54], t:[23,31], k:"pass"}]},
+ opts:[
+  {t:"CFにパスが入ったら、CMに落とすのをよんで、相手CBのあいだへ走りこむ", at:[26,12], seq:[{ball:"CF"}, {ball:"CM1", run:[["me",30,27]]}, {ball:[26,12], run:[["me",26,12]]}], r:2,
+   why:"CFが落として、もう1人のCMが前を向く。そのときにはきみがもう走っているので、うらへパスが出せる。中盤からとびだす4人目は、相手がいちばんつかまえにくい。パスが出るまでは、相手のDFより前に出ない。前にいると〔オフサイド|反則〕になる。"},
+  {t:"CMがボールを持ってから走りだす", at:[26,12], seq:[{ball:"CF"}, {ball:"CM1"}, {ball:[26,12], run:[["me",26,12]]}], r:1,
+   why:"通ることもある。でもスタートがおそいと、相手のMFもついてこられる。"},
+  {t:"CFの横へ寄って、パスをもらいに行く", at:[28,31], r:0,
+   why:"CFの近くに人が集まると、相手もまとめて守れる。うらへ走る人がいなくなる。"}],
+ point:"中盤からも、2つ先をよんでとびだす。"});
+
+// --- CH（守り）：相手の3人目をつかまえる ---
+D({id:"th19", th:"third", g:[11,12],
+ situ:"相手のCBが、下りてきた相手のFWにたてパスを出す。そのFWには、きみのチームのCBがついている。相手のMFが、うしろから前を向いて走ってくる。CHのきみは、その近くにいる。",
+ q:"CHのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CH",31,35], ball:[25,22], mates:M("3-3-1",{CH:null, CB:[24,47]}),
+  opps:[[24,44],[25,22],[30,30],[12,36],[39,41],[18,28]],
+  arrows:[{f:[25,22], t:[24,43], k:"pass"}, {f:[30,30], t:[27,38], k:"run"}]},
+ opts:[
+  {t:"FWが落とす相手のMFについていき、前を向かせない", at:[27,40], seq:[{ball:[24,43], run:[["me",27,40]]}], r:2,
+   why:"相手のFWはうしろにCBがいて前を向けないので、走ってくるMFに落とすはず。その3人目をつかまえておけば、落としても前を向けない。"},
+  {t:"FWのほうへ行って、CBと2人ではさむ", at:[24,41], r:1,
+   why:"FWからうばえることもある。でもダイレクトで落とされると、MFがフリーで前を向く。"},
+  {t:"パスを出した相手CBへ、ボールをうばいに走る", at:[25,26], r:0,
+   why:"ボールはもうFWに出ている。うしろから走ってくる3人目が、あいたままになる。"}],
+ point:"守るときも3人目を見る。落とされる相手をつかまえる。"});
+
+// ===== はずす動き（unmark）: uk01〜uk15 — 受ける前に、マークしている相手からはなれる =====
+
+// --- CF：クロスの前に、相手CBの背中がわ（ファー）へはなれる ---
+D({id:"uk01", th:"unmark", g:[9,12],
+ situ:"右のRHが、ゴール前へクロスを上げそう。CFのきみのすぐ横には、相手のCBがついている。相手CBはボールの方を見ている。",
+ q:"CFのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CF",26,11], ball:[44,14], mates:M("3-3-1",{CF:null, RH:[44,14], CH:[27,26]}),
+  opps:[[27,8.5],[12,14],[41,9.5],[30,22],[18,24]]},
+ opts:[
+  {t:"相手CBがボールを見たすきに、CBの背中がわ（ファー）へスッとはなれる", at:[20,9], r:2,
+   why:"相手CBはボールを見ているので、背中がわにはなれたきみが見えない。フリーでクロスに合わせられる。〔プルアウェイ|相手の背中がわへはなれる動き〕という。ただし、相手のDFより前に出るとオフサイドになるので、同じ高さで。"},
+  {t:"ニア（ボールに近い方）へ走りこむ", at:[32,9], r:1,
+   why:"ニアに入るのもいい。でも相手CBの前を横切るので、見られたまま。いっしょについてこられる。"},
+  {t:"ボールを持っているRHの方へ近よって、パスをもらいに行く", at:[37,15], r:0,
+   why:"ゴール前からいなくなる。クロスに合わせる人がいなくなる。"}],
+ point:"相手がボールを見たら、背中がわへはなれる。"});
+
+// --- FW：チェックの動き（行くふり → もどって足もと） ---
+D({id:"uk02", th:"unmark", g:[9,12],
+ situ:"CBがボールを持っている。FWのきみのうしろには、相手のCBがついている。足もとでパスを受けたい。",
+ q:"FWのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CF",26,26], ball:[25,54], mates:M("3-3-1",{CF:null}),
+  opps:[[26,23],[16,22],[36,22],[25,36],[14,36],[36,36]]},
+ opts:[
+  {t:"一度うら（前）へ行くふりをして、相手が下がったら急にもどって足もとで受ける", at:[24,31], r:2,
+   why:"前へ行くふりをすると、相手CBは下がる。そこで急にもどれば、相手との間にきょりができて、前を向きやすい。〔チェックの動き|一度行くふりをしてからはなれて受ける〕という。"},
+  {t:"ゆっくり下りてきて、パスを受けに行く", at:[27,33], r:1,
+   why:"受けられることもある。でも相手もいっしょについてくるので、うしろにぴったりつかれたまま受けることになる。"},
+  {t:"相手CBの前に立ったまま、手をあげて呼ぶ", at:[26,25], r:0,
+   why:"相手のすぐ前なので、パスが来ても相手に先にさわられる。"}],
+ point:"行くふりをして、反対へ。相手とのきょりをつくる。"});
+
+// --- FW：ぴったりついてくる相手と入れかわって、うらへ ---
+D({id:"uk03", th:"unmark", g:[10,12],
+ situ:"CHがボールを持っている。FWのきみが下りると、相手のCBがぴったりついて前に出てきた。相手CBのうしろが空いている。",
+ q:"FWのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CF",26,27], ball:[25,40], mates:M("3-3-1",{CF:null, CH:[25,40]}),
+  opps:[[26,25],[17,21],[35,21],[30,34],[18,36]]},
+ opts:[
+  {t:"下りるふりをして、相手が前に出てきたら、くるっと入れかわって相手のうしろへ走る", at:[29,15], r:2,
+   why:"相手が前に出てくるほど、うしろは空く。入れかわって走れば、相手は前を向いたまま、うしろへ追いかけないといけない。パスが出るまでは、相手のDFより前に出ない。"},
+  {t:"そのまま下りて、足もとで受ける", at:[25,32], r:1,
+   why:"受けられる。でも相手がうしろにぴったりなので、前は向けない。"},
+  {t:"CHのすぐ近くまでもどって受ける", at:[25,37], r:0,
+   why:"CHに近すぎて、2人まとめて守られる。前にだれもいなくなる。"}],
+ point:"相手が前に出てきたら、入れかわってうらへ。"});
+
+// --- FW：いっしょに走って、急に止まる ---
+D({id:"uk04", th:"unmark", g:[10,12],
+ situ:"左のLHがゴールラインの近くまでドリブルした。CFのきみは、相手のCBといっしょにニアへ走っている。LHはうしろへ折り返しそう。",
+ q:"CFのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CF",23,13], ball:[6,11], mates:M("3-3-1",{CF:null, LH:[6,11], CH:[26,26]}),
+  opps:[[21,10.5],[30,11],[9,15],[30,25]]},
+ opts:[
+  {t:"相手といっしょに走っていって、急に止まる。相手だけニアへ流れて、きみはフリーになる", at:[24,15], r:2,
+   why:"相手CBはそのままニアへ走るので、止まったきみとのあいだにきょりができる。うしろへの折り返しを、フリーでシュートできる。"},
+  {t:"ペナルティエリアの外まで下がって、こぼれ球を待つ", at:[25,22], r:1,
+   why:"こぼれ球はひろえる。でも折り返しに合わせてシュートする人がいなくなる。"},
+  {t:"相手CBといっしょに、ニアまで走りこみ続ける", at:[17,11], r:0,
+   why:"相手もいっしょにニアへ来ているので、マークされたまま。折り返しのボールはきみのうしろを通ってしまう。"}],
+ point:"いっしょに走って、急に止まる。"});
+
+// --- FW：相手の見えない方から、ななめに走る ---
+D({id:"uk05", th:"unmark", g:[11,12],
+ situ:"CHが前を向いてボールを持った。FWのきみの前には、相手のCBが2人いる。2人ともボールを見ている。",
+ q:"FWのきみは、どこへ走る？",
+ scene:{f:"3-3-1", me:["CF",20,24], ball:[25,40], mates:M("3-3-1",{CF:null, CH:[25,40]}),
+  opps:[[20,21],[31,21],[26,33],[12,32],[38,32]]},
+ opts:[
+  {t:"相手CBのうしろを、外から中へななめに走る（相手の見えない方から）", at:[26,14], r:2,
+   why:"ボールを見ている相手CBは、外からななめに走るきみが見えにくい。2人のCBのどちらがつくか、まよわせることもできる。パスが出るまでは、相手のDFより前に出ない。"},
+  {t:"まっすぐうらへ走る", at:[20,13], r:1,
+   why:"うらはとれる。でも相手CBにずっと見られていて、いっしょに走られる。"},
+  {t:"CHの方へまっすぐ下りる", at:[22,32], r:0,
+   why:"相手CBもついてきて、前が空かない。CHの前がせまくなる。"}],
+ point:"相手の見えない方から、ななめに走る。"});
+
+// --- RH：逆サイドで、相手SBの見えないうしろへ ---
+D({id:"uk06", th:"unmark", g:[10,12],
+ situ:"ボールは左のLHが持っている。右のRHのきみの前には、相手のSBがいる。相手SBはボールの方を見ている。",
+ q:"RHのきみは、どうする？",
+ scene:{f:"3-3-1", me:["RH",44,34], ball:[8,36], mates:M("3-3-1",{RH:null, LH:[8,36], CH:[24,40]}),
+  opps:[[40,30],[31,22],[20,22],[10,32],[22,34]]},
+ opts:[
+  {t:"相手SBがボールを見ているあいだに、SBのうしろ（見えない方）へはなれる", at:[45,24], r:2,
+   why:"相手SBはボールを見ているので、うしろにはなれたきみに気づきにくい。サイドチェンジが来たら、前を向いてフリーで受けられる。パスが出るまでは、相手のDFより前に出ない。"},
+  {t:"相手SBの前で、ボールの方を向いて立つ", at:[41,33], r:1,
+   why:"パスは受けられるかもしれない。でも相手SBの前なので、すぐに寄せられる。"},
+  {t:"ボールのある左へ寄っていく", at:[32,36], r:0,
+   why:"逆サイドの広いスペースを、だれも使えなくなる。"}],
+ point:"ボールが遠いときは、相手の見えない方へ。"});
+
+// --- LH：外へはなれて、相手SBとのきょりをとる ---
+D({id:"uk07", th:"unmark", g:[9,12],
+ situ:"CBがボールを持っている。LHのきみのすぐ近くに、相手のSBがついている。",
+ q:"LHのきみは、どうする？",
+ scene:{f:"3-3-1", me:["LH",12,40], ball:[25,54], mates:M("3-3-1",{LH:null}),
+  opps:[[13,37],[22,30],[30,40],[25,46],[38,36]]},
+ opts:[
+  {t:"タッチラインいっぱいまで外へはなれて、相手SBとのきょりをとる", at:[3,42], r:2,
+   why:"相手SBからはなれるほど、受けたときに前を向く時間ができる。相手SBがついてくれば、中にスペースができる。"},
+  {t:"相手SBのうしろへ走る", at:[10,28], r:1,
+   why:"うらをねらうのはいい。でもCBからは遠く、パスがとどくまでに相手が追いつく。"},
+  {t:"CBのすぐ前まで下りて、もらいに行く", at:[16,49], r:0,
+   why:"相手SBもついてきて、CBの近くがせまくなる。外が空いたまま。"}],
+ point:"相手からはなれて、受けるスペースをつくる。"});
+
+// --- RH：中へ入るふりをして、外で受ける ---
+D({id:"uk08", th:"unmark", g:[11,12],
+ situ:"CBがボールを持っている。RHのきみの前には相手のSBがいて、きみについてくる。",
+ q:"RHのきみは、どうする？",
+ scene:{f:"3-3-1", me:["RH",41,36], ball:[25,54], mates:M("3-3-1",{RH:null}),
+  opps:[[40,33],[31,24],[29,40],[25,46],[18,30]]},
+ opts:[
+  {t:"中へ入るふりをして相手SBを内がわにつれていき、急に外へ出て受ける", at:[47,37], r:2,
+   why:"中へ入るふりで、相手SBも内がわへ動く。そこで外へ出れば、相手とのあいだにきょりができる。外は相手が少なく、前を向きやすい。"},
+  {t:"そのまま中へ入って受ける", at:[35,37], r:1,
+   why:"受けられることもある。でも中は相手が多く、せまい。"},
+  {t:"相手SBのすぐ横に立って呼ぶ", at:[42,33.5], r:0,
+   why:"相手のすぐ近くなので、パスが来ても先にさわられる。"}],
+ point:"行くふりをして、反対へ。"});
+
+// --- CH：相手FWのかげから出る ---
+D({id:"uk09", th:"unmark", g:[10,12],
+ situ:"CBがボールを持っている。CHのきみとCBのあいだに、相手のFWがいる。このままだと、CBからパスが出せない。",
+ q:"CHのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CH",25,42], ball:[25,54], mates:M("3-3-1",{CH:null}),
+  opps:[[25,47],[22,34],[34,36],[14,40],[25,21]]},
+ opts:[
+  {t:"相手FWのかげから横にはなれて、CBからのパスコースをつくる", at:[30,43], r:2,
+   why:"相手FWのうしろにいると、CBからは見えない。横に数歩はなれるだけで、パスコースができる。"},
+  {t:"もっと下がって、CBの横で受ける", at:[31,53], r:1,
+   why:"受けられる。でも前を向いても、前に相手が多い。"},
+  {t:"相手FWのすぐうしろで、手をあげて呼ぶ", at:[25,44], r:0,
+   why:"相手FWのかげにいるので、CBからはパスが出せない。出しても相手FWに当たる。"}],
+ point:"相手のかげから出て、パスコースをつくる。"});
+
+// --- CB：近づきすぎず、一歩はなれて角度をつくる（ロンドと同じ） ---
+D({id:"uk10", th:"unmark", g:[9,12],
+ situ:"LBがボールを持っていて、相手のFWがせまっている。CBのきみは、LBのななめうしろにいる。",
+ q:"CBのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CB",22,55], ball:[10,52], mates:M("3-3-1",{CB:null, LB:[10,52]}),
+  opps:[[13,49],[24,46],[34,46],[12,40],[30,36]]},
+ opts:[
+  {t:"近づかずに一歩はなれて、相手の足が届かない角度で受ける", at:[20,57], r:2,
+   why:"相手FWからはなれた所なら、LBからのパスが相手の足にかからない。受けたあとも前を向ける。ロンドで、鬼から一歩はなれて受けるのと同じ。"},
+  {t:"前へ上がって、パスを受けられるようにする", at:[21,47], r:1,
+   why:"パスコースはできる。でも前向きで受けにくく、取られると危ない。"},
+  {t:"ボールを持つLBのすぐ横へ寄る", at:[14,53], r:0,
+   why:"近すぎると、相手1人で2人とも見られる。パスも相手の足にかかりやすい。"}],
+ point:"近づきすぎない。一歩はなれて角度をつくる。"});
+
+// --- CF：2人のCBのあいだに立つ ---
+D({id:"uk11", th:"unmark", g:[10,12],
+ situ:"CHがボールを持っている。CFのきみの前には、相手のCBが2人いる。きみは右のCBの前に立っている。",
+ q:"CFのきみは、どこに立つ？",
+ scene:{f:"3-3-1", me:["CF",31,23], ball:[25,40], mates:M("3-3-1",{CF:null, CH:[25,40]}),
+  opps:[[19,20],[31,20],[25,32],[12,32],[38,32]]},
+ opts:[
+  {t:"2人のCBのあいだに立つ（どっちがつくか、まよわせる）", at:[25,21], r:2,
+   why:"2人のあいだに立つと、相手はどっちがつくか、まよう。まよったすきに、うらにもぬけられるし、下りて受けることもできる。"},
+  {t:"右のCBの前に立ったまま待つ", at:[31,23], r:1,
+   why:"受けられることもある。でも相手CBが1人でずっと見ていられる。"},
+  {t:"下がって中盤に入る", at:[25,34], r:0,
+   why:"前にだれもいなくなる。相手CBは前に出てきて、中盤がせまくなる。"}],
+ point:"相手と相手のあいだに立って、まよわせる。"});
+
+// --- CH：相手MFの背中がわに立つ ---
+D({id:"uk12", th:"unmark", g:[11,12],
+ situ:"CBがボールを持っている。CHのきみの近くには相手のMFがいて、ボールの方を見ている。",
+ q:"CHのきみは、どこに立つ？",
+ scene:{f:"3-3-1", me:["CH",24,42], ball:[17,54], mates:M("3-3-1",{CH:null, CB:[17,54]}),
+  opps:[[21,40],[33,40],[25,28],[12,34],[30,48]]},
+ opts:[
+  {t:"相手MFの背中がわへはなれて立つ（相手の見えない所）", at:[28,36], r:2,
+   why:"相手MFはボールを見ているので、背中がわのきみが見えない。CBからのパスを、前を向いて受けやすい。"},
+  {t:"相手MFの前に出て受ける", at:[23,46], r:1,
+   why:"受けられる。でも相手MFの前なので、前を向くとすぐ寄せられる。"},
+  {t:"相手MFのすぐ横にくっついて立つ", at:[22.5,40], r:0,
+   why:"相手の足が届く。パスが来ても、先にさわられやすい。"}],
+ point:"相手の背中がわは、相手から見えない。"});
+
+// --- FW：パスが出る前は、相手DFと同じ高さで待つ ---
+D({id:"uk13", th:"unmark", g:[9,12],
+ situ:"CHがボールを持っていて、うらへパスを出せそう。FWのきみの前には、相手のCBがいる。",
+ q:"パスが出る前、FWのきみはどこで待つ？",
+ scene:{f:"3-3-1", me:["CF",26,25], ball:[25,40], mates:M("3-3-1",{CF:null, CH:[25,40]}),
+  opps:[[20,21],[31,21],[26,32],[12,32],[38,32]]},
+ opts:[
+  {t:"相手のCBと同じ高さで待って、パスが出た瞬間に走る", at:[26,21.5], r:2,
+   why:"相手のDFと同じ高さならオフサイドではない。いちばん前からスタートできるので、うらへ走るときに相手より先に行ける。"},
+  {t:"相手のCBより少し下がって待つ", at:[26,27], r:1,
+   why:"オフサイドにはならない。でもスタートがおそくなって、相手に追いつかれやすい。"},
+  {t:"相手のCBより前（うしろがわ）で待つ", at:[26,15], r:0,
+   why:"パスが出たときに相手のDFより前にいると、オフサイドになる。"}],
+ point:"パスが出るまでは、相手のDFと同じ高さで。"});
+
+// --- CH：パスを出したら、はなれて三角形をつくり直す ---
+D({id:"uk14", th:"unmark", g:[9,12],
+ situ:"CHのきみが、右のRHにパスを出した。RHの前には相手がいる。",
+ q:"パスを出したあと、CHのきみはどうする？",
+ scene:{f:"3-3-1", me:["CH",28,42], ball:[42,38], mates:M("3-3-1",{CH:null, RH:[42,38]}),
+  opps:[[41,34],[33,40],[25,32],[18,40],[36,26]]},
+ opts:[
+  {t:"相手からはなれて、RHがもどせる所（三角形の形）に動き直す", at:[33,46], r:2,
+   why:"パスを出したあとも動けば、RHはこまったときにもどせる。相手からはなれた所なら、もどしのパスも通りやすい。"},
+  {t:"パスを出したRHの方へ走って近よる", at:[38,40], r:1,
+   why:"RHを助けたい気持ちはいい。でも近すぎると、相手1人で2人とも見られる。"},
+  {t:"前へ走って、うらをねらう", at:[30,26], r:0,
+   why:"中盤がからっぽになる。RHはもどす所がなくなる。"}],
+ point:"パスを出したら止まらない。はなれて、次のパスコースをつくる。"});
+
+// --- FW：もう1人のFWと、はなれて立つ ---
+D({id:"uk15", th:"unmark", g:[9,12],
+ situ:"CHがボールを持っている。FWのきみは、もう1人のFWのすぐ近くにいる。前には相手のCBが2人。",
+ q:"FWのきみ（右）は、どこに立つ？",
+ scene:{f:"2-3-2", me:["FW",27,23], ball:[25,44], mates:M("2-3-2",{FW2:null, FW1:[23,23]}),
+  opps:[[19,20],[31,20],[25,34],[12,32],[38,32]]},
+ opts:[
+  {t:"もう1人のFWからはなれて、右のCBの外がわに立つ", at:[34,22], r:2,
+   why:"2人がはなれると、相手のCBも1人ずつつかないといけない。CBどうしのあいだも広がって、パスを通すスペースができる。"},
+  {t:"もう1人のFWのうしろ（少し下がった所）に立つ", at:[25,30], r:1,
+   why:"受けられる。でも相手CBの1人が、2人のFWをまとめて見られる。"},
+  {t:"もう1人のFWのすぐ横にくっついて立つ", at:[24.5,23], r:0,
+   why:"2人がくっつくと、相手CB1人で2人とも見られる。"}],
+ point:"味方どうしもはなれる。相手を広げる。"});
 
 // ===== Batch nb：しゅびの問題（チャレンジ＆カバー・守りの順番・ゴール前・スライド・前からうばう） =====
 
@@ -10873,7 +11261,7 @@ const GUIDE_CATS = {
   }
  ]
 };
-const GUIDE_CAT_OF = {"b01":"build","bo01":"recv","bo02":"build","bo03":"recv","bo04":"recv","bo05":"recv","bo06":"recv","bo07":"build","bo08":"recv","bo09":"build","bo10":"build","br01":"pass","br02":"build","br03":"attack","br04":"attack","br05":"goal","br06":"recv","br07":"pass","br08":"attack","br09":"recv","br10":"link","br11":"pass","bx01":"save","bx02":"box","bx03":"def","bx04":"box","bx05":"box","bx06":"box","bx07":"def","bx08":"box","bx09":"save","bx10":"box","ca01":"build","ca02":"pass","ca03":"up","ca04":"build","ca05":"build","ca06":"pass","ca07":"up","ca08":"pass","ca09":"pass","ca10":"build","ck01":"set","ck02":"set","ck03":"set","ck04":"set","ck05":"set","ck06":"set","ck07":"set","ck08":"set","ck09":"set","ck10":"set","ck11":"set","ck12":"set","ck13":"set","ck14":"set","ck15":"set","ck16":"set","ck17":"set","ck18":"set","ck19":"set","ck20":"set","ck21":"set","ck22":"set","ck23":"set","ck24":"set","ck25":"set","ck26":"set","ck27":"build","ck28":"set","cv01":"def","cv02":"cover","cv03":"def","cv04":"cover","cv05":"def","cv06":"def","cv07":"def","cv08":"def","cv09":"sweep","cv10":"press","ex01":"attack","ex02":"recv","ex03":"link","ex04":"pass","ex05":"recv","ex06":"build","ex07":"def","ex08a":"trans","ex08b":"trans","ex09":"def","ex10":"press","ex11":"def","ex12":"trans","ex13":"trans","ex14":"trans","ex15":"link","fk01":"set","fk02":"set","fk03":"set","fk04":"set","fk05":"set","fk06":"set","fk07":"set","fk08":"set","fk09":"set","fk10":"set","fk11":"set","fk12":"set","fk13":"set","fk14":"set","fk15":"set","fk16":"set","fk17":"set","fk18":"set","fk19":"set","fk20":"set","fk21":"set","fk22":"set","fk23":"set","fk24":"set","fk25":"set","fk26":"set","fk27":"set","fk28":"set","fr01":"recv","fr02":"pass","fr03a":"link","fr03b":"recv","fr04":"recv","fr05":"recv","fr06":"build","fr07":"recv","fr08":"build","fr09":"build","fr10":"link","fr11":"up","fr12a":"build","fr12b":"build","fr13":"up","fr14":"build","fr15":"recv","fr16":"recv","fr17":"link","fr18":"up","fr19a":"up","fr19b":"up","fr20":"recv","fr21":"pass","fr22":"recv","fr23":"recv","fr24":"build","fr25":"pass","fr26":"attack","fr27":"link","g01":"goal","ga01":"goal","ga02":"pass","ga03":"link","ga04":"build","ga05":"recv","ga06":"recv","ga07":"recv","ga08":"recv","ga09":"build","ga10":"attack","gk01":"build","gk02":"set","gk03":"build","gk04":"set","gk05":"set","gk06":"set","gk07":"set","gk08":"set","gk09":"set","gk10":"build","gk11":"set","gk12":"set","gk13":"build","gk14":"build","gk15":"build","gk16":"build","gk17":"set","gk18":"set","gk19":"set","gk20":"set","gk21":"set","gk22":"set","gk23":"set","gk24":"set","gk25":"set","gk26":"set","gk27":"set","gk28":"sweep","k01a":"pass","k01b":"pass","ko01":"set","ko02":"set","ko03":"set","ko04":"set","ko05":"set","ko06":"set","ko07":"set","ko08":"set","ko09":"set","ko10":"set","ko11":"set","ko12":"set","ko13":"set","ko14":"set","ko15":"set","ko16":"set","ko17":"set","ko18":"set","ko19":"set","ko20":"set","ko21":"set","ko22":"set","ko23":"set","ko24":"set","l01":"recv","la01":"recv","la02":"recv","la03":"build","la04":"pass","la05":"recv","la06":"up","la07":"up","la08":"recv","la09":"recv","la10":"recv","ls01":"press","ls02":"cover","ls03":"duel","ls04":"trans","ls05a":"trans","ls05b":"trans","ls06":"trans","ls07":"trans","ls08":"trans","ls09":"duel","ls10":"trans","na01":"recv","na02":"recv","na03":"recv","na04":"recv","na05":"build","na06":"recv","na07":"build","na08":"recv","na09":"link","na10":"recv","na11":"build","na12":"build","na13":"up","na14":"pass","na15":"recv","na16":"build","na17":"attack","na18":"attack","na19":"build","na20":"recv","na21":"build","na22":"pass","na23":"up","na24":"attack","nb01":"cover","nb02":"def","nb03":"cover","nb04":"def","nb05":"cover","nb06":"duel","nb07":"duel","nb08":"def","nb09":"duel","nb10":"def","nb11":"def","nb12":"def","nb13":"def","nb14":"box","nb15":"box","nb16":"cover","nb17":"sweep","nb18":"press","nb19":"def","nb20":"def","nb21":"press","nb22":"press","nb23":"def","nb24":"def","nc01":"box","nc02":"trans","nc03":"trans","nc04":"trans","nc05":"sweep","nc06":"trans","nc07":"trans","nc08":"cover","nc09":"trans","nc10":"build","nc11":"recv","nc12":"trans","nc13":"build","nc14":"recv","nc15":"trans","nc16":"trans","nc17":"trans","nc18":"trans","nc19":"goal","nc20":"recv","nc21":"goal","nc22":"recv","nc23":"recv","nc24":"recv","nd01":"set","nd02":"set","nd03":"set","nd04":"set","nd05":"set","nd06":"set","nd07":"set","nd08":"set","nd09":"set","nd10":"set","nd11":"set","nd12":"set","nd13":"set","nd14":"set","nd15":"set","nd16":"set","nd17":"build","nd18":"set","nd19":"set","nd20":"set","nd21":"set","nd22":"set","nd23":"set","nd24":"set","o01":"duel","od01":"duel","od02":"duel","od03":"duel","od04":"duel","od05":"duel","od06":"def","od07":"def","od08":"box","od09":"cover","od10":"press","p01":"recv","pa01":"recv","pa02":"recv","pa03":"build","pa04":"recv","pa05":"build","pa06":"recv","pa07":"recv","pa08":"build","pa09":"recv","pa10":"build","pa11":"recv","pr01":"press","pr02":"press","pr03":"press","pr04":"press","pr05":"def","pr06":"def","pr07":"def","pr08":"def","pr09":"def","pr10":"press","pr11":"def","pr12":"def","pr13":"def","pr14":"def","pr15":"def","pr16":"def","pr17":"press","pr18":"cover","pr19":"press","pr20":"def","pr21":"duel","pr22":"def","pr23":"def","pr24":"press","pr25":"press","pr26":"def","pr27":"def","pr28":"press","s01":"def","sl01":"def","sl02":"def","sl03":"def","sl04":"press","sl05":"def","sl06":"def","sl07":"duel","sl08":"cover","sl09":"press","sl10":"def","tb01":"recv","tb02":"recv","tb03":"build","tb04":"build","tb05":"recv","tb06":"recv","tb07":"pass","tb08":"pass","tb09":"pass","tb10":"pass","tb11":"pass","tb12":"pass","tb13":"cover","tb14":"def","tb15":"cover","tb16":"def","tb17":"duel","tb18":"duel","tb19":"trans","tb20":"cover","tb21":"cover","tb22":"press","tb23":"trans","tb24":"build","tb25":"trans","tb26":"trans","tb27":"goal","tb28":"trans","tb29":"recv","tb30":"recv","tb31":"recv","tb32":"goal","tc01":"def","tc02":"cover","tc03":"def","tc04":"def","tc05":"cover","tc06":"def","tc07":"duel","tc08":"box","tc09":"box","tc10":"box","tc11":"duel","tc12":"cover","tc13":"cover","tc14":"def","tc15":"cover","tc16":"cover","tc17":"cover","tc18":"goal","tc19":"recv","tc20":"goal","tc21":"goal","tc22":"pass","tc23":"attack","tc24":"pass","tc25":"attack","tc26":"pass","tc27":"attack","tc28":"def","tc29":"duel","tc30":"duel","tc31":"duel","tc32":"cover","te01":"attack","te02":"attack","te03":"recv","te04":"recv","te05":"recv","te06":"recv","te07":"build","te08":"up","te09":"recv","te10":"build","te11":"recv","te12":"recv","te13":"pass","te14":"pass","te15":"attack","te16":"attack","te17":"build","te18":"attack","te19":"press","te20":"def","te21":"cover","te22":"cover","te23":"def","te24":"def","te25":"def","te26":"def","te27":"cover","te28":"def","te29":"cover","te30":"press","te31":"trans","te32":"trans","te33":"trans","te34":"build","te35":"build","te36":"trans","th01":"recv","th02":"recv","th03":"recv","th04":"pass","th05":"attack","th06":"attack","th07":"up","th08":"up","th09":"build","th10":"build","th11":"build","ti01":"set","ti02":"set","ti03":"set","ti04":"set","ti05":"set","ti06":"set","ti07":"set","ti08":"set","ti09":"set","ti10":"set","ti11":"set","ti12":"set","ti13":"set","ti14":"set","ti15":"set","ti16":"set","ti17":"set","ti18":"set","ti19":"set","ti20":"set","ti21":"set","ti22":"set","ti23":"set","ti24":"set","ti25":"set","ti26":"set","ti27":"set","ti28":"set","tn01":"goal","tn02":"up","tn03":"link","tn04":"recv","tn05":"recv","tn06":"recv","tn07":"build","tn08":"recv","tn09":"build","tn10":"recv","tn11":"build","tn12":"build","tn13":"build","tn14":"pass","tn15":"up","tn16":"attack","tn17":"goal","tn18":"link","tn19":"press","tn20":"save","tn21":"def","tn22":"cover","tn23":"def","tn24":"def","tn25":"cover","tn26":"cover","tn27":"def","tn28":"cover","tn29":"box","tn30":"def","tn31":"cover","tn32":"trans","tn33":"trans","tn34":"trans","tn35":"recv","tn36":"build","tw01":"attack","tw02":"set","tw03":"attack","tw04":"set","tw05":"set","tw06":"build","tw07":"recv","tw08":"recv","tw09":"recv","tw10":"set","tw11":"recv","tw12":"recv","tw13":"pass","tw14":"pass","tw15":"pass","tw16":"link","tw17":"build","tw18":"attack","tw19":"box","tw20":"cover","tw21":"cover","tw22":"def","tw23":"cover","tw24":"cover","tw25":"cover","tw26":"press","tw27":"press","tw28":"set","tw29":"cover","tw30":"def","tw31":"trans","tw32":"press","tw33":"press","tw34":"trans","tw35":"trans","tw36":"build","tz01":"trans","tz02":"trans","tz03":"trans","tz04":"trans","tz05":"trans","tz06":"trans","tz07":"build","tz08":"trans","tz09":"goal","tz10":"goal","tz11":"goal","tz12":"up","tz13":"attack","tz14":"attack","tz15":"up","tz16":"pass","tz17":"recv","tz18":"recv","tz19":"cover","tz20":"press","tz21":"set","tz22":"set","tz23":"set","tz24":"set","tz25":"set","tz26":"build","tz27":"set","tz28":"cover","tz29":"cover","tz30":"trans","tz31":"pass","tz32":"recv","ua01":"attack","ua02":"goal","ua03":"attack","ua04":"recv","ua05":"goal","ua06":"goal","ua07":"attack","ua08":"recv","ua09":"recv","ua10":"recv","ua11":"recv","ua12":"recv","ua13":"build","ua14":"attack","ua15":"recv","ua16":"recv","ua17":"recv","ua18":"pass","ua19":"recv","ua20":"recv","ua21":"recv","ua22":"attack","ua23":"attack","ua24":"attack","ua25":"link","ua26":"goal","ua27":"build","ua28":"recv","ub01":"duel","ub02":"duel","ub03":"duel","ub04":"duel","ub05":"def","ub06":"press","ub07":"def","ub08":"save","ub09":"sweep","ub10":"save","ub11":"build","ub12":"box","ub13":"box","ub14":"cover","ub15":"trans","ub16":"trans","ub17":"trans","ub18":"trans","ub19":"trans","ub20":"press","ub21":"trans","ub22":"build","ub23":"build","ub24":"trans","ub25":"trans","ub26":"build","ub27":"goal","ub28":"trans","uc01":"attack","uc02":"link","uc03":"goal","uc04":"attack","uc05":"goal","uc06":"goal","uc07":"build","uc08":"recv","uc09":"recv","uc10":"recv","uc11":"recv","uc12":"build","uc13":"pass","uc14":"build","uc15":"build","uc16":"pass","uc17":"build","uc18":"pass","uc19":"goal","uc20":"goal","uc21":"link","uc22":"recv","uc23":"def","uc24":"def","uc25":"duel","uc26":"duel","uc27":"cover","uc28":"box","uc29":"duel","uc30":"box","uc31":"cover","uc32":"save","ud01":"trans","ud02":"cover","ud03a":"trans","ud03b":"trans","ud04":"press","ud05":"duel","ud06":"link","ud07a":"recv","ud07b":"recv","ud08":"trans","ud09":"link","ud10":"build","ud11":"set","ud12":"set","ud13":"set","ud14":"set","ud15":"set","ud16":"set","ud17":"set","ud18":"set","ud19":"set","ud20":"set","ud21":"set","ud22":"set","ud23":"set","ud24":"set","ud25":"set","ud26":"build","ud27":"set","ud28":"set","ud29":"set","ud30":"set","v01":"pass","w01":"trans","wn01":"build","wn02":"trans","wn03":"recv","wn04":"trans","wn05":"trans","wn06a":"build","wn06b":"build","wn07":"trans","wn08":"build","wn09":"recv","wn10":"trans","xe01":"link","xe02":"goal","xe03":"build","xe04":"recv","xe05":"pass","xe06":"link","xe07":"duel","xe08":"cover","xe09":"def","xe10":"box","xe11":"trans","xe12":"trans","xe13":"pass","xe14":"recv","yg01":"recv"};
+const GUIDE_CAT_OF = {"th12":"link","th13":"recv","th14":"pass","th15":"recv","th16":"up","th17":"attack","th18":"recv","th19":"def","uk01":"goal","uk02":"recv","uk03":"recv","uk04":"goal","uk05":"recv","uk06":"recv","uk07":"recv","uk08":"recv","uk09":"recv","uk10":"build","uk11":"recv","uk12":"recv","uk13":"recv","uk14":"pass","uk15":"recv","b01":"build","bo01":"recv","bo02":"build","bo03":"recv","bo04":"recv","bo05":"recv","bo06":"recv","bo07":"build","bo08":"recv","bo09":"build","bo10":"build","br01":"pass","br02":"build","br03":"attack","br04":"attack","br05":"goal","br06":"recv","br07":"pass","br08":"attack","br09":"recv","br10":"link","br11":"pass","bx01":"save","bx02":"box","bx03":"def","bx04":"box","bx05":"box","bx06":"box","bx07":"def","bx08":"box","bx09":"save","bx10":"box","ca01":"build","ca02":"pass","ca03":"up","ca04":"build","ca05":"build","ca06":"pass","ca07":"up","ca08":"pass","ca09":"pass","ca10":"build","ck01":"set","ck02":"set","ck03":"set","ck04":"set","ck05":"set","ck06":"set","ck07":"set","ck08":"set","ck09":"set","ck10":"set","ck11":"set","ck12":"set","ck13":"set","ck14":"set","ck15":"set","ck16":"set","ck17":"set","ck18":"set","ck19":"set","ck20":"set","ck21":"set","ck22":"set","ck23":"set","ck24":"set","ck25":"set","ck26":"set","ck27":"build","ck28":"set","cv01":"def","cv02":"cover","cv03":"def","cv04":"cover","cv05":"def","cv06":"def","cv07":"def","cv08":"def","cv09":"sweep","cv10":"press","ex01":"attack","ex02":"recv","ex03":"link","ex04":"pass","ex05":"recv","ex06":"build","ex07":"def","ex08a":"trans","ex08b":"trans","ex09":"def","ex10":"press","ex11":"def","ex12":"trans","ex13":"trans","ex14":"trans","ex15":"link","fk01":"set","fk02":"set","fk03":"set","fk04":"set","fk05":"set","fk06":"set","fk07":"set","fk08":"set","fk09":"set","fk10":"set","fk11":"set","fk12":"set","fk13":"set","fk14":"set","fk15":"set","fk16":"set","fk17":"set","fk18":"set","fk19":"set","fk20":"set","fk21":"set","fk22":"set","fk23":"set","fk24":"set","fk25":"set","fk26":"set","fk27":"set","fk28":"set","fr01":"recv","fr02":"pass","fr03a":"link","fr03b":"recv","fr04":"recv","fr05":"recv","fr06":"build","fr07":"recv","fr08":"build","fr09":"build","fr10":"link","fr11":"up","fr12a":"build","fr12b":"build","fr13":"up","fr14":"build","fr15":"recv","fr16":"recv","fr17":"link","fr18":"up","fr19a":"up","fr19b":"up","fr20":"recv","fr21":"pass","fr22":"recv","fr23":"recv","fr24":"build","fr25":"pass","fr26":"attack","fr27":"link","g01":"goal","ga01":"goal","ga02":"pass","ga03":"link","ga04":"build","ga05":"recv","ga06":"recv","ga07":"recv","ga08":"recv","ga09":"build","ga10":"attack","gk01":"build","gk02":"set","gk03":"build","gk04":"set","gk05":"set","gk06":"set","gk07":"set","gk08":"set","gk09":"set","gk10":"build","gk11":"set","gk12":"set","gk13":"build","gk14":"build","gk15":"build","gk16":"build","gk17":"set","gk18":"set","gk19":"set","gk20":"set","gk21":"set","gk22":"set","gk23":"set","gk24":"set","gk25":"set","gk26":"set","gk27":"set","gk28":"sweep","k01a":"pass","k01b":"pass","ko01":"set","ko02":"set","ko03":"set","ko04":"set","ko05":"set","ko06":"set","ko07":"set","ko08":"set","ko09":"set","ko10":"set","ko11":"set","ko12":"set","ko13":"set","ko14":"set","ko15":"set","ko16":"set","ko17":"set","ko18":"set","ko19":"set","ko20":"set","ko21":"set","ko22":"set","ko23":"set","ko24":"set","l01":"recv","la01":"recv","la02":"recv","la03":"build","la04":"pass","la05":"recv","la06":"up","la07":"up","la08":"recv","la09":"recv","la10":"recv","ls01":"press","ls02":"cover","ls03":"duel","ls04":"trans","ls05a":"trans","ls05b":"trans","ls06":"trans","ls07":"trans","ls08":"trans","ls09":"duel","ls10":"trans","na01":"recv","na02":"recv","na03":"recv","na04":"recv","na05":"build","na06":"recv","na07":"build","na08":"recv","na09":"link","na10":"recv","na11":"build","na12":"build","na13":"up","na14":"pass","na15":"recv","na16":"build","na17":"attack","na18":"attack","na19":"build","na20":"recv","na21":"build","na22":"pass","na23":"up","na24":"attack","nb01":"cover","nb02":"def","nb03":"cover","nb04":"def","nb05":"cover","nb06":"duel","nb07":"duel","nb08":"def","nb09":"duel","nb10":"def","nb11":"def","nb12":"def","nb13":"def","nb14":"box","nb15":"box","nb16":"cover","nb17":"sweep","nb18":"press","nb19":"def","nb20":"def","nb21":"press","nb22":"press","nb23":"def","nb24":"def","nc01":"box","nc02":"trans","nc03":"trans","nc04":"trans","nc05":"sweep","nc06":"trans","nc07":"trans","nc08":"cover","nc09":"trans","nc10":"build","nc11":"recv","nc12":"trans","nc13":"build","nc14":"recv","nc15":"trans","nc16":"trans","nc17":"trans","nc18":"trans","nc19":"goal","nc20":"recv","nc21":"goal","nc22":"recv","nc23":"recv","nc24":"recv","nd01":"set","nd02":"set","nd03":"set","nd04":"set","nd05":"set","nd06":"set","nd07":"set","nd08":"set","nd09":"set","nd10":"set","nd11":"set","nd12":"set","nd13":"set","nd14":"set","nd15":"set","nd16":"set","nd17":"build","nd18":"set","nd19":"set","nd20":"set","nd21":"set","nd22":"set","nd23":"set","nd24":"set","o01":"duel","od01":"duel","od02":"duel","od03":"duel","od04":"duel","od05":"duel","od06":"def","od07":"def","od08":"box","od09":"cover","od10":"press","p01":"recv","pa01":"recv","pa02":"recv","pa03":"build","pa04":"recv","pa05":"build","pa06":"recv","pa07":"recv","pa08":"build","pa09":"recv","pa10":"build","pa11":"recv","pr01":"press","pr02":"press","pr03":"press","pr04":"press","pr05":"def","pr06":"def","pr07":"def","pr08":"def","pr09":"def","pr10":"press","pr11":"def","pr12":"def","pr13":"def","pr14":"def","pr15":"def","pr16":"def","pr17":"press","pr18":"cover","pr19":"press","pr20":"def","pr21":"duel","pr22":"def","pr23":"def","pr24":"press","pr25":"press","pr26":"def","pr27":"def","pr28":"press","s01":"def","sl01":"def","sl02":"def","sl03":"def","sl04":"press","sl05":"def","sl06":"def","sl07":"duel","sl08":"cover","sl09":"press","sl10":"def","tb01":"recv","tb02":"recv","tb03":"build","tb04":"build","tb05":"recv","tb06":"recv","tb07":"pass","tb08":"pass","tb09":"pass","tb10":"pass","tb11":"pass","tb12":"pass","tb13":"cover","tb14":"def","tb15":"cover","tb16":"def","tb17":"duel","tb18":"duel","tb19":"trans","tb20":"cover","tb21":"cover","tb22":"press","tb23":"trans","tb24":"build","tb25":"trans","tb26":"trans","tb27":"goal","tb28":"trans","tb29":"recv","tb30":"recv","tb31":"recv","tb32":"goal","tc01":"def","tc02":"cover","tc03":"def","tc04":"def","tc05":"cover","tc06":"def","tc07":"duel","tc08":"box","tc09":"box","tc10":"box","tc11":"duel","tc12":"cover","tc13":"cover","tc14":"def","tc15":"cover","tc16":"cover","tc17":"cover","tc18":"goal","tc19":"recv","tc20":"goal","tc21":"goal","tc22":"pass","tc23":"attack","tc24":"pass","tc25":"attack","tc26":"pass","tc27":"attack","tc28":"def","tc29":"duel","tc30":"duel","tc31":"duel","tc32":"cover","te01":"attack","te02":"attack","te03":"recv","te04":"recv","te05":"recv","te06":"recv","te07":"build","te08":"up","te09":"recv","te10":"build","te11":"recv","te12":"recv","te13":"pass","te14":"pass","te15":"attack","te16":"attack","te17":"build","te18":"attack","te19":"press","te20":"def","te21":"cover","te22":"cover","te23":"def","te24":"def","te25":"def","te26":"def","te27":"cover","te28":"def","te29":"cover","te30":"press","te31":"trans","te32":"trans","te33":"trans","te34":"build","te35":"build","te36":"trans","th01":"recv","th02":"recv","th03":"recv","th04":"pass","th05":"attack","th06":"attack","th07":"up","th08":"up","th09":"build","th10":"build","th11":"build","ti01":"set","ti02":"set","ti03":"set","ti04":"set","ti05":"set","ti06":"set","ti07":"set","ti08":"set","ti09":"set","ti10":"set","ti11":"set","ti12":"set","ti13":"set","ti14":"set","ti15":"set","ti16":"set","ti17":"set","ti18":"set","ti19":"set","ti20":"set","ti21":"set","ti22":"set","ti23":"set","ti24":"set","ti25":"set","ti26":"set","ti27":"set","ti28":"set","tn01":"goal","tn02":"up","tn03":"link","tn04":"recv","tn05":"recv","tn06":"recv","tn07":"build","tn08":"recv","tn09":"build","tn10":"recv","tn11":"build","tn12":"build","tn13":"build","tn14":"pass","tn15":"up","tn16":"attack","tn17":"goal","tn18":"link","tn19":"press","tn20":"save","tn21":"def","tn22":"cover","tn23":"def","tn24":"def","tn25":"cover","tn26":"cover","tn27":"def","tn28":"cover","tn29":"box","tn30":"def","tn31":"cover","tn32":"trans","tn33":"trans","tn34":"trans","tn35":"recv","tn36":"build","tw01":"attack","tw02":"set","tw03":"attack","tw04":"set","tw05":"set","tw06":"build","tw07":"recv","tw08":"recv","tw09":"recv","tw10":"set","tw11":"recv","tw12":"recv","tw13":"pass","tw14":"pass","tw15":"pass","tw16":"link","tw17":"build","tw18":"attack","tw19":"box","tw20":"cover","tw21":"cover","tw22":"def","tw23":"cover","tw24":"cover","tw25":"cover","tw26":"press","tw27":"press","tw28":"set","tw29":"cover","tw30":"def","tw31":"trans","tw32":"press","tw33":"press","tw34":"trans","tw35":"trans","tw36":"build","tz01":"trans","tz02":"trans","tz03":"trans","tz04":"trans","tz05":"trans","tz06":"trans","tz07":"build","tz08":"trans","tz09":"goal","tz10":"goal","tz11":"goal","tz12":"up","tz13":"attack","tz14":"attack","tz15":"up","tz16":"pass","tz17":"recv","tz18":"recv","tz19":"cover","tz20":"press","tz21":"set","tz22":"set","tz23":"set","tz24":"set","tz25":"set","tz26":"build","tz27":"set","tz28":"cover","tz29":"cover","tz30":"trans","tz31":"pass","tz32":"recv","ua01":"attack","ua02":"goal","ua03":"attack","ua04":"recv","ua05":"goal","ua06":"goal","ua07":"attack","ua08":"recv","ua09":"recv","ua10":"recv","ua11":"recv","ua12":"recv","ua13":"build","ua14":"attack","ua15":"recv","ua16":"recv","ua17":"recv","ua18":"pass","ua19":"recv","ua20":"recv","ua21":"recv","ua22":"attack","ua23":"attack","ua24":"attack","ua25":"link","ua26":"goal","ua27":"build","ua28":"recv","ub01":"duel","ub02":"duel","ub03":"duel","ub04":"duel","ub05":"def","ub06":"press","ub07":"def","ub08":"save","ub09":"sweep","ub10":"save","ub11":"build","ub12":"box","ub13":"box","ub14":"cover","ub15":"trans","ub16":"trans","ub17":"trans","ub18":"trans","ub19":"trans","ub20":"press","ub21":"trans","ub22":"build","ub23":"build","ub24":"trans","ub25":"trans","ub26":"build","ub27":"goal","ub28":"trans","uc01":"attack","uc02":"link","uc03":"goal","uc04":"attack","uc05":"goal","uc06":"goal","uc07":"build","uc08":"recv","uc09":"recv","uc10":"recv","uc11":"recv","uc12":"build","uc13":"pass","uc14":"build","uc15":"build","uc16":"pass","uc17":"build","uc18":"pass","uc19":"goal","uc20":"goal","uc21":"link","uc22":"recv","uc23":"def","uc24":"def","uc25":"duel","uc26":"duel","uc27":"cover","uc28":"box","uc29":"duel","uc30":"box","uc31":"cover","uc32":"save","ud01":"trans","ud02":"cover","ud03a":"trans","ud03b":"trans","ud04":"press","ud05":"duel","ud06":"link","ud07a":"recv","ud07b":"recv","ud08":"trans","ud09":"link","ud10":"build","ud11":"set","ud12":"set","ud13":"set","ud14":"set","ud15":"set","ud16":"set","ud17":"set","ud18":"set","ud19":"set","ud20":"set","ud21":"set","ud22":"set","ud23":"set","ud24":"set","ud25":"set","ud26":"build","ud27":"set","ud28":"set","ud29":"set","ud30":"set","v01":"pass","w01":"trans","wn01":"build","wn02":"trans","wn03":"recv","wn04":"trans","wn05":"trans","wn06a":"build","wn06b":"build","wn07":"trans","wn08":"build","wn09":"recv","wn10":"trans","xe01":"link","xe02":"goal","xe03":"build","xe04":"recv","xe05":"pass","xe06":"link","xe07":"duel","xe08":"cover","xe09":"def","xe10":"box","xe11":"trans","xe12":"trans","xe13":"pass","xe14":"recv","yg01":"recv"};
 // きみ's position in the scene, grouped the way a team talks about them
 const GUIDE_POS = [["FW","フォワード",["FW","CF"]], ["CH","センターハーフ",["CH","CM","DM","OH"]], ["SH","サイドハーフ",["LH","RH"]],
                    ["SB","サイドバック",["LB","RB"]], ["CB","センターバック",["CB"]], ["GK","ゴールキーパー",["GK"]]];
