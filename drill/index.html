@@ -688,6 +688,7 @@ const THEMES = [
   {id:"break", ph:"atk",  g:9 , name:"3つの突破",          aim:"相手のうしろへ行く方法は、スルーパス・ドリブル・ワンツーの3つ。相手の動き（矢印）を見て選ぶ。"},
   {id:"carry", ph:"atk",  g:10, name:"運ぶ・ひきつける",   aim:"前があいていたら運ぶ。相手が寄ってきたら、その相手が見ていた味方があく。"},
   {id:"free",  ph:"atk",  g:10, name:"スペースをつくる・使う", aim:"マークされている人は、相手をつれて動いてスペースをつくる。フリーの人が、そのスペースで受ける。"},
+  {id:"third", ph:"atk",  g:9,  name:"3人目・4人目の動き", aim:"ボールが次の味方に入る前に、その次をよんで動く。パスを受ける人だけでなく、その次に受ける人（3人目）、さらに次の人（4人目）が先に走りだすと、相手はついてこられない。"},
   {id:"order", ph:"def",  g:9,  name:"守りの順番",         aim:"①ゴールを守る ②前に進ませない ③ボールにせまる ④うばう。とびこまずに、この順番で考える。"},
   {id:"cover", ph:"def",  g:10, name:"チャレンジ＆カバー", aim:"1人がボールへ行き、ほかの人はその〔ディアゴナーレ|ななめうしろでカバー〕。2人で1つのボールを守る。"},
   {id:"slide", ph:"def",  g:11, name:"スライドと追いこみ", aim:"みんなでボールの方へずれる。まん中では外へ、サイドでは中へ追いこんで、うばう場所を決める。"},
@@ -9660,6 +9661,182 @@ D({id:"na24", th:"goal", g:[10,11],
   {t:"スピードを落として、うしろから来るFWを待ってパス", at:[22,20], r:0, why:"1人でうてる場面なのに、待っているあいだに相手がもどってきて、チャンスがなくなる。"}],
  point:"追いつかれる前に、うてるときにうつ。"});
 
+// ===== 3人目・4人目の動き（third）: th01〜th11 =====
+// seq：答えの動きを順番に（1つめのパス → 2つめのパス・走りこみ …）。3Dはこの順に動く。上から見た図は最後の形へ動く。
+//   {ball:"CH"|"CM2"|"me"|[x,y], run:[["me",x,y], ["LH",x,y]]}  （"CM2" = 2人目のCM）。at は最後にボールが行く所（図の印）。
+
+// --- FW：CHに入るのをよんで、うらへ ---
+D({id:"th01", th:"third", g:[9,12],
+ situ:"左のLBから、まん中のCHにパスが出た。CHのまわりに相手はいない。CFのきみの前には、相手のCBがいる。",
+ q:"CFのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CF",25,22], ball:[8,50], mates:M("3-3-1",{CF:null, LB:[8,50], CH:[20,40]}),
+  opps:[[25,18],[14,20],[36,20],[12,34],[30,32],[20,46]],
+  arrows:[{f:[8,50], t:[19,41], k:"pass"}]},
+ opts:[
+  {t:"CHがボールを受けるのに合わせて、相手CBのうしろ（うら）へ走る", at:[29,9], seq:[{ball:"CH", run:[["me",27,17]]}, {ball:[29,9], run:[["me",29,9]]}], r:2,
+   why:"CHは前を向いて受けられる。きみが先に走りだしていれば、CHはすぐうらへパスを出せる。パスの次をよんで動くと、相手はついてこられない。"},
+  {t:"CHの前まで下りてきて、足もとでパスを受ける", at:[22,30], r:1,
+   why:"CHのパスコースが近くにできる。でもゴールからはなれるし、相手CBもついてくる。"},
+  {t:"ボールを持っているLBのほうへ下りて、パスをもらいに行く", at:[14,40], r:0,
+   why:"みんながボールの近くに行くと、前に人がいなくなる。相手は守りやすい。"}],
+ point:"パスの次をよんで、先に走りだす。"});
+
+// --- FW：もう1人のFWに入るのをよんで、ななめにうらへ ---
+D({id:"th02", th:"third", g:[10,12],
+ situ:"CHがボールを持ち、下りてきたFWにたてパスを出す。そのFWのうしろには相手がぴったりついている。FWのきみは、相手CBの近くにいる。",
+ q:"FWのきみは、どうする？",
+ scene:{f:"2-3-2", me:["FW",32,22], ball:[25,44], mates:M("2-3-2",{FW2:null, FW1:[20,32]}),
+  opps:[[20,29],[31,18],[14,18],[27,40],[38,30],[12,32]],
+  arrows:[{f:[25,44], t:[21,33], k:"pass"}]},
+ opts:[
+  {t:"FWにパスが入るのに合わせて、相手CBのうしろへななめに走る", at:[26,10], seq:[{ball:"FW", run:[["me",29,17]]}, {ball:[26,10], run:[["me",26,10]]}], r:2,
+   why:"パスを受けるFWは、うしろに相手がいて前を向けない。でもダイレクトで、先に走りだしたきみに出せる。〔3人目の動き|パスの次をよんで先に走る動き〕で、うらがとれる。"},
+  {t:"FWの横によって、落としのパスを受けられるようにする", at:[27,30], r:1,
+   why:"FWを助けられる。でも相手のうしろはあかないまま。"},
+  {t:"FWのほうへ下りて、2人ならんでボールをもらいに行く", at:[24,27], r:0,
+   why:"2人ともボールに寄ると、相手のDFは前に出てくるだけでいい。うらへ走る人がいなくなる。"}],
+ point:"味方にボールが入る前に、その次の場所へ。"});
+
+// --- CH：CFの落としを、前を向いて受ける ---
+D({id:"th03", th:"third", g:[9,12],
+ situ:"CBがボールを持っている。CHのきみのすぐ前（自分のゴールがわ）に相手がいて、CBからのパスは通りにくい。CFが下りてきた。",
+ q:"CHのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CH",25,40], ball:[25,54], mates:M("3-3-1",{CH:null, CF:[17,30]}),
+  opps:[[17,27],[30,26],[26,45],[36,38],[12,40],[25,20]],
+  arrows:[{f:[25,54], t:[18,31], k:"pass"}]},
+ opts:[
+  {t:"CFにパスが入る前に、CFのななめうしろへ動いて、落としのボールを受ける", at:[22,36], seq:[{ball:"CF", run:[["me",22,36]]}, {ball:"me"}], r:2,
+   why:"CFは相手を背中に、前を向けない。でもダイレクトで落とせば、きみは前を向いたまま受けられる。CFに入る前に動きだすのが大事。"},
+  {t:"相手の横にずれて、CBから直接パスを受ける", at:[31,44], r:1,
+   why:"パスコースはできる。でも相手が近く、前を向くのはむずかしい。"},
+  {t:"CFのすぐ横まで上がっていく", at:[20,26], r:0,
+   why:"CFに近づきすぎると、落とすところがなくなる。相手も2人をまとめて守れる。"}],
+ point:"落としのボールを、前を向いて受けられる所へ。"});
+
+// --- CH：うしろに相手。前を向いて走ってくる3人目へダイレクト ---
+D({id:"th04", th:"third", g:[10,12],
+ situ:"CBから、CHのきみにパスがくる。きみのすぐうしろには相手がいる。左のLHが、内がわへ前を向いて走りこんでくる。",
+ q:"CHのきみは、どうする？",
+ scene:{f:"2-3-2", me:["CH",25,44], ball:[17,54], mates:M("2-3-2",{CH:null}),
+  opps:[[25,41],[10,32],[36,40],[18,20],[32,20],[25,30]],
+  arrows:[{f:[17,54], t:[24,45], k:"pass"}, {f:[7,40], t:[13,35], k:"run"}]},
+ opts:[
+  {t:"前を向かずに、走りこんでくるLHへダイレクトで出す", at:[14,34], seq:[{ball:"me"}, {ball:"LH", run:[["LH",14,34]]}], r:2,
+   why:"うしろに相手がいるので、前を向くとうばわれやすい。ワンタッチで、前を向いて走ってくるLHに出せば、LHが前を向いたままプレーできる。"},
+  {t:"ダイレクトで、パスをくれたCBにもどす", at:[17,54], seq:[{ball:"me"}, {ball:"CB"}], r:1,
+   why:"うばわれないのは大事。でも前には進めない。"},
+  {t:"トラップして、くるっと前を向く", seq:[{ball:"me"}], r:0,
+   why:"すぐうしろに相手がいるので、前を向くあいだにうばわれやすい。"}],
+ point:"うしろに相手がいたら、前を向いている3人目へ。"});
+
+// --- SH：CHに入るのをよんで、相手SBのうしろへ ---
+D({id:"th05", th:"third", g:[9,12],
+ situ:"CBから、まん中のCHにパスが出た。CHは前を向いて受けられそう。RHのきみの前には、相手のSBがいる。",
+ q:"RHのきみは、どうする？",
+ scene:{f:"3-3-1", me:["RH",42,38], ball:[25,54], mates:M("3-3-1",{RH:null, CH:[27,42]}),
+  opps:[[41,34],[33,24],[18,24],[25,32],[14,36],[30,48]],
+  arrows:[{f:[25,54], t:[27,43], k:"pass"}]},
+ opts:[
+  {t:"CHがボールを受ける前から、相手SBのうしろをねらって走りだす", at:[45,22], seq:[{ball:"CH", run:[["me",44,33]]}, {ball:[45,22], run:[["me",45,22]]}], r:2,
+   why:"CHが前を向いて受けたとき、きみはもう走っている。CHはすぐうらへ出せるので、相手SBはついてこられない。"},
+  {t:"CHに寄って、近くでパスを受ける", at:[36,40], r:1,
+   why:"パスはつながる。でも相手SBの前で受けるので、前に進みにくい。"},
+  {t:"下がって、CBから直接パスをもらいに行く", at:[44,46], r:0,
+   why:"下がると、相手SBもついてくるだけ。うらへ走る人がいなくなり、前に進めない。"}],
+ point:"パスの次をよんで、相手のうしろへ先に走る。"});
+
+// --- SH：4人目。CFの落とし → CM → うらのきみ ---
+D({id:"th06", th:"third", g:[11,12],
+ situ:"CBが、下りてきたCFにたてパスを出す。CFのうしろには相手がいる。CFの近くにはCMがいる。RHのきみの前には、相手のSBがいる。",
+ q:"RHのきみは、いつ、どこへ走る？",
+ scene:{f:"2-4-1", me:["RH",44,38], ball:[33,54], mates:M("2-4-1",{RH:null, CF:[25,30], CM2:[30,40]}),
+  opps:[[25,27],[43,33],[16,24],[34,24],[20,42],[36,46]],
+  arrows:[{f:[33,54], t:[26,31], k:"pass"}]},
+ opts:[
+  {t:"CFにパスが入ったら、CMに落とすのをよんで、相手SBのうしろへ走りだす", at:[42,17], seq:[{ball:"CF"}, {ball:"CM2", run:[["me",45,30]]}, {ball:[42,17], run:[["me",42,17]]}], r:2,
+   why:"CFが落として、CMが前を向く。そのときにはもう走りだしているので、CMはダイレクトでうらに出せる。4人目の動きは、相手がいちばんついてこられない。"},
+  {t:"CMがボールを持ってから、うらへ走りだす", at:[42,17], seq:[{ball:"CF"}, {ball:"CM2"}, {ball:[42,17], run:[["me",42,17]]}], r:1,
+   why:"通ることもある。でもスタートがおそいと、相手SBも先にもどれる。"},
+  {t:"CFの近くへ寄っていって、パスをもらいに行く", at:[34,31], r:0,
+   why:"みんながボールに寄ると、外とうらがあく。でもそこへ走る人がいなくなる。"}],
+ point:"ボールの2つ先をよんで、先に走る。"});
+
+// --- SB：LHに入るのに合わせて、外を前へ ---
+D({id:"th07", th:"third", g:[9,12],
+ situ:"CBから、下りてきたLHにパスが出る。LHのうしろには相手がついている。LBのきみの前は、あいている。",
+ q:"LBのきみは、どうする？",
+ scene:{f:"3-3-1", me:["LB",10,52], ball:[25,54], mates:M("3-3-1",{LB:null, LH:[10,40]}),
+  opps:[[10,37],[22,30],[25,46],[14,26],[36,30],[30,40]],
+  arrows:[{f:[25,54], t:[11,41], k:"pass"}]},
+ opts:[
+  {t:"LHにパスが入るのに合わせて、LHの外を前へ走る", at:[4,30], seq:[{ball:"LH", run:[["me",6,44]]}, {ball:[4,30], run:[["me",4,30]]}], r:2,
+   why:"LHは相手を背中に、前を向けない。でもワンタッチで、前へ走るきみに出せる。LHに入る前から走りだすと、相手は追いつけない。"},
+  {t:"LHのななめうしろに寄って、もどしのパスを受けられるようにする", at:[15,45], r:1,
+   why:"LHはこまったときにもどせる。でも前には進まない。"},
+  {t:"LHと同じたての線で、LHのすぐうしろに立つ", at:[10,45], r:0,
+   why:"同じレーンだと、LHからのパスが相手に当たりやすい。前にも進めない。"}],
+ point:"ボールが入る前に、その次の場所へ走る。"});
+
+// --- SB：たてパスを入れたら止まらない（パス＆ゴーで4人目に） ---
+D({id:"th08", th:"third", g:[11,12],
+ situ:"RBのきみがボールを持っている。前のFWが下りてきて、うしろに相手がついた。CMはFWの近くにいる。",
+ q:"RBのきみは、どうする？",
+ scene:{f:"3-2-2", me:["RB",40,52], ball:[40,52], mates:M("3-2-2",{RB:null, FW2:[36,32], CM2:[31,42]}),
+  opps:[[36,29],[46,46],[24,30],[44,26],[22,42],[30,22]]},
+ opts:[
+  {t:"FWにたてパスを入れて、すぐ前へ走る", at:[44,22], seq:[{ball:"FW2", run:[["me",44,44]]}, {ball:"CM2", run:[["me",45,36]]}, {ball:[44,22], run:[["me",44,22]]}], r:2,
+   why:"FWが落として、CMが前を向く。パスを出したきみがそのまま走っていれば、CMはうらに出せる。パスを出したら止まらないのが大事。"},
+  {t:"CMに横パスを出す", at:[31,42], r:1,
+   why:"安全につながる。でも相手の前でボールが動くだけで、前に進まない。"},
+  {t:"相手SBのうしろへ、自分で大きくける", at:[44,24], r:0,
+   why:"そこに味方がいないので、相手にひろわれやすい。"}],
+ point:"パスを出したら止まらない。次の次の場所へ走る。"});
+
+// --- CB：前を向けない味方には、その次の人まで考えて ---
+D({id:"th09", th:"third", g:[9,12],
+ situ:"CBのきみがボールを持っている。CHのうしろには相手がいて、CHは前を向けない。左のLHは、まわりに相手がいない。",
+ q:"CBのきみは、どうする？",
+ scene:{f:"2-3-2", me:["CB",17,54], ball:[17,54], mates:M("2-3-2",{CB1:null, LH:[9,44]}),
+  opps:[[25,41],[12,52],[12,34],[36,40],[18,20],[32,20]]},
+ opts:[
+  {t:"CHにパス。CHがダイレクトで、前を向いたLHへつなぐ", at:[9,44], seq:[{ball:"CH"}, {ball:"LH"}], r:2,
+   why:"CHは前を向けない。でもダイレクトで、フリーのLHへ。LHは前を向いて受けられる。近いパスを2つつなぐほうが、相手はよせにくい。"},
+  {t:"LHへ直接、長いパスを出す", at:[9,44], r:1,
+   why:"つながれば前に進める。でも長いパスは、相手がよせる時間がある。"},
+  {t:"前のFWへ、大きくける", at:[25,20], r:0,
+   why:"前は相手のDFが多く、ひろわれやすい。つなげる味方がいるのに、ボールを手ばなしてしまう。"}],
+ point:"前を向けない味方には、その次の人まで考えてパスを出す。"});
+
+// --- CB：たてパスで4人目まで動かす ---
+D({id:"th10", th:"third", g:[11,12],
+ situ:"CBのきみがボールを持っている。CFが下りてきて、うしろに相手がついた。CHはCFの近くにいる。右のRHの前には、相手のSBがいる。",
+ q:"CBのきみは、どこにパスを出す？",
+ scene:{f:"3-3-1", me:["CB",25,54], ball:[25,54], mates:M("3-3-1",{CB:null, CF:[23,30], CH:[28,40]}),
+  opps:[[23,27],[42,32],[16,24],[33,22],[18,40],[31,43]]},
+ opts:[
+  {t:"下りてきたCFへ、たてパスを入れる", at:[42,16], seq:[{ball:"CF"}, {ball:"CH", run:[["RH",44,30]]}, {ball:[42,16], run:[["RH",42,16]]}], r:2,
+   why:"CFが落として、CHが前を向く。そのあいだにRHが走りだして、うらまでつながる。たてパスが、まわりの動きのスタートになる。"},
+  {t:"CHに直接パスを出す", at:[28,40], r:1,
+   why:"つながる。でも相手が近く、CHは前を向きにくい。"},
+  {t:"RHへ大きなパスを出す", at:[42,36], r:0,
+   why:"遠くて、相手SBが先にとどく。近くにつなげる味方がいるのに、ボールを手ばなしてしまう。"}],
+ point:"たてパスで、2人目・3人目・4人目を動かす。"});
+
+// --- GK：相手が来た人の、その次の人まで ---
+D({id:"th11", th:"third", g:[10,12],
+ situ:"GKのきみがボールを持っている。CBには相手のFWがせまってきた。左のLBは、まわりに相手がいない。",
+ q:"GKのきみは、どうする？",
+ scene:{f:"3-3-1", me:["GK",25,64], ball:[25,64], mates:M("3-3-1",{GK:null, CB:[25,56]}),
+  opps:[[25,51],[16,40],[36,40],[25,34],[38,48]]},
+ opts:[
+  {t:"CBにパス。CBがダイレクトで、フリーのLBへ", at:[10,52], seq:[{ball:"CB"}, {ball:"LB"}], r:2,
+   why:"相手FWはCBに来ている。CBがダイレクトでつなげば、相手FWを1人でかわせる。LBは前を向いて受けられる。"},
+  {t:"LBへ直接パスを出す", at:[10,51], r:1,
+   why:"フリーのLBにつながる。でもGKからは遠く、ころがるあいだに相手がよせてくる。"},
+  {t:"前へ大きくける", at:[25,30], r:0,
+   why:"前は相手が多く、ひろわれやすい。つなげる味方がいるのに、ボールを手ばなしてしまう。"}],
+ point:"相手が来た人の、その次の人までつなぐ。"});
+
 // ===== Batch nb：しゅびの問題（チャレンジ＆カバー・守りの順番・ゴール前・スライド・前からうばう） =====
 
 // --- チャレンジ＆カバー ---
@@ -10628,6 +10805,7 @@ const TERMS = {
   "同一視野":       {plain:"ボールと相手の両方を見る", from:11, alone:13},
   "外流れ":         {plain:"FWが外へ流れる", from:11, alone:13},
   "入れ替わり":     {plain:"あいた場所に別の人が入る", from:11, alone:13},
+  "3人目の動き":    {plain:"パスの次をよんで先に走る動き", from:10, alone:12},
   "チェックの動き": {plain:"一度行くふりをしてからはなれて受ける", from:10, alone:13},
   "オープン":       {plain:"マークの外がわで受ける", from:11, alone:13},
   "クローズ":       {plain:"マークの内がわで受ける", from:11, alone:13}
@@ -10857,8 +11035,15 @@ function pitchSVG(q, reveal){
   if(q.type==="pick"){
     const ci = reveal ? S.picked : S.preview;
     if(ci!==null && ci!==undefined){
-      const {at, go, team} = q.opts[ci];
-      if(at){ if(hasBall) tgt.ball=[at[0]-bp[0],at[1]-bp[1]]; else tgt.me=[at[0]-me[1],at[1]-me[2]]; }
+      const {at, go, team, seq} = q.opts[ci];
+      // seq (3人目・4人目): the top view goes straight to where everyone ends up (the 3D plays it step by step)
+      if(seq){ const ps={me:[me[1],me[2]], mates:sc.mates.map(m=>[m[1],m[2]])}; let bl=bp;
+        const who=w=>{ if(w==="me") return "me"; const m=/^([A-Z]+)(\d?)$/.exec(w||""); if(!m) return -1; let n=+(m[2]||1); return sc.mates.findIndex(x=>x[0]===m[1]&&--n===0); };
+        for(const st of seq){ for(const [w,x,y] of (st.run||[])){ const r=who(w); if(r==="me") ps.me=[x,y]; else if(r>=0) ps.mates[r]=[x,y]; }
+          if(st.ball){ const r=Array.isArray(st.ball)?null:who(st.ball); bl = r==="me"?ps.me : (r!==null&&r>=0)?ps.mates[r] : Array.isArray(st.ball)?st.ball : bl; } }
+        tgt.me=[ps.me[0]-me[1],ps.me[1]-me[2]]; ps.mates.forEach((v,i)=>{ const d=[v[0]-sc.mates[i][1],v[1]-sc.mates[i][2]]; if(d[0]||d[1]) tgt.mates[i]=d; });
+        if(bl!==bp) tgt.ball=[bl[0]-bp[0],bl[1]-bp[1]]; }
+      else if(at){ if(hasBall) tgt.ball=[at[0]-bp[0],at[1]-bp[1]]; else tgt.me=[at[0]-me[1],at[1]-me[2]]; }
       else if(go){ tgt.me=[go[0]-me[1],go[1]-me[2]]; tgt.ride=hasBall; }
       for(const [who,x,y] of (team||[])){
         if(who==="me") tgt.me=[x-me[1],y-me[2]];
@@ -11123,7 +11308,7 @@ const CLIP3D = (() => {
     u.body.rotation.y += d*Math.min(1, dt*9);
     u.phase += dt*Math.min(16, 4 + v*1.6);
     const sw = Math.sin(u.phase)*.75*u.run;
-    if (u.limbs) u.limbs.forEach(l => { l.leg.rotation.x = sw*l.sx; l.arm.rotation.x = -sw*l.sx*.9; });
+    if (u.limbs) u.limbs.forEach(l => { l.leg.rotation.x = sw*l.sx; l.arm.rotation.x = -sw*l.sx*.9; l.arm.rotation.z = l.sx*.28; });
     u.body.position.y = Math.abs(Math.sin(u.phase))*.07*u.run; u.body.rotation.x = .18*u.run;
   }
 
@@ -11149,7 +11334,25 @@ const CLIP3D = (() => {
       let bi = -1, bd = 2.5; mates0.forEach((p,i) => { const d = dist(p, a.f); if (d < bd){ bd = d; bi = i; } }); if (bi >= 0) arrowMoves.mates[bi] = a.t;
     });
     const hasBall = holder && holder.kind === "me";
-    const planOpt = o => { const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:null, rad:1.1};
+    // a player named in a seq: "me", or a label of the scene ("CB", "CM2" = the 2nd CM)
+    const who = spec => { if (spec === "me") return {kind:"me"}; const m = /^([A-Z]+)(\d?)$/.exec(spec || ""); if (!m) return null;
+      let n = +(m[2] || 1); const i = sc.mates.findIndex(x => x[0] === m[1] && --n === 0); return i >= 0 ? {kind:"mate", i} : null; };
+    // seq: [{ball:"CH"|[x,y], run:[["me",x,y], ["LH",x,y]]}, ...] — the steps happen one after another (a pass, then the next…)
+    const planSeq = o => { const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:null, rad:1.1, seq:[], segs:[]};
+      const pos = {me:me0.slice(), mates:mates0.map(v => v.slice())}, get = w => w.kind === "me" ? pos.me : pos.mates[w.i];
+      let ball = holder ? (holder.kind === "me" ? me0 : holder.kind === "mate" ? mates0[holder.i] : opps0[holder.i]) : sc.ball;
+      for (const st of o.seq){
+        const runs = [];
+        for (const [w, x, y] of (st.run || [])){ const r = who(w); if (!r) continue; const from = get(r).slice();
+          if (r.kind === "me"){ pos.me = [x, y]; p.me = [x, y]; } else { pos.mates[r.i] = [x, y]; p.mates[r.i] = [x, y]; }
+          runs.push({w:r, from, to:[x, y]}); p.segs.push({k:r.kind === "me" ? "me" : "mate", f:from, t:[x, y]}); }
+        let to = null; if (st.ball){ const r = Array.isArray(st.ball) ? null : who(st.ball); to = r ? get(r).slice() : Array.isArray(st.ball) ? st.ball.slice() : null; }
+        if (to){ p.segs.push({k:"pass", f:ball.slice(), t:to}); }
+        p.seq.push({runs, from:ball.slice(), to}); if (to) ball = to;
+      }
+      p.spot = ball.slice(); p.move = MOVE*Math.max(1, o.seq.length*.8); return p; };
+    const planOpt = o => { if (o.seq) return planSeq(o);
+      const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:null, rad:1.1};
       if (o.at){ if (hasBall) p.ball = o.at; else p.me = o.at; p.spot = o.at; }
       else if (o.go){ p.me = o.go; p.ride = hasBall; p.spot = o.go; }
       for (const [who, x, y] of (o.team||[])){
@@ -11168,14 +11371,19 @@ const CLIP3D = (() => {
     }
     const best = steps.find(s => s.r === 2);
     if (q.point) steps.push({k:"ポイント", short:"ポイント", cls:"pt", text:q.point, plan:best && best.plan, still:true, r:best ? 2 : undefined});
-    steps.forEach(s => { const n = (kj(s.title||"") + kj(s.text||"")).length; s.dur = Math.max(3.4, 1.8 + n*.12) + (s.plan && !s.still ? MOVE : 0); });
+    steps.forEach(s => { const n = (kj(s.title||"") + kj(s.text||"")).length; s.dur = Math.max(3.4, 1.8 + n*.12) + (s.plan && !s.still ? (s.plan.move || MOVE) : 0); });
     // the part of the pitch the clip uses (for the camera)
     const P = [sc.ball, me0]; (sc.arrows||[]).forEach(a => P.push(a.f, a.t));
     steps.forEach(s => { const p = s.plan; if (!p) return; [p.me, p.ball, p.spot, ...Object.values(p.mates)].forEach(v => v && P.push(v)); });
     let x0 = Math.min(...P.map(p => p[0])) - 6, x1 = Math.max(...P.map(p => p[0])) + 6, y0 = Math.min(...P.map(p => p[1])) - 6, y1 = Math.max(...P.map(p => p[1])) + 6;
     const grow = (a, b, min) => { const m = (a + b)/2, h = Math.max(min, b - a)/2; return [m - h, m + h]; };
     [x0, x1] = grow(x0, x1, 24); [y0, y1] = grow(y0, y1, 20);
-    return {q, sc, me0, mates0, opps0, holder, arrowMoves, steps, box:{x0, x1, y0, y1}};
+    // a throw-in: the one with the ball stands on the touchline and throws it from over the head with both hands
+    const throwIn = !!holder && (q.th === "throw" || /スローイン/.test(q.situ || "")) && (sc.ball[0] <= 1.5 || sc.ball[0] >= 48.5);
+    // the thrower stands on the touchline, just outside the pitch (feet on or behind the line), not inside it
+    if (throwIn){ const out = sc.ball[0] <= 1.5 ? -.35 : 50.35, H = holder;
+      if (H.kind === "me") me0[0] = out; else if (H.kind === "mate") mates0[H.i] = [out, mates0[H.i][1]]; else opps0[H.i] = [out, opps0[H.i][1]]; }
+    return {q, sc, me0, mates0, opps0, holder, throwIn, arrowMoves, steps, box:{x0, x1, y0, y1}};
   }
 
   // where everyone is for a plan at progress p (0 = the scene, 1 = the answer done)
@@ -11189,20 +11397,53 @@ const CLIP3D = (() => {
       Object.entries(plan.mates).forEach(([i, t]) => s.mates[i] = lerp(c.mates0[i], t, pa));
       if (plan.me) s.me = lerp(c.me0, plan.me, plan.oneTwo ? sm((p - .12)/.6) : plan.ball ? sm((p - .3)/.6) : pa);
     }
+    if (plan && plan.seq){
+      const n = plan.seq.length, start = c.holder && !c.throwIn ? (() => { const h = c.holder, q = h.kind === "me" ? c.me0 : h.kind === "mate" ? c.mates0[h.i] : c.opps0[h.i]; return q; })() : c.sc.ball;
+      s.me = c.me0.slice(); s.mates = s.mates.map((v, i) => plan.mates[i] ? c.mates0[i].slice() : v);
+      s.ball = start.slice(); s.bh = c.throwIn ? 1.72 : 0; s.throwK = c.throwIn ? 0 : null;
+      plan.seq.forEach((st, j) => { const local = clamp(p*n - j); if (local <= 0) return;
+        // the runners move through the whole step; the pass leaves a moment later and arrives as they get there
+        st.runs.forEach(r => { const v = lerp(r.from, r.to, sm(local)); if (r.w.kind === "me") s.me = v; else s.mates[r.w.i] = v; });
+        if (st.to){ const k = sm((local - .15)/.8); if (k > 0){ s.ball = lerp(st.from, st.to, k); const L = dist(st.from, st.to);
+          if (c.throwIn && j === 0){ s.bh = 1.72*(1 - k) + Math.sin(Math.PI*k)*Math.min(2.5, L*.1); s.throwK = k; } else s.bh = L > 14 ? Math.sin(Math.PI*k)*Math.min(4, L*.08) : 0; } } });
+      return s;
+    }
     // the ball: at the feet of whoever has it, or on its way
     const H = c.holder, at = (kind, i) => kind === "me" ? s.me : kind === "mate" ? s.mates[i] : s.opps[i];
     const foot = (pt, toward) => { const dx = toward[0] - pt[0], dy = toward[1] - pt[1], L = Math.hypot(dx, dy) || 1; return [pt[0] + dx/L*.7, pt[1] + dy/L*.7]; };
     const goalOf = kind => kind === "opp" ? [25, 68] : [25, 0];
-    const start = H ? foot(at(H.kind, H.i), goalOf(H.kind)) : c.sc.ball.slice();
+    const start = H ? (c.throwIn ? at(H.kind, H.i).slice() : foot(at(H.kind, H.i), goalOf(H.kind))) : c.sc.ball.slice();
+    const OVER = 1.72;                                  // the ball on the thrower's raised hands (above its normal place)
+    s.throwK = c.throwIn ? 0 : null;                     // 0 = held over the head, 0–1 = being thrown
     if (plan && plan.ride){ const dir = plan.me; s.ball = foot(s.me, dist(s.me, dir) > .4 ? dir : [25, 0]); }
     else if (plan && plan.ball){
       const fly = (a, b, k) => { s.ball = lerp(a, b, k); const L = dist(a, b), shot = b[1] < 2; s.bh = shot ? k*.6 : L > 14 ? Math.sin(Math.PI*k)*Math.min(4, L*.08) : 0; };   // long passes lift, shots stay low
-      const st0 = H ? foot(H.kind === "me" ? c.me0 : at(H.kind, H.i), plan.ball) : c.sc.ball;
+      // a throw-in: from over the head, a soft lob that comes down at the receiver's feet
+      const toss = (a, b, k) => { s.ball = lerp(a, b, k); s.bh = OVER*(1 - k) + Math.sin(Math.PI*k)*Math.min(2.5, dist(a, b)*.1); s.throwK = k; };
+      const st0 = H ? (c.throwIn ? (H.kind === "me" ? c.me0 : at(H.kind, H.i)).slice() : foot(H.kind === "me" ? c.me0 : at(H.kind, H.i), plan.ball)) : c.sc.ball;
+      const first = c.throwIn ? toss : fly;
       if (plan.oneTwo){ const k1 = sm(p/.35), k2 = sm((p - .55)/.33);
-        if (k2 > 0) fly(plan.ball, foot(s.me, [25, 0]), k2); else fly(st0, plan.ball, k1); }
-      else fly(st0, plan.ball, sm((p - .05)/.55));
+        if (k2 > 0){ fly(plan.ball, foot(s.me, [25, 0]), k2); if (c.throwIn) s.throwK = 1; } else first(st0, plan.ball, k1); }
+      else first(st0, plan.ball, sm((p - .05)/.55));
     } else s.ball = start;
+    if (c.throwIn && s.throwK === 0) s.bh = OVER;
     return s;
+  }
+
+  // the thrower of a throw-in: faces into the pitch (towards the throw), both hands hold the ball over the head, and
+  // when it is thrown the arms go from behind the head over the top and forward; after it the arms come down
+  function throwPose(C, st){
+    const H = C.holder, g = H.kind === "me" ? C.meG : H.kind === "mate" ? C.matesG[H.i] : C.oppsG[H.i], u = g.userData, k = C.shown.throwK;
+    // (the name label goes up out of the way of the ball over the head)
+    if (u.lab) u.lab.position.y = k !== null && k !== undefined && k < .45 ? 3.2 : 2.2;
+    C.ballAt = null; if (k === null || k === undefined || k >= .45) return;
+    const me = [g.position.x + 25, g.position.z + 34], tgt = st.plan && st.plan.ball ? st.plan.ball : [25, me[1] + (H.kind === "opp" ? 6 : -6)];
+    u.body.rotation.y = Math.atan2(tgt[0] - me[0], tgt[1] - me[1]); u.body.rotation.x = 0; u.body.position.y = 0;
+    // arm angle about the shoulder: π = straight up; less = back behind the head, more = forward
+    const a = k <= 0 ? Math.PI - .45 : Math.PI - .45 + 1.9*Math.min(1, k/.2);
+    u.limbs.forEach(l => { l.arm.rotation.x = a; l.arm.rotation.z = l.sx*.12; l.leg.rotation.x = 0; });
+    // held: the ball sits in the hands, a little behind the head
+    if (k <= 0){ const b = W(me[0], me[1]); b.x -= Math.sin(u.body.rotation.y)*.22; b.z -= Math.cos(u.body.rotation.y)*.22; C.ballAt = b; }
   }
 
   // ---------- a clip player: put it in any scene, call update() every frame ----------
@@ -11233,6 +11474,7 @@ const CLIP3D = (() => {
       if (!p || st.r === undefined) return;
       const col = RCOL[st.r];
       marks.add(disc(p.spot[0], p.spot[1], Math.max(1.1, p.rad), col, .28, RMARK[st.r]));
+      if (p.seq){ p.segs.forEach(g => { if (dist(g.f, g.t) < 1) return; marks.add(g.k === "pass" ? arrow(g.f, g.t, "#ffffff", true, .85) : arrow(g.f, g.t, g.k === "me" ? col : COL.mate, false, g.k === "me" ? .75 : .6)); }); return; }
       // the line the answer takes: きみ's run and the ball (white dashed)
       if (p.me && dist(p.me, C.me0) > 1) marks.add(arrow(C.me0, p.me, col, false, .75));
       if (p.ball){ const H = C.holder, from = H ? (H.kind === "me" ? C.me0 : H.kind === "mate" ? C.mates0[H.i] : C.opps0[H.i]) : C.sc.ball; marks.add(arrow(from, p.ball, "#ffffff", true, .85)); }
@@ -11248,12 +11490,14 @@ const CLIP3D = (() => {
       if (playing){ C.t += dt*speed;
         if (C.t >= st.dur && P.voice && VOICE.busy) C.t = st.dur;   // still reading: wait
         else if (C.t >= st.dur){ if (C.i < C.steps.length - 1){ P.go(C.i + 1); st = C.steps[C.i]; ev.step = true; } else { C.t = st.dur; endWait += dt; if (endWait > 1.2){ endWait = -1e9; ev.end = true; } } } }
-      const p = st.plan ? (st.still ? 1 : clamp((C.t - .5)/MOVE)) : 0;
+      const p = st.plan ? (st.still ? 1 : clamp((C.t - .5)/(st.plan.move || MOVE))) : 0;
       const target = pose(C, st.plan, p), bl = sm(C.t/.5), mix = (a, b) => lerp(a, b, bl), prev = C.shown;
-      C.shown = {me:mix(C.from.me, target.me), mates:target.mates.map((v, i) => mix(C.from.mates[i], v)), opps:target.opps.map((v, i) => mix(C.from.opps[i], v)), ball:mix(C.from.ball, target.ball), bh:target.bh*bl};
+      C.shown = {me:mix(C.from.me, target.me), mates:target.mates.map((v, i) => mix(C.from.mates[i], v)), opps:target.opps.map((v, i) => mix(C.from.opps[i], v)), ball:mix(C.from.ball, target.ball), bh:(C.from.bh || 0) + (target.bh - (C.from.bh || 0))*bl, throwK:target.throwK};
       const bp = C.shown.ball;
       run(C.meG, prev.me, C.shown.me, dt, bp); C.matesG.forEach((g, i) => run(g, prev.mates[i], C.shown.mates[i], dt, bp)); C.oppsG.forEach((g, i) => run(g, prev.opps[i], C.shown.opps[i], dt, bp));
+      if (C.throwIn) throwPose(C, st);
       const bs = P.ballScale; ball.mesh.position.copy(W(bp[0], bp[1], .34*bs + C.shown.bh)); ball.mesh.scale.setScalar(bs);
+      if (C.ballAt){ ball.mesh.position.x = C.ballAt.x; ball.mesh.position.z = C.ballAt.z; }
       if (dist(prev.ball, bp) > 1e-4){ ball.mesh.rotation.x -= (bp[1] - prev.ball[1])*2; ball.mesh.rotation.z += (bp[0] - prev.ball[0])*2; }
       ball.ring.position.copy(W(bp[0], bp[1], .04)); ball.ring.scale.setScalar(P.ringScale*(1 + .16*Math.sin(now/220)));
       marks.children.forEach(m => { if (m.userData.pulse) m.userData.pulse.material.opacity = .22 + .12*Math.sin(now/260); });
@@ -11681,6 +11925,7 @@ function themeIcon(id){
     body:  dot(25,40,Y)+arr(25,36,25,24,Y)+`<path d="M14 22 Q25 12 36 22" fill="none" stroke="var(--chalk)" stroke-width="1.2" opacity=".8"/>`+dot(15,22,B,2.8)+dot(36,18,Y,2.8),
     break: dot(25,44,Y)+dot(25,30,B)+`<path d="M25 40 Q35 32 27 20" fill="none" stroke="${Y}" stroke-width="1.6" stroke-dasharray="2.4 1.6" marker-end="url(#ti-y)"/>`+dot(14,32,Y,2.8)+arr(23,42,15,34,W),
     carry: dot(25,50,Y)+arr(25,46,25,30,Y,1)+dot(14,28,B,2.8)+dot(36,28,B,2.8)+dot(40,40,Y,2.8),
+    third: dot(25,52,Y,2.8)+arr(25,48,24,36,W)+dot(24,32,Y)+dot(24,27,B,2.6)+arr(28,33,33,24,W)+dot(40,40,Y,2.8)+arr(38,38,35,22,Y,1),
     free:  dot(16,30,Y)+dot(16,24,B,2.8)+arr(14,30,6,40,Y,1)+arr(15,24,8,34,B)+dot(30,44,Y)+arr(28,42,20,30,Y,1)+dot(36,52,Y,2.6)+arr(34,50,22,32,W),
     press: dot(25,20,B)+dot(13,28,B,2.8)+arr(30,32,26,24,Y)+dot(31,34,Y)+`<line x1="25" y1="20" x2="13" y2="28" stroke="var(--chalk)" stroke-width=".7" stroke-dasharray="1.2 1.2" opacity=".7"/>`+dot(37,44,Y,2.6),
     order: dot(25,22,B)+dot(25,40,Y)+`<rect x="20" y="62" width="10" height="3" fill="none" stroke="var(--chalk)" stroke-width=".8"/>`+`<line x1="25" y1="26" x2="25" y2="61" stroke="var(--chalk)" stroke-width=".6" stroke-dasharray="1.2 1.2" opacity=".7"/>`,

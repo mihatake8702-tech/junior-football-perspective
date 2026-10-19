@@ -3138,7 +3138,7 @@ const CLIP3D = (() => {
     u.body.rotation.y += d*Math.min(1, dt*9);
     u.phase += dt*Math.min(16, 4 + v*1.6);
     const sw = Math.sin(u.phase)*.75*u.run;
-    if (u.limbs) u.limbs.forEach(l => { l.leg.rotation.x = sw*l.sx; l.arm.rotation.x = -sw*l.sx*.9; });
+    if (u.limbs) u.limbs.forEach(l => { l.leg.rotation.x = sw*l.sx; l.arm.rotation.x = -sw*l.sx*.9; l.arm.rotation.z = l.sx*.28; });
     u.body.position.y = Math.abs(Math.sin(u.phase))*.07*u.run; u.body.rotation.x = .18*u.run;
   }
 
@@ -3164,7 +3164,25 @@ const CLIP3D = (() => {
       let bi = -1, bd = 2.5; mates0.forEach((p,i) => { const d = dist(p, a.f); if (d < bd){ bd = d; bi = i; } }); if (bi >= 0) arrowMoves.mates[bi] = a.t;
     });
     const hasBall = holder && holder.kind === "me";
-    const planOpt = o => { const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:null, rad:1.1};
+    // a player named in a seq: "me", or a label of the scene ("CB", "CM2" = the 2nd CM)
+    const who = spec => { if (spec === "me") return {kind:"me"}; const m = /^([A-Z]+)(\d?)$/.exec(spec || ""); if (!m) return null;
+      let n = +(m[2] || 1); const i = sc.mates.findIndex(x => x[0] === m[1] && --n === 0); return i >= 0 ? {kind:"mate", i} : null; };
+    // seq: [{ball:"CH"|[x,y], run:[["me",x,y], ["LH",x,y]]}, ...] — the steps happen one after another (a pass, then the next…)
+    const planSeq = o => { const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:null, rad:1.1, seq:[], segs:[]};
+      const pos = {me:me0.slice(), mates:mates0.map(v => v.slice())}, get = w => w.kind === "me" ? pos.me : pos.mates[w.i];
+      let ball = holder ? (holder.kind === "me" ? me0 : holder.kind === "mate" ? mates0[holder.i] : opps0[holder.i]) : sc.ball;
+      for (const st of o.seq){
+        const runs = [];
+        for (const [w, x, y] of (st.run || [])){ const r = who(w); if (!r) continue; const from = get(r).slice();
+          if (r.kind === "me"){ pos.me = [x, y]; p.me = [x, y]; } else { pos.mates[r.i] = [x, y]; p.mates[r.i] = [x, y]; }
+          runs.push({w:r, from, to:[x, y]}); p.segs.push({k:r.kind === "me" ? "me" : "mate", f:from, t:[x, y]}); }
+        let to = null; if (st.ball){ const r = Array.isArray(st.ball) ? null : who(st.ball); to = r ? get(r).slice() : Array.isArray(st.ball) ? st.ball.slice() : null; }
+        if (to){ p.segs.push({k:"pass", f:ball.slice(), t:to}); }
+        p.seq.push({runs, from:ball.slice(), to}); if (to) ball = to;
+      }
+      p.spot = ball.slice(); p.move = MOVE*Math.max(1, o.seq.length*.8); return p; };
+    const planOpt = o => { if (o.seq) return planSeq(o);
+      const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:null, rad:1.1};
       if (o.at){ if (hasBall) p.ball = o.at; else p.me = o.at; p.spot = o.at; }
       else if (o.go){ p.me = o.go; p.ride = hasBall; p.spot = o.go; }
       for (const [who, x, y] of (o.team||[])){
@@ -3183,14 +3201,19 @@ const CLIP3D = (() => {
     }
     const best = steps.find(s => s.r === 2);
     if (q.point) steps.push({k:"ポイント", short:"ポイント", cls:"pt", text:q.point, plan:best && best.plan, still:true, r:best ? 2 : undefined});
-    steps.forEach(s => { const n = (kj(s.title||"") + kj(s.text||"")).length; s.dur = Math.max(3.4, 1.8 + n*.12) + (s.plan && !s.still ? MOVE : 0); });
+    steps.forEach(s => { const n = (kj(s.title||"") + kj(s.text||"")).length; s.dur = Math.max(3.4, 1.8 + n*.12) + (s.plan && !s.still ? (s.plan.move || MOVE) : 0); });
     // the part of the pitch the clip uses (for the camera)
     const P = [sc.ball, me0]; (sc.arrows||[]).forEach(a => P.push(a.f, a.t));
     steps.forEach(s => { const p = s.plan; if (!p) return; [p.me, p.ball, p.spot, ...Object.values(p.mates)].forEach(v => v && P.push(v)); });
     let x0 = Math.min(...P.map(p => p[0])) - 6, x1 = Math.max(...P.map(p => p[0])) + 6, y0 = Math.min(...P.map(p => p[1])) - 6, y1 = Math.max(...P.map(p => p[1])) + 6;
     const grow = (a, b, min) => { const m = (a + b)/2, h = Math.max(min, b - a)/2; return [m - h, m + h]; };
     [x0, x1] = grow(x0, x1, 24); [y0, y1] = grow(y0, y1, 20);
-    return {q, sc, me0, mates0, opps0, holder, arrowMoves, steps, box:{x0, x1, y0, y1}};
+    // a throw-in: the one with the ball stands on the touchline and throws it from over the head with both hands
+    const throwIn = !!holder && (q.th === "throw" || /スローイン/.test(q.situ || "")) && (sc.ball[0] <= 1.5 || sc.ball[0] >= 48.5);
+    // the thrower stands on the touchline, just outside the pitch (feet on or behind the line), not inside it
+    if (throwIn){ const out = sc.ball[0] <= 1.5 ? -.35 : 50.35, H = holder;
+      if (H.kind === "me") me0[0] = out; else if (H.kind === "mate") mates0[H.i] = [out, mates0[H.i][1]]; else opps0[H.i] = [out, opps0[H.i][1]]; }
+    return {q, sc, me0, mates0, opps0, holder, throwIn, arrowMoves, steps, box:{x0, x1, y0, y1}};
   }
 
   // where everyone is for a plan at progress p (0 = the scene, 1 = the answer done)
@@ -3204,20 +3227,53 @@ const CLIP3D = (() => {
       Object.entries(plan.mates).forEach(([i, t]) => s.mates[i] = lerp(c.mates0[i], t, pa));
       if (plan.me) s.me = lerp(c.me0, plan.me, plan.oneTwo ? sm((p - .12)/.6) : plan.ball ? sm((p - .3)/.6) : pa);
     }
+    if (plan && plan.seq){
+      const n = plan.seq.length, start = c.holder && !c.throwIn ? (() => { const h = c.holder, q = h.kind === "me" ? c.me0 : h.kind === "mate" ? c.mates0[h.i] : c.opps0[h.i]; return q; })() : c.sc.ball;
+      s.me = c.me0.slice(); s.mates = s.mates.map((v, i) => plan.mates[i] ? c.mates0[i].slice() : v);
+      s.ball = start.slice(); s.bh = c.throwIn ? 1.72 : 0; s.throwK = c.throwIn ? 0 : null;
+      plan.seq.forEach((st, j) => { const local = clamp(p*n - j); if (local <= 0) return;
+        // the runners move through the whole step; the pass leaves a moment later and arrives as they get there
+        st.runs.forEach(r => { const v = lerp(r.from, r.to, sm(local)); if (r.w.kind === "me") s.me = v; else s.mates[r.w.i] = v; });
+        if (st.to){ const k = sm((local - .15)/.8); if (k > 0){ s.ball = lerp(st.from, st.to, k); const L = dist(st.from, st.to);
+          if (c.throwIn && j === 0){ s.bh = 1.72*(1 - k) + Math.sin(Math.PI*k)*Math.min(2.5, L*.1); s.throwK = k; } else s.bh = L > 14 ? Math.sin(Math.PI*k)*Math.min(4, L*.08) : 0; } } });
+      return s;
+    }
     // the ball: at the feet of whoever has it, or on its way
     const H = c.holder, at = (kind, i) => kind === "me" ? s.me : kind === "mate" ? s.mates[i] : s.opps[i];
     const foot = (pt, toward) => { const dx = toward[0] - pt[0], dy = toward[1] - pt[1], L = Math.hypot(dx, dy) || 1; return [pt[0] + dx/L*.7, pt[1] + dy/L*.7]; };
     const goalOf = kind => kind === "opp" ? [25, 68] : [25, 0];
-    const start = H ? foot(at(H.kind, H.i), goalOf(H.kind)) : c.sc.ball.slice();
+    const start = H ? (c.throwIn ? at(H.kind, H.i).slice() : foot(at(H.kind, H.i), goalOf(H.kind))) : c.sc.ball.slice();
+    const OVER = 1.72;                                  // the ball on the thrower's raised hands (above its normal place)
+    s.throwK = c.throwIn ? 0 : null;                     // 0 = held over the head, 0–1 = being thrown
     if (plan && plan.ride){ const dir = plan.me; s.ball = foot(s.me, dist(s.me, dir) > .4 ? dir : [25, 0]); }
     else if (plan && plan.ball){
       const fly = (a, b, k) => { s.ball = lerp(a, b, k); const L = dist(a, b), shot = b[1] < 2; s.bh = shot ? k*.6 : L > 14 ? Math.sin(Math.PI*k)*Math.min(4, L*.08) : 0; };   // long passes lift, shots stay low
-      const st0 = H ? foot(H.kind === "me" ? c.me0 : at(H.kind, H.i), plan.ball) : c.sc.ball;
+      // a throw-in: from over the head, a soft lob that comes down at the receiver's feet
+      const toss = (a, b, k) => { s.ball = lerp(a, b, k); s.bh = OVER*(1 - k) + Math.sin(Math.PI*k)*Math.min(2.5, dist(a, b)*.1); s.throwK = k; };
+      const st0 = H ? (c.throwIn ? (H.kind === "me" ? c.me0 : at(H.kind, H.i)).slice() : foot(H.kind === "me" ? c.me0 : at(H.kind, H.i), plan.ball)) : c.sc.ball;
+      const first = c.throwIn ? toss : fly;
       if (plan.oneTwo){ const k1 = sm(p/.35), k2 = sm((p - .55)/.33);
-        if (k2 > 0) fly(plan.ball, foot(s.me, [25, 0]), k2); else fly(st0, plan.ball, k1); }
-      else fly(st0, plan.ball, sm((p - .05)/.55));
+        if (k2 > 0){ fly(plan.ball, foot(s.me, [25, 0]), k2); if (c.throwIn) s.throwK = 1; } else first(st0, plan.ball, k1); }
+      else first(st0, plan.ball, sm((p - .05)/.55));
     } else s.ball = start;
+    if (c.throwIn && s.throwK === 0) s.bh = OVER;
     return s;
+  }
+
+  // the thrower of a throw-in: faces into the pitch (towards the throw), both hands hold the ball over the head, and
+  // when it is thrown the arms go from behind the head over the top and forward; after it the arms come down
+  function throwPose(C, st){
+    const H = C.holder, g = H.kind === "me" ? C.meG : H.kind === "mate" ? C.matesG[H.i] : C.oppsG[H.i], u = g.userData, k = C.shown.throwK;
+    // (the name label goes up out of the way of the ball over the head)
+    if (u.lab) u.lab.position.y = k !== null && k !== undefined && k < .45 ? 3.2 : 2.2;
+    C.ballAt = null; if (k === null || k === undefined || k >= .45) return;
+    const me = [g.position.x + 25, g.position.z + 34], tgt = st.plan && st.plan.ball ? st.plan.ball : [25, me[1] + (H.kind === "opp" ? 6 : -6)];
+    u.body.rotation.y = Math.atan2(tgt[0] - me[0], tgt[1] - me[1]); u.body.rotation.x = 0; u.body.position.y = 0;
+    // arm angle about the shoulder: π = straight up; less = back behind the head, more = forward
+    const a = k <= 0 ? Math.PI - .45 : Math.PI - .45 + 1.9*Math.min(1, k/.2);
+    u.limbs.forEach(l => { l.arm.rotation.x = a; l.arm.rotation.z = l.sx*.12; l.leg.rotation.x = 0; });
+    // held: the ball sits in the hands, a little behind the head
+    if (k <= 0){ const b = W(me[0], me[1]); b.x -= Math.sin(u.body.rotation.y)*.22; b.z -= Math.cos(u.body.rotation.y)*.22; C.ballAt = b; }
   }
 
   // ---------- a clip player: put it in any scene, call update() every frame ----------
@@ -3248,6 +3304,7 @@ const CLIP3D = (() => {
       if (!p || st.r === undefined) return;
       const col = RCOL[st.r];
       marks.add(disc(p.spot[0], p.spot[1], Math.max(1.1, p.rad), col, .28, RMARK[st.r]));
+      if (p.seq){ p.segs.forEach(g => { if (dist(g.f, g.t) < 1) return; marks.add(g.k === "pass" ? arrow(g.f, g.t, "#ffffff", true, .85) : arrow(g.f, g.t, g.k === "me" ? col : COL.mate, false, g.k === "me" ? .75 : .6)); }); return; }
       // the line the answer takes: きみ's run and the ball (white dashed)
       if (p.me && dist(p.me, C.me0) > 1) marks.add(arrow(C.me0, p.me, col, false, .75));
       if (p.ball){ const H = C.holder, from = H ? (H.kind === "me" ? C.me0 : H.kind === "mate" ? C.mates0[H.i] : C.opps0[H.i]) : C.sc.ball; marks.add(arrow(from, p.ball, "#ffffff", true, .85)); }
@@ -3263,12 +3320,14 @@ const CLIP3D = (() => {
       if (playing){ C.t += dt*speed;
         if (C.t >= st.dur && P.voice && VOICE.busy) C.t = st.dur;   // still reading: wait
         else if (C.t >= st.dur){ if (C.i < C.steps.length - 1){ P.go(C.i + 1); st = C.steps[C.i]; ev.step = true; } else { C.t = st.dur; endWait += dt; if (endWait > 1.2){ endWait = -1e9; ev.end = true; } } } }
-      const p = st.plan ? (st.still ? 1 : clamp((C.t - .5)/MOVE)) : 0;
+      const p = st.plan ? (st.still ? 1 : clamp((C.t - .5)/(st.plan.move || MOVE))) : 0;
       const target = pose(C, st.plan, p), bl = sm(C.t/.5), mix = (a, b) => lerp(a, b, bl), prev = C.shown;
-      C.shown = {me:mix(C.from.me, target.me), mates:target.mates.map((v, i) => mix(C.from.mates[i], v)), opps:target.opps.map((v, i) => mix(C.from.opps[i], v)), ball:mix(C.from.ball, target.ball), bh:target.bh*bl};
+      C.shown = {me:mix(C.from.me, target.me), mates:target.mates.map((v, i) => mix(C.from.mates[i], v)), opps:target.opps.map((v, i) => mix(C.from.opps[i], v)), ball:mix(C.from.ball, target.ball), bh:(C.from.bh || 0) + (target.bh - (C.from.bh || 0))*bl, throwK:target.throwK};
       const bp = C.shown.ball;
       run(C.meG, prev.me, C.shown.me, dt, bp); C.matesG.forEach((g, i) => run(g, prev.mates[i], C.shown.mates[i], dt, bp)); C.oppsG.forEach((g, i) => run(g, prev.opps[i], C.shown.opps[i], dt, bp));
+      if (C.throwIn) throwPose(C, st);
       const bs = P.ballScale; ball.mesh.position.copy(W(bp[0], bp[1], .34*bs + C.shown.bh)); ball.mesh.scale.setScalar(bs);
+      if (C.ballAt){ ball.mesh.position.x = C.ballAt.x; ball.mesh.position.z = C.ballAt.z; }
       if (dist(prev.ball, bp) > 1e-4){ ball.mesh.rotation.x -= (bp[1] - prev.ball[1])*2; ball.mesh.rotation.z += (bp[0] - prev.ball[0])*2; }
       ball.ring.position.copy(W(bp[0], bp[1], .04)); ball.ring.scale.setScalar(P.ringScale*(1 + .16*Math.sin(now/220)));
       marks.children.forEach(m => { if (m.userData.pulse) m.userData.pulse.material.opacity = .22 + .12*Math.sin(now/260); });

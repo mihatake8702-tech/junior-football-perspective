@@ -59,7 +59,22 @@ button{font:inherit;color:inherit}
 @media (max-width:900px){.side{max-height:none}}
 .side h2{margin:0;font:700 .78rem var(--en);color:var(--muted);letter-spacing:.1em}
 .phase{font:700 .76rem var(--ja);color:var(--muted);margin:6px 0 4px}
+.pos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pos button{background:none;border:1px solid var(--line);border-radius:10px;padding:7px 4px;cursor:pointer;display:grid;gap:1px;text-align:center}
+.pos button b{font:700 1rem var(--en);letter-spacing:.04em}
+.pos button small{font-size:.7rem;color:var(--muted)}
+.pos button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#04120a}
+.pos button[aria-pressed=true] small{color:#04120a}
+.pos button:disabled{opacity:.35;cursor:default}
 .themes{display:flex;flex-wrap:wrap;gap:6px}
+.cats{display:flex;flex-direction:column;gap:6px}
+.cats button{display:grid;grid-template-columns:1fr auto;gap:1px 10px;text-align:left;background:none;border:1px solid var(--line);border-radius:10px;padding:8px 11px;cursor:pointer}
+.cats button b{font-size:.95rem}
+.cats button small{grid-column:1;font-size:.74rem;color:var(--muted);line-height:1.45}
+.cats button i{grid-column:2;grid-row:1/3;align-self:center;font:700 .85rem var(--en);font-style:normal;color:var(--muted)}
+.cats button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#04120a}
+.cats button[aria-pressed=true] small,.cats button[aria-pressed=true] i{color:#04120a}
+.cats button:disabled{opacity:.35;cursor:default}
 .themes button{background:none;border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:.84rem;cursor:pointer}
 .themes button[aria-pressed=true]{background:var(--accent);color:#04120a;border-color:var(--accent);font-weight:700}
 .themes button:disabled{opacity:.35;cursor:default}
@@ -97,7 +112,9 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:.84rem;color:var(--m
     <div class="legend"><span><i style="background:#fff"></i>きみ</span><span><i style="background:var(--mate)"></i>味方</span><span><i style="background:var(--opp)"></i>相手</span><span><i style="background:var(--good)"></i>◎ こうする</span><span><i style="background:var(--warn)"></i>○ それもあり</span><span><i style="background:var(--bad)"></i>✕ ダメな例</span></div>
   </section>
   <aside class="side">
-    <h2>THEME</h2>
+    <h2>POSITION</h2>
+    <div class="pos" id="pos" aria-label="ポジション"></div>
+    <h2>CATEGORY</h2>
     <div id="themes"></div>
     <p class="aim" id="aim"></p>
     <label class="chk"><input type="checkbox" id="auto" checked> 終わったら次の問題も続けて見る</label>
@@ -141,6 +158,7 @@ const THEMES = [
   {id:"break", ph:"atk",  g:9 , name:"3つの突破",          aim:"相手のうしろへ行く方法は、スルーパス・ドリブル・ワンツーの3つ。相手の動き（矢印）を見て選ぶ。"},
   {id:"carry", ph:"atk",  g:10, name:"運ぶ・ひきつける",   aim:"前があいていたら運ぶ。相手が寄ってきたら、その相手が見ていた味方があく。"},
   {id:"free",  ph:"atk",  g:10, name:"スペースをつくる・使う", aim:"マークされている人は、相手をつれて動いてスペースをつくる。フリーの人が、そのスペースで受ける。"},
+  {id:"third", ph:"atk",  g:9,  name:"3人目・4人目の動き", aim:"ボールが次の味方に入る前に、その次をよんで動く。パスを受ける人だけでなく、その次に受ける人（3人目）、さらに次の人（4人目）が先に走りだすと、相手はついてこられない。"},
   {id:"order", ph:"def",  g:9,  name:"守りの順番",         aim:"①ゴールを守る ②前に進ませない ③ボールにせまる ④うばう。とびこまずに、この順番で考える。"},
   {id:"cover", ph:"def",  g:10, name:"チャレンジ＆カバー", aim:"1人がボールへ行き、ほかの人はその〔ディアゴナーレ|ななめうしろでカバー〕。2人で1つのボールを守る。"},
   {id:"slide", ph:"def",  g:11, name:"スライドと追いこみ", aim:"みんなでボールの方へずれる。まん中では外へ、サイドでは中へ追いこんで、うばう場所を決める。"},
@@ -9113,6 +9131,182 @@ D({id:"na24", th:"goal", g:[10,11],
   {t:"スピードを落として、うしろから来るFWを待ってパス", at:[22,20], r:0, why:"1人でうてる場面なのに、待っているあいだに相手がもどってきて、チャンスがなくなる。"}],
  point:"追いつかれる前に、うてるときにうつ。"});
 
+// ===== 3人目・4人目の動き（third）: th01〜th11 =====
+// seq：答えの動きを順番に（1つめのパス → 2つめのパス・走りこみ …）。3Dはこの順に動く。上から見た図は最後の形へ動く。
+//   {ball:"CH"|"CM2"|"me"|[x,y], run:[["me",x,y], ["LH",x,y]]}  （"CM2" = 2人目のCM）。at は最後にボールが行く所（図の印）。
+
+// --- FW：CHに入るのをよんで、うらへ ---
+D({id:"th01", th:"third", g:[9,12],
+ situ:"左のLBから、まん中のCHにパスが出た。CHのまわりに相手はいない。CFのきみの前には、相手のCBがいる。",
+ q:"CFのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CF",25,22], ball:[8,50], mates:M("3-3-1",{CF:null, LB:[8,50], CH:[20,40]}),
+  opps:[[25,18],[14,20],[36,20],[12,34],[30,32],[20,46]],
+  arrows:[{f:[8,50], t:[19,41], k:"pass"}]},
+ opts:[
+  {t:"CHがボールを受けるのに合わせて、相手CBのうしろ（うら）へ走る", at:[29,9], seq:[{ball:"CH", run:[["me",27,17]]}, {ball:[29,9], run:[["me",29,9]]}], r:2,
+   why:"CHは前を向いて受けられる。きみが先に走りだしていれば、CHはすぐうらへパスを出せる。パスの次をよんで動くと、相手はついてこられない。"},
+  {t:"CHの前まで下りてきて、足もとでパスを受ける", at:[22,30], r:1,
+   why:"CHのパスコースが近くにできる。でもゴールからはなれるし、相手CBもついてくる。"},
+  {t:"ボールを持っているLBのほうへ下りて、パスをもらいに行く", at:[14,40], r:0,
+   why:"みんながボールの近くに行くと、前に人がいなくなる。相手は守りやすい。"}],
+ point:"パスの次をよんで、先に走りだす。"});
+
+// --- FW：もう1人のFWに入るのをよんで、ななめにうらへ ---
+D({id:"th02", th:"third", g:[10,12],
+ situ:"CHがボールを持ち、下りてきたFWにたてパスを出す。そのFWのうしろには相手がぴったりついている。FWのきみは、相手CBの近くにいる。",
+ q:"FWのきみは、どうする？",
+ scene:{f:"2-3-2", me:["FW",32,22], ball:[25,44], mates:M("2-3-2",{FW2:null, FW1:[20,32]}),
+  opps:[[20,29],[31,18],[14,18],[27,40],[38,30],[12,32]],
+  arrows:[{f:[25,44], t:[21,33], k:"pass"}]},
+ opts:[
+  {t:"FWにパスが入るのに合わせて、相手CBのうしろへななめに走る", at:[26,10], seq:[{ball:"FW", run:[["me",29,17]]}, {ball:[26,10], run:[["me",26,10]]}], r:2,
+   why:"パスを受けるFWは、うしろに相手がいて前を向けない。でもダイレクトで、先に走りだしたきみに出せる。〔3人目の動き|パスの次をよんで先に走る動き〕で、うらがとれる。"},
+  {t:"FWの横によって、落としのパスを受けられるようにする", at:[27,30], r:1,
+   why:"FWを助けられる。でも相手のうしろはあかないまま。"},
+  {t:"FWのほうへ下りて、2人ならんでボールをもらいに行く", at:[24,27], r:0,
+   why:"2人ともボールに寄ると、相手のDFは前に出てくるだけでいい。うらへ走る人がいなくなる。"}],
+ point:"味方にボールが入る前に、その次の場所へ。"});
+
+// --- CH：CFの落としを、前を向いて受ける ---
+D({id:"th03", th:"third", g:[9,12],
+ situ:"CBがボールを持っている。CHのきみのすぐ前（自分のゴールがわ）に相手がいて、CBからのパスは通りにくい。CFが下りてきた。",
+ q:"CHのきみは、どうする？",
+ scene:{f:"3-3-1", me:["CH",25,40], ball:[25,54], mates:M("3-3-1",{CH:null, CF:[17,30]}),
+  opps:[[17,27],[30,26],[26,45],[36,38],[12,40],[25,20]],
+  arrows:[{f:[25,54], t:[18,31], k:"pass"}]},
+ opts:[
+  {t:"CFにパスが入る前に、CFのななめうしろへ動いて、落としのボールを受ける", at:[22,36], seq:[{ball:"CF", run:[["me",22,36]]}, {ball:"me"}], r:2,
+   why:"CFは相手を背中に、前を向けない。でもダイレクトで落とせば、きみは前を向いたまま受けられる。CFに入る前に動きだすのが大事。"},
+  {t:"相手の横にずれて、CBから直接パスを受ける", at:[31,44], r:1,
+   why:"パスコースはできる。でも相手が近く、前を向くのはむずかしい。"},
+  {t:"CFのすぐ横まで上がっていく", at:[20,26], r:0,
+   why:"CFに近づきすぎると、落とすところがなくなる。相手も2人をまとめて守れる。"}],
+ point:"落としのボールを、前を向いて受けられる所へ。"});
+
+// --- CH：うしろに相手。前を向いて走ってくる3人目へダイレクト ---
+D({id:"th04", th:"third", g:[10,12],
+ situ:"CBから、CHのきみにパスがくる。きみのすぐうしろには相手がいる。左のLHが、内がわへ前を向いて走りこんでくる。",
+ q:"CHのきみは、どうする？",
+ scene:{f:"2-3-2", me:["CH",25,44], ball:[17,54], mates:M("2-3-2",{CH:null}),
+  opps:[[25,41],[10,32],[36,40],[18,20],[32,20],[25,30]],
+  arrows:[{f:[17,54], t:[24,45], k:"pass"}, {f:[7,40], t:[13,35], k:"run"}]},
+ opts:[
+  {t:"前を向かずに、走りこんでくるLHへダイレクトで出す", at:[14,34], seq:[{ball:"me"}, {ball:"LH", run:[["LH",14,34]]}], r:2,
+   why:"うしろに相手がいるので、前を向くとうばわれやすい。ワンタッチで、前を向いて走ってくるLHに出せば、LHが前を向いたままプレーできる。"},
+  {t:"ダイレクトで、パスをくれたCBにもどす", at:[17,54], seq:[{ball:"me"}, {ball:"CB"}], r:1,
+   why:"うばわれないのは大事。でも前には進めない。"},
+  {t:"トラップして、くるっと前を向く", seq:[{ball:"me"}], r:0,
+   why:"すぐうしろに相手がいるので、前を向くあいだにうばわれやすい。"}],
+ point:"うしろに相手がいたら、前を向いている3人目へ。"});
+
+// --- SH：CHに入るのをよんで、相手SBのうしろへ ---
+D({id:"th05", th:"third", g:[9,12],
+ situ:"CBから、まん中のCHにパスが出た。CHは前を向いて受けられそう。RHのきみの前には、相手のSBがいる。",
+ q:"RHのきみは、どうする？",
+ scene:{f:"3-3-1", me:["RH",42,38], ball:[25,54], mates:M("3-3-1",{RH:null, CH:[27,42]}),
+  opps:[[41,34],[33,24],[18,24],[25,32],[14,36],[30,48]],
+  arrows:[{f:[25,54], t:[27,43], k:"pass"}]},
+ opts:[
+  {t:"CHがボールを受ける前から、相手SBのうしろをねらって走りだす", at:[45,22], seq:[{ball:"CH", run:[["me",44,33]]}, {ball:[45,22], run:[["me",45,22]]}], r:2,
+   why:"CHが前を向いて受けたとき、きみはもう走っている。CHはすぐうらへ出せるので、相手SBはついてこられない。"},
+  {t:"CHに寄って、近くでパスを受ける", at:[36,40], r:1,
+   why:"パスはつながる。でも相手SBの前で受けるので、前に進みにくい。"},
+  {t:"下がって、CBから直接パスをもらいに行く", at:[44,46], r:0,
+   why:"下がると、相手SBもついてくるだけ。うらへ走る人がいなくなり、前に進めない。"}],
+ point:"パスの次をよんで、相手のうしろへ先に走る。"});
+
+// --- SH：4人目。CFの落とし → CM → うらのきみ ---
+D({id:"th06", th:"third", g:[11,12],
+ situ:"CBが、下りてきたCFにたてパスを出す。CFのうしろには相手がいる。CFの近くにはCMがいる。RHのきみの前には、相手のSBがいる。",
+ q:"RHのきみは、いつ、どこへ走る？",
+ scene:{f:"2-4-1", me:["RH",44,38], ball:[33,54], mates:M("2-4-1",{RH:null, CF:[25,30], CM2:[30,40]}),
+  opps:[[25,27],[43,33],[16,24],[34,24],[20,42],[36,46]],
+  arrows:[{f:[33,54], t:[26,31], k:"pass"}]},
+ opts:[
+  {t:"CFにパスが入ったら、CMに落とすのをよんで、相手SBのうしろへ走りだす", at:[42,17], seq:[{ball:"CF"}, {ball:"CM2", run:[["me",45,30]]}, {ball:[42,17], run:[["me",42,17]]}], r:2,
+   why:"CFが落として、CMが前を向く。そのときにはもう走りだしているので、CMはダイレクトでうらに出せる。4人目の動きは、相手がいちばんついてこられない。"},
+  {t:"CMがボールを持ってから、うらへ走りだす", at:[42,17], seq:[{ball:"CF"}, {ball:"CM2"}, {ball:[42,17], run:[["me",42,17]]}], r:1,
+   why:"通ることもある。でもスタートがおそいと、相手SBも先にもどれる。"},
+  {t:"CFの近くへ寄っていって、パスをもらいに行く", at:[34,31], r:0,
+   why:"みんながボールに寄ると、外とうらがあく。でもそこへ走る人がいなくなる。"}],
+ point:"ボールの2つ先をよんで、先に走る。"});
+
+// --- SB：LHに入るのに合わせて、外を前へ ---
+D({id:"th07", th:"third", g:[9,12],
+ situ:"CBから、下りてきたLHにパスが出る。LHのうしろには相手がついている。LBのきみの前は、あいている。",
+ q:"LBのきみは、どうする？",
+ scene:{f:"3-3-1", me:["LB",10,52], ball:[25,54], mates:M("3-3-1",{LB:null, LH:[10,40]}),
+  opps:[[10,37],[22,30],[25,46],[14,26],[36,30],[30,40]],
+  arrows:[{f:[25,54], t:[11,41], k:"pass"}]},
+ opts:[
+  {t:"LHにパスが入るのに合わせて、LHの外を前へ走る", at:[4,30], seq:[{ball:"LH", run:[["me",6,44]]}, {ball:[4,30], run:[["me",4,30]]}], r:2,
+   why:"LHは相手を背中に、前を向けない。でもワンタッチで、前へ走るきみに出せる。LHに入る前から走りだすと、相手は追いつけない。"},
+  {t:"LHのななめうしろに寄って、もどしのパスを受けられるようにする", at:[15,45], r:1,
+   why:"LHはこまったときにもどせる。でも前には進まない。"},
+  {t:"LHと同じたての線で、LHのすぐうしろに立つ", at:[10,45], r:0,
+   why:"同じレーンだと、LHからのパスが相手に当たりやすい。前にも進めない。"}],
+ point:"ボールが入る前に、その次の場所へ走る。"});
+
+// --- SB：たてパスを入れたら止まらない（パス＆ゴーで4人目に） ---
+D({id:"th08", th:"third", g:[11,12],
+ situ:"RBのきみがボールを持っている。前のFWが下りてきて、うしろに相手がついた。CMはFWの近くにいる。",
+ q:"RBのきみは、どうする？",
+ scene:{f:"3-2-2", me:["RB",40,52], ball:[40,52], mates:M("3-2-2",{RB:null, FW2:[36,32], CM2:[31,42]}),
+  opps:[[36,29],[46,46],[24,30],[44,26],[22,42],[30,22]]},
+ opts:[
+  {t:"FWにたてパスを入れて、すぐ前へ走る", at:[44,22], seq:[{ball:"FW2", run:[["me",44,44]]}, {ball:"CM2", run:[["me",45,36]]}, {ball:[44,22], run:[["me",44,22]]}], r:2,
+   why:"FWが落として、CMが前を向く。パスを出したきみがそのまま走っていれば、CMはうらに出せる。パスを出したら止まらないのが大事。"},
+  {t:"CMに横パスを出す", at:[31,42], r:1,
+   why:"安全につながる。でも相手の前でボールが動くだけで、前に進まない。"},
+  {t:"相手SBのうしろへ、自分で大きくける", at:[44,24], r:0,
+   why:"そこに味方がいないので、相手にひろわれやすい。"}],
+ point:"パスを出したら止まらない。次の次の場所へ走る。"});
+
+// --- CB：前を向けない味方には、その次の人まで考えて ---
+D({id:"th09", th:"third", g:[9,12],
+ situ:"CBのきみがボールを持っている。CHのうしろには相手がいて、CHは前を向けない。左のLHは、まわりに相手がいない。",
+ q:"CBのきみは、どうする？",
+ scene:{f:"2-3-2", me:["CB",17,54], ball:[17,54], mates:M("2-3-2",{CB1:null, LH:[9,44]}),
+  opps:[[25,41],[12,52],[12,34],[36,40],[18,20],[32,20]]},
+ opts:[
+  {t:"CHにパス。CHがダイレクトで、前を向いたLHへつなぐ", at:[9,44], seq:[{ball:"CH"}, {ball:"LH"}], r:2,
+   why:"CHは前を向けない。でもダイレクトで、フリーのLHへ。LHは前を向いて受けられる。近いパスを2つつなぐほうが、相手はよせにくい。"},
+  {t:"LHへ直接、長いパスを出す", at:[9,44], r:1,
+   why:"つながれば前に進める。でも長いパスは、相手がよせる時間がある。"},
+  {t:"前のFWへ、大きくける", at:[25,20], r:0,
+   why:"前は相手のDFが多く、ひろわれやすい。つなげる味方がいるのに、ボールを手ばなしてしまう。"}],
+ point:"前を向けない味方には、その次の人まで考えてパスを出す。"});
+
+// --- CB：たてパスで4人目まで動かす ---
+D({id:"th10", th:"third", g:[11,12],
+ situ:"CBのきみがボールを持っている。CFが下りてきて、うしろに相手がついた。CHはCFの近くにいる。右のRHの前には、相手のSBがいる。",
+ q:"CBのきみは、どこにパスを出す？",
+ scene:{f:"3-3-1", me:["CB",25,54], ball:[25,54], mates:M("3-3-1",{CB:null, CF:[23,30], CH:[28,40]}),
+  opps:[[23,27],[42,32],[16,24],[33,22],[18,40],[31,43]]},
+ opts:[
+  {t:"下りてきたCFへ、たてパスを入れる", at:[42,16], seq:[{ball:"CF"}, {ball:"CH", run:[["RH",44,30]]}, {ball:[42,16], run:[["RH",42,16]]}], r:2,
+   why:"CFが落として、CHが前を向く。そのあいだにRHが走りだして、うらまでつながる。たてパスが、まわりの動きのスタートになる。"},
+  {t:"CHに直接パスを出す", at:[28,40], r:1,
+   why:"つながる。でも相手が近く、CHは前を向きにくい。"},
+  {t:"RHへ大きなパスを出す", at:[42,36], r:0,
+   why:"遠くて、相手SBが先にとどく。近くにつなげる味方がいるのに、ボールを手ばなしてしまう。"}],
+ point:"たてパスで、2人目・3人目・4人目を動かす。"});
+
+// --- GK：相手が来た人の、その次の人まで ---
+D({id:"th11", th:"third", g:[10,12],
+ situ:"GKのきみがボールを持っている。CBには相手のFWがせまってきた。左のLBは、まわりに相手がいない。",
+ q:"GKのきみは、どうする？",
+ scene:{f:"3-3-1", me:["GK",25,64], ball:[25,64], mates:M("3-3-1",{GK:null, CB:[25,56]}),
+  opps:[[25,51],[16,40],[36,40],[25,34],[38,48]]},
+ opts:[
+  {t:"CBにパス。CBがダイレクトで、フリーのLBへ", at:[10,52], seq:[{ball:"CB"}, {ball:"LB"}], r:2,
+   why:"相手FWはCBに来ている。CBがダイレクトでつなげば、相手FWを1人でかわせる。LBは前を向いて受けられる。"},
+  {t:"LBへ直接パスを出す", at:[10,51], r:1,
+   why:"フリーのLBにつながる。でもGKからは遠く、ころがるあいだに相手がよせてくる。"},
+  {t:"前へ大きくける", at:[25,30], r:0,
+   why:"前は相手が多く、ひろわれやすい。つなげる味方がいるのに、ボールを手ばなしてしまう。"}],
+ point:"相手が来た人の、その次の人までつなぐ。"});
+
 // ===== Batch nb：しゅびの問題（チャレンジ＆カバー・守りの順番・ゴール前・スライド・前からうばう） =====
 
 // --- チャレンジ＆カバー ---
@@ -10081,6 +10275,7 @@ const TERMS = {
   "同一視野":       {plain:"ボールと相手の両方を見る", from:11, alone:13},
   "外流れ":         {plain:"FWが外へ流れる", from:11, alone:13},
   "入れ替わり":     {plain:"あいた場所に別の人が入る", from:11, alone:13},
+  "3人目の動き":    {plain:"パスの次をよんで先に走る動き", from:10, alone:12},
   "チェックの動き": {plain:"一度行くふりをしてからはなれて受ける", from:10, alone:13},
   "オープン":       {plain:"マークの外がわで受ける", from:11, alone:13},
   "クローズ":       {plain:"マークの内がわで受ける", from:11, alone:13}
@@ -10264,7 +10459,7 @@ const CLIP3D = (() => {
     u.body.rotation.y += d*Math.min(1, dt*9);
     u.phase += dt*Math.min(16, 4 + v*1.6);
     const sw = Math.sin(u.phase)*.75*u.run;
-    if (u.limbs) u.limbs.forEach(l => { l.leg.rotation.x = sw*l.sx; l.arm.rotation.x = -sw*l.sx*.9; });
+    if (u.limbs) u.limbs.forEach(l => { l.leg.rotation.x = sw*l.sx; l.arm.rotation.x = -sw*l.sx*.9; l.arm.rotation.z = l.sx*.28; });
     u.body.position.y = Math.abs(Math.sin(u.phase))*.07*u.run; u.body.rotation.x = .18*u.run;
   }
 
@@ -10290,7 +10485,25 @@ const CLIP3D = (() => {
       let bi = -1, bd = 2.5; mates0.forEach((p,i) => { const d = dist(p, a.f); if (d < bd){ bd = d; bi = i; } }); if (bi >= 0) arrowMoves.mates[bi] = a.t;
     });
     const hasBall = holder && holder.kind === "me";
-    const planOpt = o => { const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:null, rad:1.1};
+    // a player named in a seq: "me", or a label of the scene ("CB", "CM2" = the 2nd CM)
+    const who = spec => { if (spec === "me") return {kind:"me"}; const m = /^([A-Z]+)(\d?)$/.exec(spec || ""); if (!m) return null;
+      let n = +(m[2] || 1); const i = sc.mates.findIndex(x => x[0] === m[1] && --n === 0); return i >= 0 ? {kind:"mate", i} : null; };
+    // seq: [{ball:"CH"|[x,y], run:[["me",x,y], ["LH",x,y]]}, ...] — the steps happen one after another (a pass, then the next…)
+    const planSeq = o => { const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:null, rad:1.1, seq:[], segs:[]};
+      const pos = {me:me0.slice(), mates:mates0.map(v => v.slice())}, get = w => w.kind === "me" ? pos.me : pos.mates[w.i];
+      let ball = holder ? (holder.kind === "me" ? me0 : holder.kind === "mate" ? mates0[holder.i] : opps0[holder.i]) : sc.ball;
+      for (const st of o.seq){
+        const runs = [];
+        for (const [w, x, y] of (st.run || [])){ const r = who(w); if (!r) continue; const from = get(r).slice();
+          if (r.kind === "me"){ pos.me = [x, y]; p.me = [x, y]; } else { pos.mates[r.i] = [x, y]; p.mates[r.i] = [x, y]; }
+          runs.push({w:r, from, to:[x, y]}); p.segs.push({k:r.kind === "me" ? "me" : "mate", f:from, t:[x, y]}); }
+        let to = null; if (st.ball){ const r = Array.isArray(st.ball) ? null : who(st.ball); to = r ? get(r).slice() : Array.isArray(st.ball) ? st.ball.slice() : null; }
+        if (to){ p.segs.push({k:"pass", f:ball.slice(), t:to}); }
+        p.seq.push({runs, from:ball.slice(), to}); if (to) ball = to;
+      }
+      p.spot = ball.slice(); p.move = MOVE*Math.max(1, o.seq.length*.8); return p; };
+    const planOpt = o => { if (o.seq) return planSeq(o);
+      const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:null, rad:1.1};
       if (o.at){ if (hasBall) p.ball = o.at; else p.me = o.at; p.spot = o.at; }
       else if (o.go){ p.me = o.go; p.ride = hasBall; p.spot = o.go; }
       for (const [who, x, y] of (o.team||[])){
@@ -10309,14 +10522,19 @@ const CLIP3D = (() => {
     }
     const best = steps.find(s => s.r === 2);
     if (q.point) steps.push({k:"ポイント", short:"ポイント", cls:"pt", text:q.point, plan:best && best.plan, still:true, r:best ? 2 : undefined});
-    steps.forEach(s => { const n = (kj(s.title||"") + kj(s.text||"")).length; s.dur = Math.max(3.4, 1.8 + n*.12) + (s.plan && !s.still ? MOVE : 0); });
+    steps.forEach(s => { const n = (kj(s.title||"") + kj(s.text||"")).length; s.dur = Math.max(3.4, 1.8 + n*.12) + (s.plan && !s.still ? (s.plan.move || MOVE) : 0); });
     // the part of the pitch the clip uses (for the camera)
     const P = [sc.ball, me0]; (sc.arrows||[]).forEach(a => P.push(a.f, a.t));
     steps.forEach(s => { const p = s.plan; if (!p) return; [p.me, p.ball, p.spot, ...Object.values(p.mates)].forEach(v => v && P.push(v)); });
     let x0 = Math.min(...P.map(p => p[0])) - 6, x1 = Math.max(...P.map(p => p[0])) + 6, y0 = Math.min(...P.map(p => p[1])) - 6, y1 = Math.max(...P.map(p => p[1])) + 6;
     const grow = (a, b, min) => { const m = (a + b)/2, h = Math.max(min, b - a)/2; return [m - h, m + h]; };
     [x0, x1] = grow(x0, x1, 24); [y0, y1] = grow(y0, y1, 20);
-    return {q, sc, me0, mates0, opps0, holder, arrowMoves, steps, box:{x0, x1, y0, y1}};
+    // a throw-in: the one with the ball stands on the touchline and throws it from over the head with both hands
+    const throwIn = !!holder && (q.th === "throw" || /スローイン/.test(q.situ || "")) && (sc.ball[0] <= 1.5 || sc.ball[0] >= 48.5);
+    // the thrower stands on the touchline, just outside the pitch (feet on or behind the line), not inside it
+    if (throwIn){ const out = sc.ball[0] <= 1.5 ? -.35 : 50.35, H = holder;
+      if (H.kind === "me") me0[0] = out; else if (H.kind === "mate") mates0[H.i] = [out, mates0[H.i][1]]; else opps0[H.i] = [out, opps0[H.i][1]]; }
+    return {q, sc, me0, mates0, opps0, holder, throwIn, arrowMoves, steps, box:{x0, x1, y0, y1}};
   }
 
   // where everyone is for a plan at progress p (0 = the scene, 1 = the answer done)
@@ -10330,20 +10548,53 @@ const CLIP3D = (() => {
       Object.entries(plan.mates).forEach(([i, t]) => s.mates[i] = lerp(c.mates0[i], t, pa));
       if (plan.me) s.me = lerp(c.me0, plan.me, plan.oneTwo ? sm((p - .12)/.6) : plan.ball ? sm((p - .3)/.6) : pa);
     }
+    if (plan && plan.seq){
+      const n = plan.seq.length, start = c.holder && !c.throwIn ? (() => { const h = c.holder, q = h.kind === "me" ? c.me0 : h.kind === "mate" ? c.mates0[h.i] : c.opps0[h.i]; return q; })() : c.sc.ball;
+      s.me = c.me0.slice(); s.mates = s.mates.map((v, i) => plan.mates[i] ? c.mates0[i].slice() : v);
+      s.ball = start.slice(); s.bh = c.throwIn ? 1.72 : 0; s.throwK = c.throwIn ? 0 : null;
+      plan.seq.forEach((st, j) => { const local = clamp(p*n - j); if (local <= 0) return;
+        // the runners move through the whole step; the pass leaves a moment later and arrives as they get there
+        st.runs.forEach(r => { const v = lerp(r.from, r.to, sm(local)); if (r.w.kind === "me") s.me = v; else s.mates[r.w.i] = v; });
+        if (st.to){ const k = sm((local - .15)/.8); if (k > 0){ s.ball = lerp(st.from, st.to, k); const L = dist(st.from, st.to);
+          if (c.throwIn && j === 0){ s.bh = 1.72*(1 - k) + Math.sin(Math.PI*k)*Math.min(2.5, L*.1); s.throwK = k; } else s.bh = L > 14 ? Math.sin(Math.PI*k)*Math.min(4, L*.08) : 0; } } });
+      return s;
+    }
     // the ball: at the feet of whoever has it, or on its way
     const H = c.holder, at = (kind, i) => kind === "me" ? s.me : kind === "mate" ? s.mates[i] : s.opps[i];
     const foot = (pt, toward) => { const dx = toward[0] - pt[0], dy = toward[1] - pt[1], L = Math.hypot(dx, dy) || 1; return [pt[0] + dx/L*.7, pt[1] + dy/L*.7]; };
     const goalOf = kind => kind === "opp" ? [25, 68] : [25, 0];
-    const start = H ? foot(at(H.kind, H.i), goalOf(H.kind)) : c.sc.ball.slice();
+    const start = H ? (c.throwIn ? at(H.kind, H.i).slice() : foot(at(H.kind, H.i), goalOf(H.kind))) : c.sc.ball.slice();
+    const OVER = 1.72;                                  // the ball on the thrower's raised hands (above its normal place)
+    s.throwK = c.throwIn ? 0 : null;                     // 0 = held over the head, 0–1 = being thrown
     if (plan && plan.ride){ const dir = plan.me; s.ball = foot(s.me, dist(s.me, dir) > .4 ? dir : [25, 0]); }
     else if (plan && plan.ball){
       const fly = (a, b, k) => { s.ball = lerp(a, b, k); const L = dist(a, b), shot = b[1] < 2; s.bh = shot ? k*.6 : L > 14 ? Math.sin(Math.PI*k)*Math.min(4, L*.08) : 0; };   // long passes lift, shots stay low
-      const st0 = H ? foot(H.kind === "me" ? c.me0 : at(H.kind, H.i), plan.ball) : c.sc.ball;
+      // a throw-in: from over the head, a soft lob that comes down at the receiver's feet
+      const toss = (a, b, k) => { s.ball = lerp(a, b, k); s.bh = OVER*(1 - k) + Math.sin(Math.PI*k)*Math.min(2.5, dist(a, b)*.1); s.throwK = k; };
+      const st0 = H ? (c.throwIn ? (H.kind === "me" ? c.me0 : at(H.kind, H.i)).slice() : foot(H.kind === "me" ? c.me0 : at(H.kind, H.i), plan.ball)) : c.sc.ball;
+      const first = c.throwIn ? toss : fly;
       if (plan.oneTwo){ const k1 = sm(p/.35), k2 = sm((p - .55)/.33);
-        if (k2 > 0) fly(plan.ball, foot(s.me, [25, 0]), k2); else fly(st0, plan.ball, k1); }
-      else fly(st0, plan.ball, sm((p - .05)/.55));
+        if (k2 > 0){ fly(plan.ball, foot(s.me, [25, 0]), k2); if (c.throwIn) s.throwK = 1; } else first(st0, plan.ball, k1); }
+      else first(st0, plan.ball, sm((p - .05)/.55));
     } else s.ball = start;
+    if (c.throwIn && s.throwK === 0) s.bh = OVER;
     return s;
+  }
+
+  // the thrower of a throw-in: faces into the pitch (towards the throw), both hands hold the ball over the head, and
+  // when it is thrown the arms go from behind the head over the top and forward; after it the arms come down
+  function throwPose(C, st){
+    const H = C.holder, g = H.kind === "me" ? C.meG : H.kind === "mate" ? C.matesG[H.i] : C.oppsG[H.i], u = g.userData, k = C.shown.throwK;
+    // (the name label goes up out of the way of the ball over the head)
+    if (u.lab) u.lab.position.y = k !== null && k !== undefined && k < .45 ? 3.2 : 2.2;
+    C.ballAt = null; if (k === null || k === undefined || k >= .45) return;
+    const me = [g.position.x + 25, g.position.z + 34], tgt = st.plan && st.plan.ball ? st.plan.ball : [25, me[1] + (H.kind === "opp" ? 6 : -6)];
+    u.body.rotation.y = Math.atan2(tgt[0] - me[0], tgt[1] - me[1]); u.body.rotation.x = 0; u.body.position.y = 0;
+    // arm angle about the shoulder: π = straight up; less = back behind the head, more = forward
+    const a = k <= 0 ? Math.PI - .45 : Math.PI - .45 + 1.9*Math.min(1, k/.2);
+    u.limbs.forEach(l => { l.arm.rotation.x = a; l.arm.rotation.z = l.sx*.12; l.leg.rotation.x = 0; });
+    // held: the ball sits in the hands, a little behind the head
+    if (k <= 0){ const b = W(me[0], me[1]); b.x -= Math.sin(u.body.rotation.y)*.22; b.z -= Math.cos(u.body.rotation.y)*.22; C.ballAt = b; }
   }
 
   // ---------- a clip player: put it in any scene, call update() every frame ----------
@@ -10374,6 +10625,7 @@ const CLIP3D = (() => {
       if (!p || st.r === undefined) return;
       const col = RCOL[st.r];
       marks.add(disc(p.spot[0], p.spot[1], Math.max(1.1, p.rad), col, .28, RMARK[st.r]));
+      if (p.seq){ p.segs.forEach(g => { if (dist(g.f, g.t) < 1) return; marks.add(g.k === "pass" ? arrow(g.f, g.t, "#ffffff", true, .85) : arrow(g.f, g.t, g.k === "me" ? col : COL.mate, false, g.k === "me" ? .75 : .6)); }); return; }
       // the line the answer takes: きみ's run and the ball (white dashed)
       if (p.me && dist(p.me, C.me0) > 1) marks.add(arrow(C.me0, p.me, col, false, .75));
       if (p.ball){ const H = C.holder, from = H ? (H.kind === "me" ? C.me0 : H.kind === "mate" ? C.mates0[H.i] : C.opps0[H.i]) : C.sc.ball; marks.add(arrow(from, p.ball, "#ffffff", true, .85)); }
@@ -10389,12 +10641,14 @@ const CLIP3D = (() => {
       if (playing){ C.t += dt*speed;
         if (C.t >= st.dur && P.voice && VOICE.busy) C.t = st.dur;   // still reading: wait
         else if (C.t >= st.dur){ if (C.i < C.steps.length - 1){ P.go(C.i + 1); st = C.steps[C.i]; ev.step = true; } else { C.t = st.dur; endWait += dt; if (endWait > 1.2){ endWait = -1e9; ev.end = true; } } } }
-      const p = st.plan ? (st.still ? 1 : clamp((C.t - .5)/MOVE)) : 0;
+      const p = st.plan ? (st.still ? 1 : clamp((C.t - .5)/(st.plan.move || MOVE))) : 0;
       const target = pose(C, st.plan, p), bl = sm(C.t/.5), mix = (a, b) => lerp(a, b, bl), prev = C.shown;
-      C.shown = {me:mix(C.from.me, target.me), mates:target.mates.map((v, i) => mix(C.from.mates[i], v)), opps:target.opps.map((v, i) => mix(C.from.opps[i], v)), ball:mix(C.from.ball, target.ball), bh:target.bh*bl};
+      C.shown = {me:mix(C.from.me, target.me), mates:target.mates.map((v, i) => mix(C.from.mates[i], v)), opps:target.opps.map((v, i) => mix(C.from.opps[i], v)), ball:mix(C.from.ball, target.ball), bh:(C.from.bh || 0) + (target.bh - (C.from.bh || 0))*bl, throwK:target.throwK};
       const bp = C.shown.ball;
       run(C.meG, prev.me, C.shown.me, dt, bp); C.matesG.forEach((g, i) => run(g, prev.mates[i], C.shown.mates[i], dt, bp)); C.oppsG.forEach((g, i) => run(g, prev.opps[i], C.shown.opps[i], dt, bp));
+      if (C.throwIn) throwPose(C, st);
       const bs = P.ballScale; ball.mesh.position.copy(W(bp[0], bp[1], .34*bs + C.shown.bh)); ball.mesh.scale.setScalar(bs);
+      if (C.ballAt){ ball.mesh.position.x = C.ballAt.x; ball.mesh.position.z = C.ballAt.z; }
       if (dist(prev.ball, bp) > 1e-4){ ball.mesh.rotation.x -= (bp[1] - prev.ball[1])*2; ball.mesh.rotation.z += (bp[0] - prev.ball[0])*2; }
       ball.ring.position.copy(W(bp[0], bp[1], .04)); ball.ring.scale.setScalar(P.ringScale*(1 + .16*Math.sin(now/220)));
       marks.children.forEach(m => { if (m.userData.pulse) m.userData.pulse.material.opacity = .22 + .12*Math.sin(now/260); });
@@ -10432,6 +10686,170 @@ const CLIP3D = (() => {
   return {W, lin, COL, RCOL, RMARK, RNAME, MOVE, clamp, sm, lerp, dist, esc,
     pitchTexture, label, makePlayer, arrow, disc, makeBall, addPitch, run, plan, pose, player, fitBox, eyeCam};
 })();
+
+// ===== MAESTRO TACTICS GUIDE: categories per position =====
+// Each position has a few categories of what that position does; every drill question is in one of them, chosen by
+// what its ◎ answer teaches (sorted 2026-10-19). A new question without an entry here is not shown in the guide.
+const GUIDE_CATS = {
+ "GK": [
+  {
+   "id": "build",
+   "name": "ビルドアップ",
+   "sub": "ゴールキックやキャッチのあと、短くつなぐか大きくけるか"
+  },
+  {
+   "id": "save",
+   "name": "ゴールを守る",
+   "sub": "シュート・1対1・ニアをふさぐ・立ち位置・クロスに声を出して前に出る"
+  },
+  {
+   "id": "sweep",
+   "name": "うらのカバー",
+   "sub": "DFのうしろへのボールに飛び出す・高い位置をとる"
+  },
+  {
+   "id": "set",
+   "name": "セットプレーの守り",
+   "sub": "相手のCK・FKでの立ち位置・かべ・マーク"
+  }
+ ],
+ "FW": [
+  {
+   "id": "goal",
+   "name": "ゴールをねらう",
+   "sub": "シュート・ドリブルでゴールへ向かう・シュートを選ぶ"
+  },
+  {
+   "id": "recv",
+   "name": "受ける・うらへぬける",
+   "sub": "動き出し・ななめにずれる・相手のあいだで受ける・前を向く"
+  },
+  {
+   "id": "link",
+   "name": "味方を使う",
+   "sub": "おとり・スペースをつくる・ワンツー・落とし・パスを選ぶ"
+  },
+  {
+   "id": "press",
+   "name": "前から守る",
+   "sub": "プレス・とられた直後・守備の位置"
+  },
+  {
+   "id": "set",
+   "name": "セットプレー",
+   "sub": "キックオフ・CK・FK・スロー・ゴールキック"
+  }
+ ],
+ "CH": [
+  {
+   "id": "recv",
+   "name": "受けて前を向く",
+   "sub": "見る・ヘソの向き・相手のあいだで受ける・立ち位置"
+  },
+  {
+   "id": "pass",
+   "name": "つなぐ・運ぶ",
+   "sub": "パスの出しどころ・前へ運ぶ・突破のパス・ビルドアップ"
+  },
+  {
+   "id": "def",
+   "name": "守る",
+   "sub": "カバー・はさむ・パスコースを消す・スライド・ゴール前"
+  },
+  {
+   "id": "trans",
+   "name": "切りかえ",
+   "sub": "ボールをとられた瞬間・とった瞬間のプレー"
+  },
+  {
+   "id": "set",
+   "name": "セットプレー",
+   "sub": "キックオフ・CK・FK・スロー・ゴールキック"
+  }
+ ],
+ "SH": [
+  {
+   "id": "recv",
+   "name": "サイドで受ける",
+   "sub": "広がる・相手のわきで受ける・立ち位置・見る"
+  },
+  {
+   "id": "attack",
+   "name": "突破・クロス・シュート",
+   "sub": "ドリブル突破・クロス・シュート・ワンツー"
+  },
+  {
+   "id": "def",
+   "name": "サイドで守る",
+   "sub": "正面に立って中へ追いこむ・もどる・スライド・プレス"
+  },
+  {
+   "id": "trans",
+   "name": "切りかえ",
+   "sub": "ボールをとられた瞬間・とった瞬間のプレー"
+  },
+  {
+   "id": "set",
+   "name": "セットプレー",
+   "sub": "スローイン・CK・FK・キックオフ・ゴールキック"
+  }
+ ],
+ "SB": [
+  {
+   "id": "build",
+   "name": "ビルドアップ",
+   "sub": "受ける・つなぐ・パスの出しどころ・立ち位置"
+  },
+  {
+   "id": "up",
+   "name": "上がってせめる",
+   "sub": "運ぶ・追いこす・クロス・攻撃参加"
+  },
+  {
+   "id": "duel",
+   "name": "1対1で守る",
+   "sub": "正面に立つ・とびこまない・おくらせる・守りの順番"
+  },
+  {
+   "id": "cover",
+   "name": "カバー・ゴール前",
+   "sub": "カバー・スライド・ゴール前のマーク・切りかえの守り"
+  },
+  {
+   "id": "set",
+   "name": "セットプレー",
+   "sub": "スローイン・CK・FK・キックオフ・ゴールキック"
+  }
+ ],
+ "CB": [
+  {
+   "id": "build",
+   "name": "ビルドアップ",
+   "sub": "つなぐ・運ぶ・大きくける・受ける前に見る・とった直後の最初のパス"
+  },
+  {
+   "id": "box",
+   "name": "ゴール前を守る",
+   "sub": "マーク・シュートコースに入る・クロス・同一視野"
+  },
+  {
+   "id": "cover",
+   "name": "カバー・ラインの上げ下げ",
+   "sub": "カバー・スライド・ラインを上げる下げる・とられた直後の戻り"
+  },
+  {
+   "id": "duel",
+   "name": "1対1",
+   "sub": "とびこまない・おくらせる・守りの順番"
+  },
+  {
+   "id": "set",
+   "name": "セットプレー",
+   "sub": "CK・FK・スロー・ゴールキック・キックオフ"
+  }
+ ]
+};
+const GUIDE_CAT_OF = {"b01":"build","bo01":"recv","bo02":"build","bo03":"recv","bo04":"recv","bo05":"recv","bo06":"recv","bo07":"build","bo08":"recv","bo09":"build","bo10":"build","br01":"pass","br02":"build","br03":"attack","br04":"attack","br05":"goal","br06":"recv","br07":"pass","br08":"attack","br09":"recv","br10":"link","br11":"pass","bx01":"save","bx02":"box","bx03":"def","bx04":"box","bx05":"box","bx06":"box","bx07":"def","bx08":"box","bx09":"save","bx10":"box","ca01":"build","ca02":"pass","ca03":"up","ca04":"build","ca05":"build","ca06":"pass","ca07":"up","ca08":"pass","ca09":"pass","ca10":"build","ck01":"set","ck02":"set","ck03":"set","ck04":"set","ck05":"set","ck06":"set","ck07":"set","ck08":"set","ck09":"set","ck10":"set","ck11":"set","ck12":"set","ck13":"set","ck14":"set","ck15":"set","ck16":"set","ck17":"set","ck18":"set","ck19":"set","ck20":"set","ck21":"set","ck22":"set","ck23":"set","ck24":"set","ck25":"set","ck26":"set","ck27":"build","ck28":"set","cv01":"def","cv02":"cover","cv03":"def","cv04":"cover","cv05":"def","cv06":"def","cv07":"def","cv08":"def","cv09":"sweep","cv10":"press","ex01":"attack","ex02":"recv","ex03":"link","ex04":"pass","ex05":"recv","ex06":"build","ex07":"def","ex08a":"trans","ex08b":"trans","ex09":"def","ex10":"press","ex11":"def","ex12":"trans","ex13":"trans","ex14":"trans","ex15":"link","fk01":"set","fk02":"set","fk03":"set","fk04":"set","fk05":"set","fk06":"set","fk07":"set","fk08":"set","fk09":"set","fk10":"set","fk11":"set","fk12":"set","fk13":"set","fk14":"set","fk15":"set","fk16":"set","fk17":"set","fk18":"set","fk19":"set","fk20":"set","fk21":"set","fk22":"set","fk23":"set","fk24":"set","fk25":"set","fk26":"set","fk27":"set","fk28":"set","fr01":"recv","fr02":"pass","fr03a":"link","fr03b":"recv","fr04":"recv","fr05":"recv","fr06":"build","fr07":"recv","fr08":"build","fr09":"build","fr10":"link","fr11":"up","fr12a":"build","fr12b":"build","fr13":"up","fr14":"build","fr15":"recv","fr16":"recv","fr17":"link","fr18":"up","fr19a":"up","fr19b":"up","fr20":"recv","fr21":"pass","fr22":"recv","fr23":"recv","fr24":"build","fr25":"pass","fr26":"attack","fr27":"link","g01":"goal","ga01":"goal","ga02":"pass","ga03":"link","ga04":"build","ga05":"recv","ga06":"recv","ga07":"recv","ga08":"recv","ga09":"build","ga10":"attack","gk01":"build","gk02":"set","gk03":"build","gk04":"set","gk05":"set","gk06":"set","gk07":"set","gk08":"set","gk09":"set","gk10":"build","gk11":"set","gk12":"set","gk13":"build","gk14":"build","gk15":"build","gk16":"build","gk17":"set","gk18":"set","gk19":"set","gk20":"set","gk21":"set","gk22":"set","gk23":"set","gk24":"set","gk25":"set","gk26":"set","gk27":"set","gk28":"sweep","k01a":"pass","k01b":"pass","ko01":"set","ko02":"set","ko03":"set","ko04":"set","ko05":"set","ko06":"set","ko07":"set","ko08":"set","ko09":"set","ko10":"set","ko11":"set","ko12":"set","ko13":"set","ko14":"set","ko15":"set","ko16":"set","ko17":"set","ko18":"set","ko19":"set","ko20":"set","ko21":"set","ko22":"set","ko23":"set","ko24":"set","l01":"recv","la01":"recv","la02":"recv","la03":"build","la04":"pass","la05":"recv","la06":"up","la07":"up","la08":"recv","la09":"recv","la10":"recv","ls01":"press","ls02":"cover","ls03":"duel","ls04":"trans","ls05a":"trans","ls05b":"trans","ls06":"trans","ls07":"trans","ls08":"trans","ls09":"duel","ls10":"trans","na01":"recv","na02":"recv","na03":"recv","na04":"recv","na05":"build","na06":"recv","na07":"build","na08":"recv","na09":"link","na10":"recv","na11":"build","na12":"build","na13":"up","na14":"pass","na15":"recv","na16":"build","na17":"attack","na18":"attack","na19":"build","na20":"recv","na21":"build","na22":"pass","na23":"up","na24":"attack","nb01":"cover","nb02":"def","nb03":"cover","nb04":"def","nb05":"cover","nb06":"duel","nb07":"duel","nb08":"def","nb09":"duel","nb10":"def","nb11":"def","nb12":"def","nb13":"def","nb14":"box","nb15":"box","nb16":"cover","nb17":"sweep","nb18":"press","nb19":"def","nb20":"def","nb21":"press","nb22":"press","nb23":"def","nb24":"def","nc01":"box","nc02":"trans","nc03":"trans","nc04":"trans","nc05":"sweep","nc06":"trans","nc07":"trans","nc08":"cover","nc09":"trans","nc10":"build","nc11":"recv","nc12":"trans","nc13":"build","nc14":"recv","nc15":"trans","nc16":"trans","nc17":"trans","nc18":"trans","nc19":"goal","nc20":"recv","nc21":"goal","nc22":"recv","nc23":"recv","nc24":"recv","nd01":"set","nd02":"set","nd03":"set","nd04":"set","nd05":"set","nd06":"set","nd07":"set","nd08":"set","nd09":"set","nd10":"set","nd11":"set","nd12":"set","nd13":"set","nd14":"set","nd15":"set","nd16":"set","nd17":"build","nd18":"set","nd19":"set","nd20":"set","nd21":"set","nd22":"set","nd23":"set","nd24":"set","o01":"duel","od01":"duel","od02":"duel","od03":"duel","od04":"duel","od05":"duel","od06":"def","od07":"def","od08":"box","od09":"cover","od10":"press","p01":"recv","pa01":"recv","pa02":"recv","pa03":"build","pa04":"recv","pa05":"build","pa06":"recv","pa07":"recv","pa08":"build","pa09":"recv","pa10":"build","pa11":"recv","pr01":"press","pr02":"press","pr03":"press","pr04":"press","pr05":"def","pr06":"def","pr07":"def","pr08":"def","pr09":"def","pr10":"press","pr11":"def","pr12":"def","pr13":"def","pr14":"def","pr15":"def","pr16":"def","pr17":"press","pr18":"cover","pr19":"press","pr20":"def","pr21":"duel","pr22":"def","pr23":"def","pr24":"press","pr25":"press","pr26":"def","pr27":"def","pr28":"press","s01":"def","sl01":"def","sl02":"def","sl03":"def","sl04":"press","sl05":"def","sl06":"def","sl07":"duel","sl08":"cover","sl09":"press","sl10":"def","tb01":"recv","tb02":"recv","tb03":"build","tb04":"build","tb05":"recv","tb06":"recv","tb07":"pass","tb08":"pass","tb09":"pass","tb10":"pass","tb11":"pass","tb12":"pass","tb13":"cover","tb14":"def","tb15":"cover","tb16":"def","tb17":"duel","tb18":"duel","tb19":"trans","tb20":"cover","tb21":"cover","tb22":"press","tb23":"trans","tb24":"build","tb25":"trans","tb26":"trans","tb27":"goal","tb28":"trans","tb29":"recv","tb30":"recv","tb31":"recv","tb32":"goal","tc01":"def","tc02":"cover","tc03":"def","tc04":"def","tc05":"cover","tc06":"def","tc07":"duel","tc08":"box","tc09":"box","tc10":"box","tc11":"duel","tc12":"cover","tc13":"cover","tc14":"def","tc15":"cover","tc16":"cover","tc17":"cover","tc18":"goal","tc19":"recv","tc20":"goal","tc21":"goal","tc22":"pass","tc23":"attack","tc24":"pass","tc25":"attack","tc26":"pass","tc27":"attack","tc28":"def","tc29":"duel","tc30":"duel","tc31":"duel","tc32":"cover","te01":"attack","te02":"attack","te03":"recv","te04":"recv","te05":"recv","te06":"recv","te07":"build","te08":"up","te09":"recv","te10":"build","te11":"recv","te12":"recv","te13":"pass","te14":"pass","te15":"attack","te16":"attack","te17":"build","te18":"attack","te19":"press","te20":"def","te21":"cover","te22":"cover","te23":"def","te24":"def","te25":"def","te26":"def","te27":"cover","te28":"def","te29":"cover","te30":"press","te31":"trans","te32":"trans","te33":"trans","te34":"build","te35":"build","te36":"trans","th01":"recv","th02":"recv","th03":"recv","th04":"pass","th05":"attack","th06":"attack","th07":"up","th08":"up","th09":"build","th10":"build","th11":"build","ti01":"set","ti02":"set","ti03":"set","ti04":"set","ti05":"set","ti06":"set","ti07":"set","ti08":"set","ti09":"set","ti10":"set","ti11":"set","ti12":"set","ti13":"set","ti14":"set","ti15":"set","ti16":"set","ti17":"set","ti18":"set","ti19":"set","ti20":"set","ti21":"set","ti22":"set","ti23":"set","ti24":"set","ti25":"set","ti26":"set","ti27":"set","ti28":"set","tn01":"goal","tn02":"up","tn03":"link","tn04":"recv","tn05":"recv","tn06":"recv","tn07":"build","tn08":"recv","tn09":"build","tn10":"recv","tn11":"build","tn12":"build","tn13":"build","tn14":"pass","tn15":"up","tn16":"attack","tn17":"goal","tn18":"link","tn19":"press","tn20":"save","tn21":"def","tn22":"cover","tn23":"def","tn24":"def","tn25":"cover","tn26":"cover","tn27":"def","tn28":"cover","tn29":"box","tn30":"def","tn31":"cover","tn32":"trans","tn33":"trans","tn34":"trans","tn35":"recv","tn36":"build","tw01":"attack","tw02":"set","tw03":"attack","tw04":"set","tw05":"set","tw06":"build","tw07":"recv","tw08":"recv","tw09":"recv","tw10":"set","tw11":"recv","tw12":"recv","tw13":"pass","tw14":"pass","tw15":"pass","tw16":"link","tw17":"build","tw18":"attack","tw19":"box","tw20":"cover","tw21":"cover","tw22":"def","tw23":"cover","tw24":"cover","tw25":"cover","tw26":"press","tw27":"press","tw28":"set","tw29":"cover","tw30":"def","tw31":"trans","tw32":"press","tw33":"press","tw34":"trans","tw35":"trans","tw36":"build","tz01":"trans","tz02":"trans","tz03":"trans","tz04":"trans","tz05":"trans","tz06":"trans","tz07":"build","tz08":"trans","tz09":"goal","tz10":"goal","tz11":"goal","tz12":"up","tz13":"attack","tz14":"attack","tz15":"up","tz16":"pass","tz17":"recv","tz18":"recv","tz19":"cover","tz20":"press","tz21":"set","tz22":"set","tz23":"set","tz24":"set","tz25":"set","tz26":"build","tz27":"set","tz28":"cover","tz29":"cover","tz30":"trans","tz31":"pass","tz32":"recv","ua01":"attack","ua02":"goal","ua03":"attack","ua04":"recv","ua05":"goal","ua06":"goal","ua07":"attack","ua08":"recv","ua09":"recv","ua10":"recv","ua11":"recv","ua12":"recv","ua13":"build","ua14":"attack","ua15":"recv","ua16":"recv","ua17":"recv","ua18":"pass","ua19":"recv","ua20":"recv","ua21":"recv","ua22":"attack","ua23":"attack","ua24":"attack","ua25":"link","ua26":"goal","ua27":"build","ua28":"recv","ub01":"duel","ub02":"duel","ub03":"duel","ub04":"duel","ub05":"def","ub06":"press","ub07":"def","ub08":"save","ub09":"sweep","ub10":"save","ub11":"build","ub12":"box","ub13":"box","ub14":"cover","ub15":"trans","ub16":"trans","ub17":"trans","ub18":"trans","ub19":"trans","ub20":"press","ub21":"trans","ub22":"build","ub23":"build","ub24":"trans","ub25":"trans","ub26":"build","ub27":"goal","ub28":"trans","uc01":"attack","uc02":"link","uc03":"goal","uc04":"attack","uc05":"goal","uc06":"goal","uc07":"build","uc08":"recv","uc09":"recv","uc10":"recv","uc11":"recv","uc12":"build","uc13":"pass","uc14":"build","uc15":"build","uc16":"pass","uc17":"build","uc18":"pass","uc19":"goal","uc20":"goal","uc21":"link","uc22":"recv","uc23":"def","uc24":"def","uc25":"duel","uc26":"duel","uc27":"cover","uc28":"box","uc29":"duel","uc30":"box","uc31":"cover","uc32":"save","ud01":"trans","ud02":"cover","ud03a":"trans","ud03b":"trans","ud04":"press","ud05":"duel","ud06":"link","ud07a":"recv","ud07b":"recv","ud08":"trans","ud09":"link","ud10":"build","ud11":"set","ud12":"set","ud13":"set","ud14":"set","ud15":"set","ud16":"set","ud17":"set","ud18":"set","ud19":"set","ud20":"set","ud21":"set","ud22":"set","ud23":"set","ud24":"set","ud25":"set","ud26":"build","ud27":"set","ud28":"set","ud29":"set","ud30":"set","v01":"pass","w01":"trans","wn01":"build","wn02":"trans","wn03":"recv","wn04":"trans","wn05":"trans","wn06a":"build","wn06b":"build","wn07":"trans","wn08":"build","wn09":"recv","wn10":"trans","xe01":"link","xe02":"goal","xe03":"build","xe04":"recv","xe05":"pass","xe06":"link","xe07":"duel","xe08":"cover","xe09":"def","xe10":"box","xe11":"trans","xe12":"trans","xe13":"pass","xe14":"recv","yg01":"recv"};
 
 
 // ===== MAESTRO TACTICS GUIDE (3D解説): watch-only page =====
@@ -10531,42 +10949,57 @@ const X3 = (() => {
 })();
 
 
-// ---------- the page: grade, theme and scene lists ----------
+// ---------- the page: grade, position, category and scene lists ----------
+// Position first, then a few categories of what that position does (GUIDE_CATS / GUIDE_CAT_OF in guide-cats.js:
+// every question sorted by what its ◎ answer teaches), then the scenes.
 (() => {
   if (!X3) return;
   const $ = id => document.getElementById(id);
-  const PH_ORDER = ["atk", "def", "lost", "won", "set"];
-  let theme = null, list = [], qi = 0;
-  const qsFor = th => Q.filter(q => q.th === th && q.g[0] <= S.grade && S.grade <= q.g[1]);
+  // きみ's position in the scene, grouped the way a team talks about them
+  const POS = [["FW","フォワード",["FW","CF"]], ["CH","センターハーフ",["CH","CM","DM","OH"]], ["SH","サイドハーフ",["LH","RH"]],
+               ["SB","サイドバック",["LB","RB"]], ["CB","センターバック",["CB"]], ["GK","ゴールキーパー",["GK"]]];
+  let pos = (() => { try{ return localStorage.getItem("x3_pos") || "FW"; }catch(e){ return "FW"; } })();
+  if (!POS.some(p => p[0] === pos)) pos = "FW";
+  let cat = null, list = [], qi = 0;
+  const inPos = (q, p=pos) => POS.find(x => x[0] === p)[2].includes(q.scene.me[0]);
+  const forGrade = q => q.g[0] <= S.grade && S.grade <= q.g[1];
+  const qsFor = c => Q.filter(q => forGrade(q) && inPos(q) && GUIDE_CAT_OF[q.id] === c);
+  const cats = () => GUIDE_CATS[pos], catOf = id => cats().find(c => c.id === id);
   const esc = t => String(t).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   function grades(){
     $("grades").innerHTML = [9, 10, 11, 12].map(g => `<button data-g="${g}" aria-pressed="${g === S.grade}">U-${g}</button>`).join("");
   }
-  function themes(){
-    $("themes").innerHTML = PH_ORDER.map(ph => {
-      const ts = THEMES.filter(t => t.ph === ph); if (!ts.length) return "";
-      return `<div class="phase">${esc(PHASES[ph].name)}<span style="font-weight:400"> ― ${esc(PHASES[ph].sub)}</span></div><div class="themes">${ts.map(t => { const n = qsFor(t.id).length;
-        return `<button data-th="${t.id}" aria-pressed="${t.id === theme}" ${n ? "" : "disabled"}>${esc(K(t.name))} <small style="opacity:.7">${n}</small></button>`; }).join("")}</div>`; }).join("");
+  function positions(){
+    $("pos").innerHTML = POS.map(([k, name]) => { const n = Q.filter(q => forGrade(q) && inPos(q, k)).length;
+      return `<button data-pos="${k}" aria-pressed="${k === pos}" ${n ? "" : "disabled"}><b>${k}</b><small>${esc(name)} ${n}</small></button>`; }).join("");
+  }
+  function categories(){
+    $("themes").innerHTML = `<div class="cats">${cats().map(c => { const n = qsFor(c.id).length;
+      return `<button data-th="${c.id}" aria-pressed="${c.id === cat}" ${n ? "" : "disabled"}><b>${esc(K(c.name))}</b><small>${esc(K(c.sub))}</small><i>${n}</i></button>`; }).join("")}</div>`;
   }
   function scenes(){
-    const t = TH[theme]; $("aim").textContent = K(t.aim);
+    $("aim").hidden = true;   // (each category button already says what it is about)
     $("qs").innerHTML = list.map((q, i) => `<button data-qi="${i}" aria-current="${i === qi}"><b>${String(i + 1).padStart(2, "0")}</b><span>${esc(K(q.q))}<br><small style="color:var(--muted)">きみ：${esc(q.scene.me[0])}　${q.scene.f}</small></span></button>`).join("");
   }
   function show(i, autoplay=true){
-    qi = i; const q = list[qi], t = TH[theme];
-    X3.load(q, `${K(t.name)}  ${qi + 1}/${list.length}  ・ きみ：${q.scene.me[0]}  ・ ${q.scene.f}`, autoplay);
+    qi = i; const q = list[qi];
+    X3.load(q, `${pos} ・ ${K(catOf(cat).name)}  ${qi + 1}/${list.length}  ・ きみ：${q.scene.me[0]}  ・ ${q.scene.f}`, autoplay);
     scenes(); const b = document.querySelector(`#qs [data-qi="${qi}"]`); if (b && window.innerWidth > 900) b.scrollIntoView({block:"nearest"});
   }
-  function pickTheme(id, autoplay=true){
-    theme = id; list = qsFor(id); themes();
-    if (!list.length){ const first = THEMES.find(t => qsFor(t.id).length); if (first && first.id !== id) return pickTheme(first.id, autoplay); }
+  function pickCat(id, autoplay=true){
+    if (!catOf(id)) id = cats()[0].id;
+    cat = id; list = qsFor(id); positions(); categories();
+    if (!list.length){ const first = cats().find(c => qsFor(c.id).length); if (first) return pickCat(first.id, autoplay);
+      // nothing for this position at this grade: the first position that has scenes
+      const p = POS.find(x => Q.some(q => forGrade(q) && inPos(q, x[0]))); if (p && p[0] !== pos){ pos = p[0]; return pickCat(null, autoplay); } return; }
     show(0, autoplay);
   }
-  $("grades").addEventListener("click", e => { const b = e.target.closest("[data-g]"); if (!b) return; S.grade = +b.dataset.g; try{ localStorage.setItem("x3_grade", S.grade); }catch(err){} grades(); pickTheme(theme); });
-  $("themes").addEventListener("click", e => { const b = e.target.closest("[data-th]"); if (b && !b.disabled) pickTheme(b.dataset.th); });
+  $("grades").addEventListener("click", e => { const b = e.target.closest("[data-g]"); if (!b) return; S.grade = +b.dataset.g; try{ localStorage.setItem("x3_grade", S.grade); }catch(err){} grades(); pickCat(cat); });
+  $("pos").addEventListener("click", e => { const b = e.target.closest("[data-pos]"); if (!b || b.disabled) return; pos = b.dataset.pos; try{ localStorage.setItem("x3_pos", pos); }catch(err){} pickCat(null); });
+  $("themes").addEventListener("click", e => { const b = e.target.closest("[data-th]"); if (b && !b.disabled) pickCat(b.dataset.th); });
   $("qs").addEventListener("click", e => { const b = e.target.closest("[data-qi]"); if (b) show(+b.dataset.qi); });
   X3.onEnd = () => { if ($("auto").checked && qi < list.length - 1) show(qi + 1); };
-  grades(); pickTheme(THEMES[0].id, false);
+  grades(); pickCat(null, false);
 })();
 
 </script>
