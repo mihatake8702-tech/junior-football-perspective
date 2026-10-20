@@ -5186,7 +5186,7 @@ D({id:"tw18", th:"carry", type:"tap", target:"dribble", g:[12,12],
  zones:[
   {c:[13,24], rad:3.5, r:2, why:"ななめに中へ運ぶと、相手SBは中をしめに来る。するとその外があいて、追いこしたLBへパスが出せる。SBが来なければ、そのまま中へ。"},
   {c:[8,25], rad:2.5, r:1, why:"まっすぐSBに向かうのもあり。でもSBはきみとLBの両方を見やすい。"}],
- miss:"タッチラインの方へ運ぶと、LBが走るスペースをつぶしてしまう。うしろへもどると、チャンスがへる。",
+ missAt:[3,28], miss:"タッチラインの方へ運ぶと、LBが走るスペースをつぶしてしまう。うしろへもどると、チャンスがへる。",
  point:"外を追いこす味方がいたら、中へ運んで相手をひきつける。"});
 
 // ---------- 守りの順番（order） ----------
@@ -6085,7 +6085,7 @@ D({id:"ud06", th:"won", type:"tap", target:"ball", look:3, g:[9,10],
  zones:[
   {c:[24,11], rad:3.5, r:2, why:"ゴールの前のFWがフリーだった。相手がととのう前に、まずゴールへ。フリーの味方に出せば、すぐシュートできる。"},
   {c:[22,1], rad:3, r:1, why:"自分でシュートするのも、ゴールをねらっていていい。でもここからだと角度がなくて、GKにとられやすい。"}],
- miss:"うしろの味方にもどすと、相手がもどってきて、チャンスがなくなる。うばったら、まずゴールの近く（前）をねらおう。",
+ missAt:[8,24], miss:"うしろの味方にもどすと、相手がもどってきて、チャンスがなくなる。うばったら、まずゴールの近く（前）をねらおう。",
  point:"うばったら、まず前。ゴールの前のフリーの味方へ。"});
 
 // --- ペア：相手DFが高い → うら／相手DFがもう下がっている → 近くで受ける ---
@@ -6780,7 +6780,7 @@ D({id:"tb30", th:"body", type:"tap", target:"dribble", look:3, g:[10,11],
  zones:[
   {c:[25,17], rad:4, r:2, why:"うしろの相手CBははなれていた。受けながら前を向けば、そのままゴールへ向かえる。"},
   {c:[25,28], rad:3, r:1, why:"うしろ向きのままキープするのも、とられにくい。でも相手CBは遠かったので、前を向けるチャンスだった。"}],
- miss:"うしろの相手CBははなれていた。受ける前に見ていれば、前を向いてゴールへ行ける。",
+ missAt:[25,33], miss:"うしろの相手CBははなれていた。受ける前に見ていれば、前を向いてゴールへ行ける。",
  point:"受ける前にうしろを見る。相手が遠ければ、前を向く。"});
 
 // --- 相手と相手のあいだで、体をひらいて受ける（OH 2-1-2-1） ---
@@ -9682,7 +9682,7 @@ D({id:"na22", th:"goal", type:"tap", target:"ball", g:[9,10],
  zones:[
   {c:[24,10], rad:4, r:2, why:"相手DFのうら。走っているCFの前に出せば、CFはそのままゴールへ向かっていける。"},
   {c:[22,21], rad:3, r:1, why:"CFにはとどく。でも足もとだと、相手DFの前で止まって受けることになり、ゴールが遠い。"}],
- miss:"そこは相手の近くか、ゴールから遠い。CFが走っていく先、相手DFのうらをねらおう。",
+ missAt:[15,21], miss:"そこは相手の近くか、ゴールから遠い。CFが走っていく先、相手DFのうらをねらおう。",
  point:"シュートできないなら、相手のうらへ。"});
 
 // --- DFでも、ゴールが見えたらうつ（RB 3-3-1） ---
@@ -10612,7 +10612,7 @@ D({id:"nc05", th:"lost", type:"tap", target:"me", g:[11,12],
  zones:[
   {c:[25,54], rad:3.5, r:2, why:"DFのうしろには広いスペースがある。GKがPAの前まで出ておけば、うらへの長いボールに先にさわれる。GKもうしろの守りの1人。"},
   {c:[25,59], rad:3, r:1, why:"前に出たのはいい。でもまだうしろのスペースが広くて、長いボールに間に合わないかもしれない。"}],
- miss:"ゴールの前にいたままだと、長いボール1本で相手FWとGKの1対1。出すぎると、頭の上をこえるシュートをうたれる。DFのうしろのスペースをうめる場所に立とう。",
+ missAt:[27,45], miss:"ゴールの前にいたままだと、長いボール1本で相手FWとGKの1対1。出すぎると、頭の上をこえるシュートをうたれる。DFのうしろのスペースをうめる場所に立とう。",
  point:"DFが上がっているときにとられたら、GKも前に出てうしろをうめる。"});
 
 // --- 近くの人数で決める（ペア：3-3-1 CH） ---
@@ -11981,13 +11981,48 @@ const CLIP3D = (() => {
       if (!p.spot) p.spot = me0; return passToMe(p, o.r); };
     const planTap = z => { const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:z.c, rad:z.rad};
       if (q.target === "ball") p.ball = z.c; else { p.me = z.c; p.ride = hasBall && q.target === "dribble"; } return passToMe(p, z.r); };
+    // tap questions: the ✕ step shows a tempting wrong move (q.missAt sets it by hand; otherwise found from the scene):
+    //   pass → to the team-mate an opponent is closest to; dribble → straight at the nearest opponent in front;
+    //   stand → right behind or next to an opponent near the ◎ place (in his shadow, where the ball cannot come)
+    const missSpot = () => {
+      if (q.missAt) return q.missAt.slice();
+      const zs = q.zones || [], inZone = p => zs.some(z => dist(p, z.c) < z.rad + 1.5);
+      const onPitch = p => p[0] > 1 && p[0] < 49 && p[1] > 1 && p[1] < 67;
+      const nearOpp = p => Math.min(...opps0.map(o => dist(o, p)));
+      if (q.target === "ball"){
+        let best = null, bd = 6; sc.mates.forEach((m, i) => { const p = mates0[i]; if (m[0] === "GK" || inZone(p)) return; const d = nearOpp(p); if (d < bd){ bd = d; best = p; } });
+        if (best) return best.slice();
+        // nobody covered: a pass straight to the opponent nearest the ◎ place (he takes it)
+        const Z = (zs.find(z => z.r === 2) || zs[0]).c; let o = null, od = 1e9; opps0.forEach(x => { const d = dist(x, Z); if (d < od && dist(x, sc.ball) > 4){ od = d; o = x; } });
+        if (!o) return null; const L = dist(o, sc.ball) || 1, p = [o[0] + (sc.ball[0] - o[0])/L*.9, o[1] + (sc.ball[1] - o[1])/L*.9];
+        return !inZone(p) && onPitch(p) ? p : null;
+      }
+      if (q.target === "dribble"){
+        let best = null, bd = 18; opps0.forEach(o => { if (o[1] >= me0[1] - 1) return; const d = dist(o, me0); if (d < bd){ bd = d; best = o; } });
+        if (!best){ bd = 25; opps0.forEach(o => { const d = dist(o, me0); if (d < bd && d > 2.5){ bd = d; best = o; } }); }
+        if (!best) return null; const L = dist(best, me0) || 1, p = [best[0] + (me0[0] - best[0])/L*1.6, best[1] + (me0[1] - best[1])/L*1.6];
+        return !inZone(p) && onPitch(p) ? p : null;
+      }
+      const Z = (zs.find(z => z.r === 2) || zs[0] || {c:me0}).c;
+      // (first close to the ◎ place; if nothing fits there, a little further and wider round the opponents)
+      for (const [far, ring, more] of [[16, 1.7, 10], [26, 2.4, 18]]){
+        let best = null, bs = 1e9; const reach = dist(me0, Z) + more;
+        opps0.forEach(o => { if (dist(o, Z) > far) return;
+          for (let k = 0; k < 12; k++){ const a = k*Math.PI/6, p = [o[0] + Math.sin(a)*ring, o[1] + Math.cos(a)*ring];
+            if (inZone(p) || !onPitch(p) || dist(p, me0) > reach || dist(p, me0) < 2.5 || mates0.some(m => dist(m, p) < 2.2) || nearOpp(p) < 1.5) continue;
+            // behind the opponent as seen from the ball = in his shadow
+            const bo = [o[0] - sc.ball[0], o[1] - sc.ball[1]], op = [p[0] - o[0], p[1] - o[1]], cos = (bo[0]*op[0] + bo[1]*op[1])/((Math.hypot(...bo) || 1)*ring);
+            const sc2 = dist(p, Z) - cos*6; if (sc2 < bs){ bs = sc2; best = p; } } });
+        if (best) return best; }
+      return null;
+    };
     // the steps of the clip
     const steps = [{k:"じょうきょう", short:"状況", text:q.situ}, {k:"もんだい", short:"問題", title:q.q}];
     if (q.type === "pick") q.opts.map((o, i) => ({o, i})).sort((a, b) => b.o.r - a.o.r || a.i - b.i).forEach(({o}) =>
       steps.push({k:RNAME[o.r], short:RMARK[o.r], r:o.r, title:o.t, text:o.why, plan:planOpt(o)}));
     else {
       q.zones.slice().sort((a, b) => b.r - a.r).forEach(z => steps.push({k:RNAME[z.r], short:RMARK[z.r], r:z.r, title:z.r === 2 ? (q.target === "ball" ? "ここへパス！" : "ここに立つ！") : (q.target === "ball" ? "ここへのパスもあり" : "ここもあり"), text:z.why, plan:planTap(z)}));
-      if (q.miss) steps.push({k:RNAME[0], short:RMARK[0], r:0, title:"こうするとダメ", text:q.miss, plan:null});
+      if (q.miss){ const m = missSpot(); steps.push({k:RNAME[0], short:RMARK[0], r:0, title:"こうするとダメ", text:q.miss, plan:m ? planTap({c:m, rad:1.6, r:0}) : null}); }
     }
     const best = steps.find(s => s.r === 2);
     if (q.point) steps.push({k:"ポイント", short:"ポイント", cls:"pt", text:q.point, plan:best && best.plan, still:true, r:best ? 2 : undefined});
