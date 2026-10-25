@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1310">
+<meta name="description" content="8人制サッカーのポジション別レッスン。見たい動きを選んで、3Dのお手本とスロー解説で見て学ぶ。">
+<title>MAESTRO LESSONS</title>
+<link rel="icon" href="../board/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* ポジションのタブ → 見たい動きのカード → 押すとボードのレッスンモードで再生（../board/?lesson=ID） */
+:root{
+  --bg:#0b1310; --surface:#121c18; --surface-2:#1a2620; --line:#26362e;
+  --fg:#eef5f0; --muted:#8fa498; --accent:#ff6b2c; --accent-ink:#1b0a03; --mate:#ffd23d;
+  --display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.7;margin:0;padding:22px 16px 40px}
+.wrap{max-width:760px;margin:0 auto;display:grid;gap:16px}
+header{text-align:center}
+h1{font-family:var(--display);font-weight:400;font-size:1.7rem;letter-spacing:.14em;line-height:1.2;margin:0}
+h1 em{font-style:normal;color:var(--accent);margin-left:.35em}
+.tagline{margin:4px 0 0;font-size:.66rem;letter-spacing:.28em;color:var(--muted)}
+.lead{margin:0;color:var(--muted);font-size:.9rem;text-align:center}
+.tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px}
+.tabs button{font:inherit;font-weight:700;letter-spacing:.1em;color:var(--muted);background:none;border:0;border-radius:10px;padding:10px 4px;cursor:pointer}
+.tabs button small{display:block;font-size:.66rem;font-weight:500;letter-spacing:0}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.tabs button[aria-selected="true"] small{color:var(--accent-ink)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.card{display:grid;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;color:inherit;text-decoration:none;position:relative}
+a.card:hover,a.card:focus-visible{border-color:var(--accent)}
+.card h2{font-family:var(--display);font-weight:400;font-size:1.05rem;margin:0;line-height:1.4}
+.card .en{font-size:.66rem;letter-spacing:.2em;color:var(--accent);font-weight:700}
+.card p{margin:0;color:var(--muted);font-size:.85rem}
+.card .meta{font-size:.75rem;color:var(--mate)}
+.card.soon{opacity:.45}
+.card.soon .meta{color:var(--muted)}
+.empty{color:var(--muted);text-align:center;padding:24px 0}
+.foot{font-size:.85rem;color:var(--muted);text-align:center}
+.foot a{color:var(--accent);font-weight:700}
+</style>
+</head><body>
+<div class="wrap">
+  <header>
+    <h1>MAESTRO<em>LESSONS</em></h1>
+    <p class="tagline">WATCH. UNDERSTAND. PLAY.</p>
+  </header>
+  <p class="lead">ポジションを選んで、見たい動きを押してね。<br>お手本 → スローで解説の順に流れます。ダメな例は、ボタンで選んで見られます。</p>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="cards" id="cards" role="tabpanel"></div>
+  <p class="foot"><a href="../">ほかのアプリ</a></p>
+</div>
+<script>
+// id: a lesson in the board (LESSONS in tactics-board.html); without an id the card is still 準備中
+// ---- cards from app/lessons-draft (merge.py) ----
+const DRAFT_CARDS = {"FW": [{"id": "fw-behind", "pos": "FW", "name": "DFの裏をとってゴールを奪う", "en": "IN BEHIND", "desc": "タイミング・ななめ・ワンツー・おとり・チェックの6つの形", "min": "約15分・6章", "hidden": false, "from": ["fw-ura", "fw-diag", "fw-onetwo", "fw-decoy", "fw-checkback", "fw-checkgap"]}, {"id": "fw-s-press", "pos": "FW", "name": "前からの守備で奪ってゴールへ", "en": "PRESS TO GOAL", "desc": "FWの寄せ方ひとつで、奪う場所が決まる。奪ったらすぐゴールへ", "min": "約15分・6章", "hidden": false, "from": ["fw-chase", "fw-press", "fw-press", "fw-press", "fw-backpass", "fw-press"]}, {"id": "fw-s-feet", "pos": "FW", "name": "足もとで受けて攻撃をつくる", "en": "HOLD-UP PLAY", "desc": "FWが足もとで受けて、前を向く・落とす・つなぐ。チームで前へ", "min": "約15分・6章", "hidden": false, "from": ["fw-role", "fw-post", "fw-check", "fw-turn", "fw-wall", "fw-layside"]}, {"id": "fw-s-finish", "pos": "FW", "name": "ゴール前で決める", "en": "FINISHING", "desc": "こぼれ球・折り返し・ニア・ファー・1対1。GKを見て決めよう", "min": "約15分・6章", "hidden": false, "from": ["fw-shot", "fw-rebound", "fw-cutback", "fw-near", "fw-far", "fw-gk1v1"]}], "MF": [{"id": "mf-s-receive", "pos": "MF", "name": "前を向いて受ける", "en": "RECEIVE FORWARD", "desc": "首を振って、体の向きと場所を工夫して、前を向いてボールを受ける", "min": "約15分・6章", "hidden": false, "from": ["mf-scan", "mf-half", "mf-turn", "mf-onetouch", "mf-between", "mf-third"]}, {"id": "mf-s-forward", "pos": "MF", "name": "ボールを前へ運ぶ", "en": "PLAY FORWARD", "desc": "運ぶ・縦パス・ななめのパス・ワンツー・追い越し・サイドチェンジの6つの形", "min": "約15分・6章", "hidden": false, "from": ["mf-carry", "mf-vertical", "mf-diagonal", "mf-onetwo", "mf-overlap", "mf-switch"]}, {"id": "mf-s-sidedef", "pos": "MF", "name": "サイドの守備と中で奪う", "en": "SIDE DEFENDING", "desc": "SHが縦を切って中へ行かせ、CHとチームで中で奪う。奪ったらすぐ前へ", "min": "約15分・6章", "hidden": false, "from": ["mf-sidedef", "mf-squeeze", "mf-chcover", "mf-slide", "mf-tuck", "mf-counter"]}], "DF": [{"id": "df-s-1v1", "pos": "DF", "name": "1対1とカバー", "en": "DEFEND 1V1", "desc": "飛びこまずに、縦を切って、カバーと2人で奪う", "min": "約15分・6章", "hidden": false, "from": ["df-delay", "df-sb1v1", "df-cover", "df-2v1", "df-3v2", "df-box"]}, {"id": "df-s-line", "pos": "DF", "name": "ラインをそろえる", "en": "BACK LINE", "desc": "うしろの3人がいっしょに動いて、ゴールを守る", "min": "約15分・6章", "hidden": false, "from": ["df-line", "df-behind", "df-second", "df-offside", "df-slide", "df-narrow"]}, {"id": "df-s-build", "pos": "DF", "name": "うしろからつなぐ", "en": "BUILD FROM THE BACK", "desc": "GKとDFで、あわてずにボールを前へ運ぶ", "min": "約15分・6章", "hidden": false, "from": ["df-wide", "df-carry", "df-escape", "df-switchback", "df-gkreset", "df-overlap"]}], "GK": [{"id": "gk-s-goal", "pos": "GK", "name": "ゴールを守る", "en": "SHOT STOPPING", "desc": "立つ場所、かまえ、こぼれ球、飛び出し、1対1、クロス、声。ゴールを守るGKの基本", "min": "約14分・7章", "hidden": false, "from": ["gk-pos", "gk-set", "gk-rebound", "gk-sweep", "gk-1v1", "gk-cross", "gk-coach"]}, {"id": "gk-s-attack", "pos": "GK", "name": "GKからの攻撃", "en": "GK DISTRIBUTION", "desc": "足・ゴールキック・ロングキック・近くの味方・スローで速攻。GKから攻撃をはじめる5つの形", "min": "約10分・5章", "hidden": false, "from": ["gk-build", "gk-goalkick", "gk-punt", "gk-catchrun", "gk-throw"]}], "SB": [{"id": "sb-s-attack", "pos": "SB", "name": "サイドバックの攻撃参加", "en": "OVERLAP", "desc": "上がる合図を見て、追いこす・幅をとる・クロス。取られたらすぐもどる", "min": "約15分・6章", "hidden": false, "from": ["sb-timing", "sb-ovl", "sb-inlap", "sb-width", "sb-cross", "sb-recover"]}, {"id": "sb-s-defend", "pos": "SB", "name": "サイドバックの守り", "en": "SB DEFENDING", "desc": "正面で縦を切って中へ。はさむ・待つ・しぼる・ファーを見る", "min": "約15分・6章", "hidden": false, "from": ["sb-1v1", "sb-squeeze", "sb-2v1", "sb-covercb", "sb-tuck", "sb-crossdef"]}, {"id": "sb-s-build", "pos": "SB", "name": "サイドバックからのビルドアップ", "en": "BUILD FROM SB", "desc": "体をひらいて受けて、縦・ななめ・運ぶ・もどすを見てえらぶ", "min": "約15分・6章", "hidden": false, "from": ["sb-receive", "sb-read", "sb-upline", "sb-diag", "sb-carry", "sb-backswitch"]}], "SHADOW": [{"id": "sd-s-between", "pos": "SHADOW", "name": "ライン間で受ける", "en": "BETWEEN THE LINES", "desc": "相手のMFとDFの間で前を向く。立つ場所・見る・ひと足め・スルーパス", "min": "約15分・6章", "hidden": false, "from": ["sd-blind", "sd-scan", "sd-layoff", "sd-diag", "sd-touch", "sd-through"]}, {"id": "sd-s-runs", "pos": "SHADOW", "name": "2列目から飛び出す", "en": "LATE RUNS", "desc": "CFの動きに合わせて、うしろから飛び出してゴールをねらう", "min": "約15分・6章", "hidden": false, "from": ["sd-drop", "sd-far", "sd-second", "sd-cutback", "sd-onetwo", "sd-third"]}, {"id": "sd-s-defend", "pos": "SHADOW", "name": "シャドウの守備", "en": "SHADOW DEFENDING", "desc": "背中で消す・2人で追いこむ・奪い返す・中をしめる・もどる・合図", "min": "約15分・6章", "hidden": false, "from": ["sd-cover", "sd-pair", "sd-counter", "sd-squeeze", "sd-pressback", "sd-signal"]}], "SITUATION": [{"id": "st-s-press", "pos": "SITUATION", "name": "前から来る相手をかわす", "en": "BEAT THE PRESS", "desc": "うしろでボールを持ったら、相手が前から寄せてきた", "min": "約15分・6章", "hidden": false, "from": ["st-gkfar", "st-chdrop", "st-sidefree", "st-long", "st-wall", "st-carry"]}, {"id": "st-s-block", "pos": "SITUATION", "name": "引いてかたまる相手を崩す", "en": "UNLOCK THE BLOCK", "desc": "相手が全員ゴール前に下がって、うしろにスペースがないとき", "min": "約15分・6章", "hidden": false, "from": ["st-blk-swing", "st-blk-shot", "st-blk-wall", "st-blk-third", "st-blk-1v1", "st-blk-patience"]}, {"id": "st-s-counter", "pos": "SITUATION", "name": "速攻のチャンスを決めきる", "en": "FINISH THE COUNTER", "desc": "奪った直後、相手がそろっていない。速く攻めて決めきる", "min": "約15分・6章", "hidden": false, "from": ["st-cnt-2v1pass", "st-cnt-2v1shoot", "st-cnt-3v2", "st-cnt-long", "st-cnt-gk", "st-cnt-keep"]}, {"id": "st-s-long", "pos": "SITUATION", "name": "ロングボールを使う相手の守り方", "en": "DEFEND LONG BALLS", "desc": "相手が、足の速いFWや背の高いFWへ、長いボールをけってくる", "min": "約15分・6章", "hidden": false, "from": ["st-ll-first", "st-ll-cover", "st-ll-second", "st-ll-press", "st-ll-gk", "st-ll-up"]}, {"id": "st-s-wide", "pos": "SITUATION", "name": "サイドから攻めてくる相手の守り方", "en": "STOP WING ATTACKS", "desc": "相手のSHとSBが、こちらのサイドから攻めてくる。チームでの6つの守り方", "min": "約15分・6章", "hidden": false, "from": ["st-w-pinch", "st-w-overlap", "st-w-block", "st-w-box", "st-w-tuck", "st-w-out"]}], "TEAM": [{"id": "tm-s-third", "pos": "TEAM", "name": "3人の連携の動き出し", "en": "THIRD MAN", "desc": "パスが動いている間に走りだす。前を向いて受ける3人目", "min": "約15分・6章", "hidden": false, "from": ["tm-th-lay", "tm-th-side", "tm-th-early", "tm-th-vs12", "tm-th-onside", "tm-th-again"]}, {"id": "tm-s-fourth", "pos": "TEAM", "name": "4人の連携の動き出し", "en": "FOURTH MAN", "desc": "ボールの2つ先をよんで、1つめのパスで走りだす4人目", "min": "約15分・6章", "hidden": false, "from": ["tm-fo-basic", "tm-fo-switch", "tm-fo-read2", "tm-fo-decoy", "tm-fo-box", "tm-fo-cut"]}, {"id": "tm-s-outnum", "pos": "TEAM", "name": "数的不利の守り方", "en": "OUTNUMBERED", "desc": "人数が少なくても、飛びこまずにゴールをまもって奪う", "min": "約15分・6章", "hidden": false, "from": ["tm-1v2", "tm-2v3", "tm-3v4", "tm-counter", "tm-gk2", "tm-delay"]}, {"id": "tm-s-3v3", "pos": "TEAM", "name": "3対3の攻めと守り", "en": "3 v 3", "desc": "三角形・ワンツーと3人目・引きつけてパス、1人目2人目3人目・コースを切る・切りかえ", "min": "約15分・6章", "hidden": false, "from": ["tm-3v3-triangle", "tm-3v3-onetwo3", "tm-3v3-draw", "tm-3v3-roles", "tm-3v3-steer", "tm-3v3-switch"]}, {"id": "tm-s-break", "pos": "TEAM", "name": "相手を崩してゴールへ", "en": "BREAK THEM DOWN", "desc": "サイドチェンジ・ニアゾーン・引きつけ・間・数的優位・マイナスの6つの崩し", "min": "約15分・6章", "hidden": false, "from": ["tm-bk-switch", "tm-bk-nearzone", "tm-bk-draw2", "tm-bk-between", "tm-bk-overload", "tm-bk-cutback"]}]};
+// ---- end of cards ----
+const POS = [
+  {k:"gk", name:"GK", ja:"キーパー", list:[]},
+  {k:"df", name:"DF", ja:"ディフェンダー", list:[]},
+  {k:"sb", name:"SB", ja:"サイドバック", list:[]},
+  {k:"mf", name:"MF", ja:"ミッドフィルダー", list:[]},
+  {k:"shadow", name:"SHADOW", ja:"シャドウ", list:[]},
+  {k:"fw", name:"FW", ja:"フォワード", list:[]},
+  {k:"team", name:"TEAM", ja:"連携・崩し", list:[]},
+  {k:"situation", name:"SITUATION", ja:"場面別", list:[]}];
+// the cards: every series (and lesson) from app/lessons-draft (merge.py writes DRAFT_CARDS above)
+if (typeof DRAFT_CARDS !== "undefined") POS.forEach(P => (DRAFT_CARDS[P.name] || []).forEach(d => P.list.push({id: d.id, en: d.en, name: d.name, desc: d.desc, min: d.min})));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function show(k){
+  const P = POS.find(p => p.k === k) || POS.find(p => p.k === "fw");
+  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.k === P.k));
+  const box = document.getElementById("cards");
+  box.innerHTML = P.list.length ? P.list.map(c => c.id
+    ? `<a class="card" href="../board/?lesson=${c.id}"><span class="en">${esc(c.en)}</span><h2>${esc(c.name)}</h2><p>${esc(c.desc)}</p><span class="meta">▶ ${esc(c.min || "")}</span></a>`
+    : `<div class="card soon" aria-disabled="true"><span class="en">${esc(c.en)}</span><h2>${esc(c.name)}</h2><p>${esc(c.desc)}</p><span class="meta">準備中</span></div>`).join("")
+    : `<p class="empty">${esc(P.ja)}のレッスンは準備中です</p>`;
+  if (location.hash !== "#" + P.k) history.replaceState(null, "", "#" + P.k);
+}
+document.getElementById("tabs").innerHTML = POS.map(p => `<button role="tab" data-k="${p.k}" aria-selected="false">${p.name}<small>${p.ja}</small></button>`).join("");
+document.getElementById("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) show(b.dataset.k); });
+show(location.hash.slice(1) || "fw");
+</script>
+</body></html>
