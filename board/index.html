@@ -5743,20 +5743,22 @@ const LESSONS={
     {cap:"ついてこられたら、ワンツーはやめる。フリーの3人目へ出そう",ball:"m",wait:900}]}) ]},
 
  "tm-th-onside":{pos:"TEAM",hidden:true,name:"オフサイドにならない3人目",en:"STAY ONSIDE",desc:"DFのラインにそろって待ち、パスが出る瞬間にうしろへ",min:"約2分",
-  // CH→FW（下がる・CBがついてくる）→ SHはラインにそろって待つ → FWがダイレクトでCBのうしろへ → SHはその瞬間に走ってシュート
+  // CH→FW（下がる・CBがついてくる）→ FWはトラップして半身、LHを見る → LHはラインにそろって待ち、FWが顔を上げたら走りだす
+  // → FWがCBのうしろへ → LHは前を向いて受けてシュート（たけし：U-12 はダイレクトではなく、止めて前・横を向いてから出す）
   chapters:[ LCH({t:"オフサイドにならない3人目",n:3,
    who:{C:"m CH",F:"m FW",H:"m LH",m:"o MF",dL:"o SB",dC:"o CB",dR:"o SB",G:"o GK"},
    P0:{C:[24,34],F:[25,22],H:[8,21],m:[29,29],dL:[15,20],dC:[25,19.5],dR:[36,20],G:[25,3]},
    steps:[
     {cap:"CHがボールを持った。LHは、相手のDFのラインにそろって待つ",ball:"C"},
     {cap:"CHからFWへ。相手のCBがFWについて、前に出た",ball:"F",look:{H:[25,25.5]},mv:{F:[25,25.5],dC:[26.8,23.5],H:[10.5,21]}},
-    {space:[[21,15,3]],cap:"CBのうしろにスペース。LHはまだ、ラインからとび出さない",ball:"F",wait:900,look:{H:[25,25.5]},mv:{H:[11.5,20.5]}},
-    {space:[[21,15,3]],cap:"FWはダイレクトでCBのうしろへ。この瞬間に、LHは走る",lead:true,ball:"H",mv:{H:[19,15],dL:[16.5,17.5]}},
+    {space:[[21,15,3]],cap:"FWはトラップして、体を横に向けた。LHの動きと、CBのうしろが見える",ball:"F",wait:900,look:{F:[11.5,20.5],H:[23.6,25.2],dC:[23.6,25.2]},mv:{F:[23.6,25.2],dC:[25.3,23.6],H:[11.5,20.5]}},
+    {space:[[21,15,3]],cap:"FWが顔を上げた。この瞬間に、LHは走りだす。まだラインより前に出ない",ball:"F",look:{F:[19,16]},mv:{H:[13,20.3]}},
+    {space:[[21,15,3]],cap:"FWはCBのうしろへ。LHはスピードを上げて受ける",lead:true,ball:"H",mv:{H:[19,15],dL:[16.5,17.5]}},
     {cap:"LHは前を向いて受けた。GKの位置を見ておく",ball:"H",mv:{H:[20.5,12.5],dL:[18,14.5],dC:[24.5,18],G:[23.5,4]}},
     {cap:"シュート！",ball:[27,0.5]}],
    slow:{1:{cap:"①FWが下がると、CBもついてくる。そのうしろが空く",wait:900},
-    2:{cap:"②パスが出るまで、DFのラインより前に出ない。出るとオフサイド",wait:900},
-    3:{cap:"③FWが出す瞬間に、スピードを上げて、CBのうしろへ",wait:900}},
+    2:{cap:"②FWは止めて、体を横に向ける。LHの走りとCBのうしろが、同時に見える",wait:900},
+    3:{cap:"③LHは、FWが顔を上げたら走りだす。パスが出るまで、DFのラインより前に出ない",wait:900}},
    bad:[
     {cap:"ダメな例：走りだすのが早すぎる",ball:"F",mv:{F:[25,25.5],dC:[26.8,23.5]}},
     {cap:"✕ LHは早く走りだした。もうDFのラインより前にいる",ball:"F",wait:600,mv:{H:[16.5,15.5]}},
@@ -6771,7 +6773,7 @@ const TTS=window.speechSynthesis||null;
 const SAY=[["GK","ゴールキーパー"],["CB","センターバック"],["SB","サイドバック"],["CH","センターハーフ"],["SH","サイドハーフ"],["CF","センターフォワード"],["FW","フォワード"],["DF","ディフェンダー"],["MF","ミッドフィルダー"],["LH","左ハーフ"],["RH","右ハーフ"],["LB","左バック"],["RB","右バック"],["DM","ボランチ"],["→","、"],["＋","と"]];
 // 間 is あいだ here (not かん), except in 時間・瞬間・仲間
 // (each fix below was found by reading every scene with the Mac's Kyoko voice and transcribing it back with Whisper)
-const SAY2=[["バックパス","後ろへのパス"],["こぼれ球","こぼれだま"],["ターンして","くるっと回って"],["ターンした","くるっと回った"],["ターンしない","くるっと回らない"],["ターン","くるっと回る"],["復帰","戻れる"],["＝","は"]];
+const SAY2=[["リターン","\uE000"],["バックパス","後ろへのパス"],["こぼれ球","こぼれだま"],["ターンして","くるっと回って"],["ターンした","くるっと回った"],["ターンしない","くるっと回らない"],["ターン","くるっと回る"],["復帰","戻れる"],["＝","は"]];
 const voiceText=t=>SAY2.reduce((a,[k,v])=>a.split(k).join(v),SAY.reduce((a,[k,v])=>a.split(k).join(v),String(t||"")))
   .replace(/[（）「」()・]/g,"、").replace(/人\s*対\s*/g,"人、たい、")                                // brackets are a pause; 3人 対 was heard as 忍耐
   .replace(/(^|[、。！\s])間/g,"$1すきま")                                                // あいだ at the start of a phrase was heard as 缶
@@ -6781,7 +6783,11 @@ const voiceText=t=>SAY2.reduce((a,[k,v])=>a.split(k).join(v),SAY.reduce((a,[k,v]
   .replace(/(\d)\s?m(?![a-zA-Z])/g,"$1メートル")
   .replace(/①/g,"ひとつめ、").replace(/②/g,"ふたつめ、").replace(/③/g,"みっつめ、")              // ③先に was heard as サンさきに
   .replace(/の方([へにを])/g,"のほう$1")                                                      // ボールの方へ was heard as 肩へ                                             // 2m → 2メートル
-  .replace(/(?<![0-9０-９])1人(?!目)/g,"ひとり").replace(/(?<![0-9０-９])2人(?!目)/g,"ふたり");   // (1人 was heard as 一人目)
+  .replace(/(?<![0-9０-９])1人(?!目)/g,"ひとり").replace(/(?<![0-9０-９])2人(?!目)/g,"ふたり")   // (1人 was heard as 一人目)
+  .replace(/通([っるすさしらりれ])/g,"とお$1")                                              // 背中を通って was read as かよって
+  .replace(/空([いくけ])/g,"あ$1").replace(/入れ/g,"いれ").replace(/入([っるらり])/g,"はい$1")   // 空いた = あいた, 入って = はいって
+  .replace(/(?<![一-龯])中(?=[へにをでのがは、。])/g,"なか")                                   // 中へ = なかへ (not ちゅう)
+  .replace(/\uE000/g,"リターン");                                                          // (リターン is not ターン: it was read as リくるっと回る)
 function jaVoice(){ if(!TTS) return null; const vs=TTS.getVoices().filter(v=>/^ja/i.test(v.lang)); return vs.find(v=>/Kyoko|O-ren|Google|Siri|Nanami|Haruka/i.test(v.name))||vs[0]||null; }
 // speak a scene; when it has been said, the playback may go on (DM.saidDone / DM.waitSaid)
 function speakCap(text){
@@ -7195,14 +7201,17 @@ const VOICE = (() => {
   // position names as a Japanese voice should say them (the same words as MAESTRO BOARD's 練習メニュー voice:
   // letters read one by one were hard to catch, e.g. CH sounded like 新聞紙), and words the voice misreads
   const SAY = [["GK","ゴールキーパー"],["CB","センターバック"],["SB","サイドバック"],["CH","センターハーフ"],["SH","サイドハーフ"],["CF","センターフォワード"],["FW","フォワード"],["DF","ディフェンダー"],["MF","ミッドフィルダー"],["LH","左ハーフ"],["RH","右ハーフ"],["LB","左バック"],["RB","右バック"],["DM","ボランチ"],["CM","センターハーフ"],["OH","トップ下"],["PA","ペナルティエリア"],["同一視野","どういつしや"],["→","、"],["＋","と"]];
-  const SAY2 = [["バックパス","後ろへのパス"],["こぼれ球","こぼれだま"],["ターンして","くるっと回って"],["ターン","くるっと回る"],["復帰","戻れる"],["＝","は"]];
+  const SAY2 = [["リターン","\uE000"],["バックパス","後ろへのパス"],["こぼれ球","こぼれだま"],["ターンして","くるっと回って"],["ターン","くるっと回る"],["復帰","戻れる"],["＝","は"]];
   const words = t => SAY2.reduce((a,[k,v]) => a.split(k).join(v), SAY.reduce((a,[k,v]) => a.split(k).join(v), t))
     .replace(/人\s*対\s*/g, "人、たい、").replace(/(^|[、。！\s])間/g, "$1すきま").replace(/(?<![時瞬仲])間/g, "あいだ")
     .replace(/(?<![実国交])際/g, "ぎわ").replace(/(?<![以案海国])外(?![すれしさ])/g, "そと")
     .replace(/(?<=[のいるたなじ])所/g, "ところ")                                          // 高い所・7mの所 (所 alone was read じょ); 場所 stays
     .replace(/(?<![0-9０-９])1人(?!目)/g, "ひとり").replace(/(?<![0-9０-９])2人(?!目)/g, "ふたり")
     // 方 is ほう (ボールの方へ・近い方・いない方), not かた — except in a way of doing (守り方・立ち方・受け方…); 味方・両方・片方・方向 read right
-    .replace(/(?<![味両片])方(?![向法])/g, (m, i, all) => /(守り|立ち|考え|受け|使い|やり|戦い|運び|走り|見せ|行き|止め|蹴り|入り|攻め|寄せ|動き|仕)$/.test(all.slice(0, i)) ? m : "ほう");
+    .replace(/(?<![味両片])方(?![向法])/g, (m, i, all) => /(守り|立ち|考え|受け|使い|やり|戦い|運び|走り|見せ|行き|止め|蹴り|入り|攻め|寄せ|動き|仕)$/.test(all.slice(0, i)) ? m : "ほう")
+    // 通って was read as かよって, リターン as リくるっと回る (the ターン word above); 空いた = あいた, 入って = はいって, 中へ = なかへ
+    .replace(/通([っるすさしらりれ])/g, "とお$1").replace(/空([いくけ])/g, "あ$1").replace(/入れ/g, "いれ").replace(/入([っるらり])/g, "はい$1")
+    .replace(/(?<![一-龯])中(?=[へにをでのがは、。])/g, "なか").replace(/\uE000/g, "リターン");
   // marks and short forms said the way a coach says them
   const say = t => words(String(t)).replace(/<[^>]+>/g, " ").replace(/◎/g, "にじゅうまる、").replace(/○/g, "まる、").replace(/[✕×]/g, "ばつ、")
     .replace(/(\d)-(\d)(?:-(\d))?(?:-(\d))?/g, (m, a, b, c, d) => [a, b, c, d].filter(Boolean).join("、")).replace(/[（(]/g, "、").replace(/[）)]/g, "、").replace(/\s+/g, " ").replace(/[、。\s]*。[、。\s]*/g, "。").replace(/(、\s*)+/g, "、").replace(/^[、。]+|、+$/g, "").trim();
