@@ -5767,7 +5767,8 @@ const LESSONS={
 
  "tm-th-again":{pos:"TEAM",hidden:true,name:"出ないときは、もう一度",en:"GO BACK AND GO AGAIN",desc:"3人目にコースがなければむりをしない。もどって、もう一度",min:"約2分",
   // 1回目：CB→FW、CHが走るがMFがついてくる → FWはCBへもどす → CHももどる。2回目：MFの見ていない右から → 落とし → RHのうらへ → シュート
-  // (the pass behind the SB goes outside him, on RH's lane: never across the SB — たけし)
+  // (the pass behind the SB goes outside him, on RH's lane: never across the SB; RH does not shoot from the tight angle,
+  //  he goes to the goal line and cuts back to the FW running in — たけし)
   chapters:[ LCH({t:"出ないときは、もう一度",n:3,
    who:{B:"m CB",C:"m CH",F:"m FW",R:"m RH",m:"o MF",oF:"o FW",dL:"o SB",dC:"o CB",dR:"o SB",G:"o GK"},
    P0:{B:[26,42],C:[22,36],F:[25,24],R:[40,26],m:[23,31.5],oF:[31,37],dL:[15,21.5],dC:[25,21],dR:[35.5,21.5],G:[25,3]},
@@ -5778,9 +5779,10 @@ const LESSONS={
     {cap:"CHもFWも、もとの場所へもどる。もう一度やり直し",ball:"B",mv:{C:[22.5,35.5],m:[23,31.5],F:[25,24],dC:[25,21]}},
     {cap:"もう一度FWへ。今度はMFの見ていない右から、CHが走りだす",ball:"F",look:{m:[25,26.5]},mv:{F:[25,26.5],dC:[25.2,24.5],C:[31,31],R:[44,22]}},
     {space:[[44.5,14,3]],cap:"今度はフリー。FWは落とす。CHは前を向いて受けた。RHはSBの外がわにいる",ball:"C",mv:{C:[34,29.5]}},
-    {space:[[44.5,14,3]],cap:"CHから、SBのうしろのスペースへ。SBにかからない、外がわのコース。RHはオフサイドではない",lead:true,ball:"R",mv:{R:[44.5,15.5],dR:[37.5,19.5]}},
-    {cap:"RHはゴールへ運ぶ。GKを見ておく",ball:"R",mv:{R:[38,9.5],dR:[36,12.5],dC:[28,10],G:[27,3.5]}},
-    {cap:"シュート！",ball:[23,0.5]}],
+    {space:[[44.5,14,3]],cap:"CHから、SBのうしろのスペースへ。SBにかからない、外がわのコース。RHはオフサイドではない",lead:true,ball:"R",mv:{R:[44.5,15.5],dR:[37.5,19.5],F:[25.5,20],dC:[26.5,18.5]}},
+    {cap:"RHはゴールラインの近くまで運ぶ。そのあいだに、FWはゴール前へ走りこむ",ball:"R",look:{dC:[41,6]},mv:{R:[41,6],dR:[39,10.5],F:[25,12.5],dC:[30,4],dL:[18.5,13.5],G:[27,3.5]}},
+    {space:[[24,10,2.5]],cap:"相手はゴールの前に下がった。RHは中を見て、うしろへのセンタリング（マイナス）。FWがフリー",ball:"F",look:{R:[24,10]},mv:{F:[24,10]}},
+    {cap:"シュート！",ball:[22,0.5]}],
    slow:{1:{cap:"①相手がついてきたら、3人目へのコースはない。FWはむりに出さない",wait:900},
     3:{cap:"②パスが来なかったら、もどってもう一度。止まって待たない",wait:900},
     4:{cap:"③今度は、相手が見ていない方から走りだす",wait:900}},
