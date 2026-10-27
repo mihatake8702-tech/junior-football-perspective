@@ -2,7 +2,7 @@
 <html lang="ja"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1310">
+<meta name="theme-color" content="#05070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="自主練">
@@ -1028,18 +1028,18 @@ const FIG3D = (() => {
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Oswald:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
 <style>
 /* Layout: one column. Tabs (きょう / れんしゅう / きろく) on top; the practice screen takes the whole column with a big timer. */
 :root{
-  --bg:#0b1310; --surface:#121c18; --surface-2:#1a2620; --line:#26362e;
-  --fg:#eef5f0; --muted:#8fa498; --accent:#ff6b2c; --accent-ink:#1b0a03;
+  --bg:#05070d; --surface:rgba(14,20,36,.88); --surface-2:rgba(22,30,52,.94); --line:rgba(170,200,255,.16);
+  --fg:#eef3ff; --muted:#8c9bbb; --accent:#ff7a3c; --accent-ink:#1a0800;
   --good:#3ddc8c; --good-bg:rgba(61,220,140,.14); --warn:#ffc53d; --warn-bg:rgba(255,197,61,.14);
   --mate:#ffd23d; --opp:#4b8dff; --grass:#1f6a41; --chalk:rgba(255,255,255,.85);
   --c-touch:#ffd23d; --c-ginga:#ff7ab6; --c-dribble:#ff6b2c; --c-kick:#4b8dff; --c-wall:#5fd4ff; --c-body:#3ddc8c;
-  --display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
-  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
-  --num:"Oswald","Dela Gothic One","Hiragino Sans",sans-serif;
+  --display:"Chakra Petch","Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+  --body:"Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+  --num:"Chakra Petch","Hiragino Sans",sans-serif;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -1111,6 +1111,10 @@ td.n{font-family:var(--num);font-size:1.1rem;text-align:right;white-space:nowrap
 .foot a{color:var(--accent);font-weight:700}
 .del{border:0;background:none;color:var(--muted);text-decoration:underline;font:inherit;font-size:.82rem;cursor:pointer;padding:4px}
 @media (max-width:420px){header h1{font-size:1.1rem}header h1 small{display:none}.drill{grid-template-columns:40px 1fr auto;gap:10px;padding:10px}.drill .ic{width:40px;height:40px}.stats .big{font-size:1.5rem}}
+
+/* MAESTRO NIGHT (2026-10-27): stadium sky with two floodlight glows from the top corners */
+body{background:radial-gradient(60vw 50vh at 0% -8%,rgba(255,240,200,.14),transparent 60%),radial-gradient(60vw 50vh at 100% -8%,rgba(255,240,200,.14),transparent 60%),linear-gradient(to bottom,#0b1222,var(--bg) 60%);background-attachment:fixed;min-height:100vh}
+h1,h2{font-weight:700}
 </style>
 
 <div class="wrap">

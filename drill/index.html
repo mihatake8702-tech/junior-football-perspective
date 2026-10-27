@@ -2,7 +2,7 @@
 <html lang="ja"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1310">
+<meta name="theme-color" content="#05070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="DRILL">
@@ -658,6 +658,164 @@ html[data-digital] #next{min-height:40px;padding:6px 16px;font-size:.88rem}
 /* tap questions: a smaller 「ここにする」 button and hint */
 html[data-digital] #tapok{min-height:38px;padding:5px 16px;font-size:.86rem}
 html[data-digital] .taphint{font-size:.76rem}
+/* ===== MAESTRO NIGHT broadcast parts (2026-10-27): shared by DRILL, BOARD, TACTICS GUIDE and LESSONS.
+   The single source is this file: build.py adds it to the drill; clip3d_sync.py copies it into tactics-board.html,
+   learn.html and explain-head.html between the BCAST CSS markers (edit here, never the copies).
+   Every colour has a fallback, so a page only needs its own --accent / --line / --muted / --fg. ===== */
+:root{--bc-live:#ff3355; --bc-gold:#ffc83d; --bc-gold-2:#ff9f1c; --bc-xp:#7cf5ff; --bc-good:#3dffa0; --bc-warn:#ffc83d; --bc-bad:#ff4d6a;
+  --bc-en:"Chakra Petch","Noto Sans JP",sans-serif; --bc-ja:"Noto Sans JP","Hiragino Sans",sans-serif; --bc-panel:rgba(22,30,52,.94)}
+@keyframes nt-blink{50%{opacity:.25}}
+@keyframes nt-pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+
+/* the TV score bug: ● LIVE | MAESTRO ○○ | what is on | where we are */
+.nt-bug{display:flex;align-items:stretch;width:max-content;max-width:100%;margin:0 auto;border-radius:8px;overflow:hidden;background:var(--bc-panel);border:1px solid var(--line);
+  box-shadow:0 8px 24px rgba(0,0,0,.45);font-family:var(--bc-en);font-weight:600;white-space:nowrap;color:var(--fg,#eef3ff)}
+.nt-bug > *{display:flex;align-items:center;gap:6px;padding:7px 12px;border-right:1px solid var(--line);font-size:.8rem;letter-spacing:.08em;min-width:0}
+.nt-bug > *:last-child{border-right:0}
+.nt-bug .live{background:var(--bc-live);color:#fff;letter-spacing:.18em;flex:none}
+.nt-bug .live::before{content:"";width:7px;height:7px;border-radius:50%;background:#fff;animation:nt-blink 1.4s infinite}
+.nt-bug .live.replay{background:#2b3a66}
+.nt-bug .live.replay::before{animation:none;border-radius:1px;width:0;height:0;background:none;border-left:7px solid #fff;border-top:4px solid transparent;border-bottom:4px solid transparent}
+.nt-bug .title{background:linear-gradient(90deg,#141c33,#1b2544);letter-spacing:.2em;flex:none}
+.nt-bug .title b{color:var(--accent);font-weight:700}
+.nt-bug .num{font-variant-numeric:tabular-nums;flex:none} .nt-bug .num small{color:var(--muted);font-size:.68rem;margin-right:2px}
+.nt-bug .what{font-family:var(--bc-ja);font-weight:700;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;display:block;line-height:1.45}
+.nt-bug .m{color:var(--accent)} .nt-bug .o{color:#7fb6ff}
+.nt-bug .combo,.nt-bug .clear{color:#2a1600;background:linear-gradient(180deg,#ffd75e,var(--bc-gold-2));letter-spacing:.12em;animation:nt-pop .5s;flex:none}
+.nt-bug .combo b{font-size:.95rem}
+.nt-bug .part{font-family:var(--bc-ja);font-weight:700;letter-spacing:.04em;flex:none}
+.nt-bug .part.slow{color:var(--bc-xp)} .nt-bug .part.bad{background:#7a1e1e;color:#fff}
+@media (max-width:640px){ .nt-bug > *{padding:6px 8px;font-size:.72rem} .nt-bug .title span,.nt-bug .opt{display:none} .nt-bug .what{min-width:4.5em} }   /* (.opt: a cell or label left out on a phone) */
+@media (max-width:380px){ .nt-bug > *{padding:5px 6px;letter-spacing:.02em} }
+
+/* how much has been watched: WATCHED, a bar, 3/12 */
+.nt-prog{display:flex;align-items:center;gap:8px;font-family:var(--bc-en)}
+.nt-prog .k{font-size:.6rem;font-weight:600;letter-spacing:.22em;color:var(--bc-gold);white-space:nowrap}
+.nt-prog .bar{flex:1;height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid var(--line)}
+.nt-prog .bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--bc-xp),#b7fbff);box-shadow:0 0 10px var(--bc-xp);transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.nt-prog .val{font-size:.78rem;font-weight:700;color:var(--bc-xp);font-variant-numeric:tabular-nums;white-space:nowrap}
+.nt-prog.done .bar i{background:linear-gradient(90deg,var(--bc-gold),#fff1b8);box-shadow:0 0 10px var(--bc-gold)} .nt-prog.done .val{color:var(--bc-gold)}
+/* a small gold CLEAR chip (a lesson or a category watched to the end) */
+.nt-clear{display:inline-flex;align-items:center;gap:4px;font:700 .62rem var(--bc-en);letter-spacing:.16em;color:#2a1600;background:linear-gradient(180deg,#ffd75e,var(--bc-gold-2));border-radius:999px;padding:2px 9px;white-space:nowrap}
+
+/* rewards: a stamp over the picture, a flash, confetti */
+.pitchbox.nt-shake{animation:nt-shake .4s}
+@keyframes nt-shake{20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
+.nt-stamp{position:absolute;left:50%;top:44%;z-index:6;pointer-events:none;transform:translate(-50%,-50%) rotate(-8deg) scale(2.2);opacity:0;
+  font:700 clamp(1.8rem,7vw,3rem)/1 var(--bc-en);letter-spacing:.06em;text-align:center;white-space:nowrap;padding:10px 22px;border-radius:14px;
+  border:4px solid currentColor;background:rgba(5,7,13,.72);text-shadow:0 0 22px currentColor;max-width:94%}
+.nt-stamp small{display:block;font:700 .8rem var(--bc-ja);letter-spacing:.1em;margin-top:6px;text-shadow:none;color:var(--fg,#eef3ff);white-space:normal}
+.nt-stamp .combo{display:inline-block;margin-top:8px;font:700 .8rem var(--bc-en);letter-spacing:.14em;color:#2a1600;background:linear-gradient(180deg,#ffd75e,var(--bc-gold-2));border-radius:999px;padding:3px 12px;text-shadow:none}
+.nt-stamp.r2{color:var(--bc-good)} .nt-stamp.r1{color:var(--bc-warn)} .nt-stamp.r0{color:var(--bc-bad)} .nt-stamp.gold{color:var(--bc-gold)}
+.nt-stamp.show{animation:nt-stamp 1.9s cubic-bezier(.2,1.3,.4,1) forwards}
+.nt-stamp.long.show{animation-duration:2.8s}
+@keyframes nt-stamp{0%{opacity:0;transform:translate(-50%,-50%) rotate(-8deg) scale(2.2)}14%{opacity:1;transform:translate(-50%,-50%) rotate(-8deg) scale(1)}
+  78%{opacity:1;transform:translate(-50%,-50%) rotate(-8deg) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) rotate(-8deg) scale(.96)}}
+.nt-flash{position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:12px;background:radial-gradient(circle at 50% 45%,rgba(255,246,220,.55),transparent 65%);opacity:0}
+.nt-flash.show{animation:nt-flash .7s ease-out forwards}
+@keyframes nt-flash{0%{opacity:0}20%{opacity:1}100%{opacity:0}}
+.nt-confetti{position:fixed;inset:0;z-index:50;pointer-events:none}
+@media (prefers-reduced-motion:reduce){ .nt-bug .live::before,.nt-bug .combo,.nt-bug .clear{animation:none} .nt-stamp.show{animation:none;opacity:1;transform:translate(-50%,-50%) rotate(-8deg)} .nt-flash,.pitchbox.nt-shake{animation:none} }
+
+/* ===== MAESTRO NIGHT (2026-10-27): the night-game broadcast look shared by every Junior Football app.
+   Added after digital.css and wins over it: a dark stadium sky with two floodlight glows instead of the green code rain,
+   navy cards with soft round corners, glossy grass, ours orange / theirs blue, and game rewards when answering.
+   Same markup as before: only the look changes (the answer buttons keep their size for kids' fingers). ===== */
+html[data-digital]{
+  --bg:#05070d; --sky-2:#0b1222; --surface:rgba(14,20,36,.86); --surface-2:rgba(22,30,52,.94);
+  --line:rgba(170,200,255,.16); --line-strong:rgba(170,200,255,.32);
+  --fg:#eef3ff; --muted:#8c9bbb; --flood:#fff6dc;
+  --grass:#1f8150; --grass-2:#176a40; --chalk:rgba(255,255,255,.92);
+  --good:#3dffa0; --warn:#ffc83d; --bad:#ff4d6a; --gold:#ffc83d; --gold-2:#ff9f1c; --xp:#7cf5ff; --live:#ff3355;
+  --good-bg:rgba(61,255,160,.10); --bad-bg:rgba(255,77,106,.12); --warn-bg:rgba(255,200,61,.11);
+  --pick:#fff6dc; --pick-ink:#1a1206;
+}
+/* stadium sky: two floodlight glows from the top corners (no code rain, no scan lines) */
+html[data-digital], html[data-digital] body{
+  background:
+    radial-gradient(60vw 50vh at 0% -8%,rgba(255,240,200,.14),transparent 60%),
+    radial-gradient(60vw 50vh at 100% -8%,rgba(255,240,200,.14),transparent 60%),
+    linear-gradient(to bottom,var(--sky-2),var(--bg) 60%) !important;
+  background-attachment:fixed !important}
+html[data-digital] #digi-rain, html[data-digital] body::after{display:none}
+
+/* frames: navy glass with soft round corners, no green corner ticks */
+html[data-digital] header, html[data-digital] .card, html[data-digital] .pitchwrap{border-radius:16px;box-shadow:0 14px 40px rgba(0,0,0,.4)}
+html[data-digital] .card::after, html[data-digital] header::after{display:none}
+html[data-digital] .pitchwrap{background:rgba(9,13,24,.96)}
+html[data-digital] h1 .maestro{color:#fff;text-shadow:0 0 22px rgba(255,240,200,.25)}
+html[data-digital] h1 .maestro em{color:var(--accent)}
+html[data-digital] .brand .logo{box-shadow:0 0 0 1px rgba(255,255,255,.14),0 6px 18px rgba(0,0,0,.45)}
+.backmenu{border-radius:999px;background:rgba(255,255,255,.04)}
+
+/* buttons, inputs, chips: rounder; the main button is a game button that presses down */
+html[data-digital] button, html[data-digital] select, html[data-digital] input{border-radius:10px !important}
+html[data-digital] .big{border-radius:12px;box-shadow:0 4px 0 #b84a17,0 10px 24px rgba(255,122,60,.28);transition:transform .08s,box-shadow .08s}
+html[data-digital] .big:active{transform:translateY(3px);box-shadow:0 1px 0 #b84a17,0 4px 10px rgba(255,122,60,.28)}
+html[data-digital] .tabs button, html[data-digital] .viewbar button, html[data-digital] .fchip{border-radius:999px !important}
+html[data-digital] .tabs button[aria-selected="true"], html[data-digital] .viewbar button[aria-pressed="true"]{box-shadow:0 6px 16px rgba(255,122,60,.3)}
+html[data-digital] .chip:hover, html[data-digital] .th:hover:not([disabled]), details.phase:hover{border-color:var(--line-strong);box-shadow:0 8px 20px rgba(0,0,0,.35)}
+html[data-digital] .th .ticon{box-shadow:0 0 0 1px rgba(255,255,255,.12)}
+html[data-digital] .th::after{opacity:.45}
+details.phase > summary .chev{border-color:var(--muted)}
+
+/* small English kickers: quiet grey, the question in orange, the situation in floodlight gold */
+html[data-digital] [data-en]::before{color:var(--muted)}
+html[data-digital] .stepper, html[data-digital] .sect{color:var(--muted)}
+html[data-digital] .situ::before{color:var(--gold)}
+html[data-digital] .v3note b{color:var(--gold)}
+
+/* the pitch: no green glow or HUD grid; a soft shadow under it, and the corner labels as TV chips */
+html[data-digital] svg.pitch, html[data-digital] svg.pitch .lines{filter:none}
+html[data-digital] svg.pitch{filter:drop-shadow(0 12px 22px rgba(0,0,0,.5))}
+html[data-digital] svg.pitch .actors circle, html[data-digital] svg.pitch #mvMe circle{filter:none}
+html[data-digital] .hud .grid, html[data-digital] .hud .scan, html[data-digital] .hud i{display:none}
+html[data-digital] .hud b{color:#c9d4ee;text-shadow:none;opacity:1;background:rgba(14,20,36,.82);border:1px solid var(--line);border-radius:5px;padding:3px 7px;font-size:8.5px}
+html[data-digital] .hud b.tl::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--live);margin-right:6px;vertical-align:1px;animation:nt-blink 1.4s infinite}
+html[data-digital] .hud b.tl{top:-2px;left:8px} html[data-digital] .hud b.tr{top:-2px;right:8px}
+html[data-digital] .hud b.bl{bottom:-2px;left:8px} html[data-digital] .hud b.br{bottom:-2px;right:8px;opacity:.6}
+@keyframes nt-blink{50%{opacity:.25}}
+.v3d{background:radial-gradient(ellipse at 50% 40%,rgba(30,50,90,.45),rgba(5,7,13,.95))}
+.v3cap, .v3ctl>button, .v3dots button{background:rgba(9,13,24,.88)}
+.v3cap{border-radius:10px} .v3cap p{color:#d5ddf2}
+.v3dots button .fill{background:rgba(61,255,160,.22)}
+
+/* the question as a TV lower third: an orange-to-gold bar down its left side */
+html[data-digital] .quiz > .card{position:relative;overflow:hidden}
+html[data-digital] .quiz > .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(to bottom,var(--accent),var(--gold-2))}
+html[data-digital] .choice{border-radius:12px;background:var(--surface-2)}
+html[data-digital] .choice::after{display:none}
+html[data-digital] .choice .L{border-radius:8px}
+html[data-digital] .choice.preview{box-shadow:0 0 0 2px var(--accent),0 8px 20px rgba(255,122,60,.25)}
+html[data-digital] .choice.right{box-shadow:0 0 0 2px var(--good),0 8px 20px rgba(61,255,160,.18)}
+html[data-digital] .verdict{border-radius:14px}
+html[data-digital] .aim, html[data-digital] .point{border-radius:4px 10px 10px 4px}
+html[data-digital] .board .sc .n{text-shadow:0 0 22px rgba(255,200,61,.35)}
+
+/* ---------- the drill's own broadcast parts: the player's rank and XP, the rank-up screen (the bug, stamp and confetti: broadcast.css) ---------- */
+.nt-player{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 6px}
+.nt-badge{flex:none;width:34px;height:34px;display:grid;place-items:center;font:700 .85rem var(--en);color:#1a0d00;
+  background:linear-gradient(160deg,#fff1b8,var(--gold) 45%,var(--gold-2));box-shadow:0 0 16px rgba(255,200,61,.35);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+.nt-who{display:grid;line-height:1.2;font-weight:700;font-size:.86rem;min-width:0}
+.nt-who small{font:600 .56rem var(--en);letter-spacing:.22em;color:var(--gold)}
+.nt-who i{font-style:normal;font-weight:500;font-size:.7rem;color:var(--muted)}
+.nt-xp{flex:1 1 160px;display:flex;align-items:center;gap:8px;min-width:140px}
+.nt-xp .bar{flex:1;height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid var(--line)}
+.nt-xp .bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--xp),#b7fbff);box-shadow:0 0 12px var(--xp);transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.nt-xp .val{font:700 .8rem var(--en);color:var(--xp);font-variant-numeric:tabular-nums;min-width:7ch;text-align:right}
+.nt-player.wide{padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line)}
+.nt-player.wide .nt-badge{width:46px;height:46px;font-size:1.05rem}
+.nt-earned{flex-basis:100%;margin:2px 0 0;font-size:.82rem;color:var(--muted)} .nt-earned b{color:var(--xp);font-family:var(--en)}
+.nt-gain{font:700 .9rem var(--en);color:var(--xp);margin-left:6px;white-space:nowrap}
+.nt-rankup{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(3,5,10,.8);backdrop-filter:blur(4px);opacity:0;transition:opacity .3s}
+.nt-rankup.show{opacity:1}
+.nt-rankup .box{text-align:center;padding:28px 26px;transform:scale(.7);transition:transform .45s cubic-bezier(.2,1.5,.3,1)}
+.nt-rankup.show .box{transform:scale(1)}
+.nt-rankup .k{font:600 .7rem var(--en);letter-spacing:.3em;color:var(--muted)}
+.nt-rankup .nt-badge{width:96px;height:96px;font-size:2.2rem;margin:12px auto 14px}
+.nt-rankup h2{margin:0 0 4px;font:700 2rem var(--en);letter-spacing:.14em;color:var(--gold);text-shadow:0 0 24px rgba(255,200,61,.5)}
+.nt-rankup p{margin:0 0 18px;font-weight:700}
+@media (prefers-reduced-motion:reduce){ .nt-rankup .box{transition:none} html[data-digital] .hud b.tl::before{animation:none} }
 </style>
 
 <div class="app">
@@ -777,12 +935,12 @@ function D(q){
 
 // --- ゴールをめざす ---
 D({id:"g01", th:"goal", g:[9,12],
- situ:"ペナルティエリアの少し前でボールを持った。前の相手は少しはなれている。",
+ situ:"ペナルティエリアに入ったところでボールを持った。前の相手は少しはなれている。",
  q:"どうする？",
- scene:{f:"3-3-1", me:["CF",25,17], ball:[25,17], mates:M("3-3-1",{CF:null,LH:[10,22],RH:[40,22],CH:[24,30]}), opps:[[21,10],[30,10],[37,16]]},
+ scene:{f:"3-3-1", me:["CF",25,11.8], ball:[25,11.8], mates:M("3-3-1",{CF:null,LH:[10,20],RH:[40,20],CH:[24,28]}), opps:[[21,7],[30,7],[37,11]]},
  opts:[
   {t:"シュートをうつ", at:[24,0], r:2, why:"前があいていて、ゴールが見えている。こうげきのいちばんの目的はゴール。"},
-  {t:"もう少しドリブルで近づいてからうつ", go:[25,13], r:1, why:"近づけば入りやすくなる。でも、そのあいだに相手がよってくる。うてるときはうとう。"},
+  {t:"もう少しドリブルで近づいてからうつ", go:[25,8.5], r:1, why:"近づけば入りやすくなる。でも、そのあいだに相手がよってくる。うてるときはうとう。"},
   {t:"うしろのCHにもどす", at:[24,30], r:0, why:"ゴールが見えているのに、いちばんのチャンスをすててしまう。"}],
  point:"ゴールが見えたら、まずシュート。"});
 
@@ -795,7 +953,7 @@ D({id:"p01", th:"pos123", type:"tap", g:[9,12],
  zones:[
   {c:[31,47], rad:4, r:2, why:"相手FWは左から来て、左のパスコースをふさいでいる。反対の右がわ、CBのななめ前なら、相手にじゃまされずにすぐパスをもらえる「1の位置」。"},
   {c:[37,42], rad:4, r:1, why:"パスは通る。でも少し遠くて、パスが長くなるぶん相手がよってくる。"}],
- miss:"そこは相手のかげ（うしろ）か、相手FWが来ている左がわか、遠すぎる。相手が来るのと反対がわの、CBのななめ前をさがそう。",
+ miss:"そこは相手FWのうしろ（かげ）。FWが来ている左がわは、CBからのパスをカットされる。相手が来るのと反対がわの、CBのななめ前で受けよう。",
  point:"相手が来るのと反対がわ、味方のななめ前が1の位置。"});
 
 // --- レーンと相手のわき（タップ、2-3-2） ---
@@ -908,10 +1066,10 @@ D({id:"ga02", th:"goal", g:[9,10],
  situ:"まん中でボールを持った。前には相手がいなくて、ゴールまで道があいている。",
  q:"どうする？",
  scene:{f:"3-3-1", me:["CH",25,32], ball:[25,32], mates:M("3-3-1",{CH:null,CF:[32,16],LH:[8,30],RH:[42,30],LB:[10,46],CB:[25,50],RB:[40,46]}),
-  opps:[[14,20],[36,20],[25,12],[20,38],[30,40]]},
+  opps:[[14,20],[36,20],[25,7],[20,38],[30,40]]},
  opts:[
-  {t:"ドリブルで運んでゴールに近づき、シュート", go:[25,20], r:2, why:"前に相手がいない。ゴールに近づくほどシュートは入りやすい。まずゴールにむかおう。"},
-  {t:"ここからシュートをうつ", at:[25,0], r:1, why:"ゴールをねらう気持ちはいい。でもまだ遠くて、GKにとられやすい。近づけるなら近づいてから。"},
+  {t:"ドリブルで運んでゴールに近づき、シュート", go:[25,12], r:2, why:"前に相手がいない。ゴールに近づくほどシュートは入りやすい。まずゴールにむかおう。"},
+  {t:"ここからシュートをうつ", at:[25,0], r:0, why:"ここからだとゴールまで遠すぎる。小学生のシュートは、遠いと弱くなってGKにとられやすい。前があいているなら、まず運んで近づこう。"},
   {t:"うしろのCBにもどす", at:[25,50], r:0, why:"ゴールへの道があいているのに、ゴールからはなれてしまう。"}],
  point:"前があいていたら、ゴールに近づいてシュート。"});
 
@@ -980,14 +1138,15 @@ D({id:"ga07", th:"goal", pair:"ga06", g:[11,12],
 D({id:"ga08", th:"goal", type:"tap", target:"me", g:[12,12],
  situ:"右のRHがボールを持ち、相手のサイドのDFがRHにせまってきた。相手のDFとDFのあいだが広がっている。",
  q:"CHのきみは、どこへ走りこむ？",
- scene:{f:"3-3-1", me:["CH",26,30], ball:[44,20], mates:M("3-3-1",{CH:null,RH:[44,20],CF:[23,11],LH:[8,20],LB:[12,40],CB:[25,44],RB:[40,36]}),
+ scene:{f:"3-3-1", me:["CH",28.5,23], ball:[44,20], mates:M("3-3-1",{CH:null,RH:[44,20],CF:[23,11],LH:[8,20],LB:[12,40],CB:[25,44],RB:[40,36]}),
   opps:[[41,15],[28,13],[16,14],[34,24],[22,24]],
   arrows:[{f:[41,15],t:[43,17.5],k:"opp"}]},
  zones:[
-  {c:[36,8], rad:4, r:2, why:"相手のサイドのDFが前に出て、そのうしろ（DFとDFのあいだ）があいた。ここで受ければ、ゴールの横からシュートかパスができる。"},
-  {c:[31,18], rad:3.5, r:1, why:"ペナルティエリアの前。うしろへのパスをもらえばシュートできる。でも相手MFにもどられやすい。"}],
- miss:"そこは相手のすぐ近くか、ゴールから遠い。相手DFが出ていって、あいた場所をさがそう。",
- point:"相手DFが出てきたら、そのうしろへ走りこむ。"});
+  {c:[33,14], rad:3.5, r:2, why:"相手のサイドのDFがRHに出て、DFとDFのあいだが広がった。CBのラインの高さで受ければ、RHからのパスのコースも切られていないし、オフサイドにもならない。受けたらゴールの方を向ける。"},
+  {c:[29,19.5], rad:2.8, r:1, why:"相手MFのうしろ。パスはとおる。でもゴールから少し遠く、相手MFにもどられやすい。"}],
+ missAt:[36,8],
+ miss:"相手DFのうしろまで走ると、RHからのパスのコースは、寄せてきた相手DFに切られている。パスがとおらない。DFとDFのあいだ、CBのラインでもらおう。",
+ point:"相手DFが出てきたら、DFとDFのあいだに入って、CBのラインで受ける。"});
 
 // --- GK：相手がととのう前にうらへ ---
 D({id:"ga09", th:"goal", g:[12,12],
@@ -1347,8 +1506,8 @@ D({id:"bo05", th:"body", g:[11,12],
  situ:"CBからDMのきみにパスが来る。受ける前に首をふったら、左うしろから相手FWが近づいてくるのが見えた。右はあいている。",
  q:"どう受ける？",
  scene:{f:"2-1-2-1", me:["DM",25,46], ball:[17,54], mates:M("2-1-2-1",{DM:null}),
-  opps:[[20,50],[14,40],[34,36],[25,28],[38,29],[25,18]],
-  arrows:[{f:[17,54],t:[24,47],k:"pass"},{f:[20,50],t:[23,48],k:"opp"}]},
+  opps:[[21.5,52],[14,40],[34,36],[25,28],[38,29],[25,18]],
+  arrows:[{f:[17,54],t:[24,47],k:"pass"},{f:[21.5,52],t:[23.5,49.5],k:"opp"}]},
  opts:[
   {t:"相手と反対の右へ、ヘソを開いて止め、前を向く", go:[29,44], r:2, why:"見えていたから、相手から遠い方へ前を向ける。前を向けば、OHやRHへのパスもえらべる。"},
   {t:"ダイレクトで、もう1人のCBにはたく", at:[33,54], r:1, why:"ボールはうしなわない。でも前を向けるチャンスがあったのに、うしろにもどしている。"},
@@ -1732,7 +1891,7 @@ D({id:"fr05", th:"free", g:[10,12],
   opps:[[21,40],[27,47],[9,34],[31,36],[25,19],[40,32]],
   arrows:[{f:[16,52],t:[16,46],k:"run"}]},
  opts:[
-  {t:"相手をつれて、ななめ前へはなれる", at:[25,34], r:2, why:"相手MFもいっしょに動くので、CBの前があく。CBはそのまま運べるし、相手がCBにせまってきたら、きみかLHがあく。"},
+  {t:"相手をつれて、ななめ前へはなれる", seq:[{run:[["me",25,34]]}], r:2, why:"相手MFもいっしょに動くので、CBの前があく。CBはそのまま運べるし、相手がCBにせまってきたら、きみかLHがあく。"},
   {t:"CBのすぐ前に近づいて、パスをもらいに行く", at:[17,47], r:0, why:"相手MFもいっしょにCBの前に来てしまう。CBの運ぶ道がなくなり、2人とも相手にせまられる。"},
   {t:"CBのうしろへまわって、もどすパスの場所をつくる", at:[23,56], r:1, why:"CBがこまったときのにげ場にはなる。でも前に進む助けにはなっていない。"}],
  point:"運んでいる味方には近づきすぎない。相手をつれて、道をあける。"});
@@ -3114,8 +3273,9 @@ D({id:"wn05", th:"won", type:"tap", target:"me", g:[10,12],
   arrows:[{f:[42,27],t:[43,30],k:"opp"},{f:[39,31],t:[42,32],k:"opp"}]},
  zones:[
   {c:[38,39], rad:4, r:2, why:"RHのななめうしろ、中よりの近い場所（1の位置）。相手にじゃまされずにパスを受けられて、うばったボールを失わない。"},
-  {c:[34,33], rad:3, r:1, why:"前で受けられれば大チャンス。でも相手が近く、パスをカットされやすい。"}],
- miss:"そこはRHから遠いか、相手のかげ。こまっているRHのななめうしろ、近くて安全な場所へ。",
+  {c:[44,40], rad:3, r:1, why:"RHのまうしろ。パスはとおる。でもRHと同じたての線で、うしろへもどすだけになる。"}],
+ missAt:[34,33],
+ miss:"前の中がわは、せまってくる相手にパスのコースを切られている。そこはRHから遠いか、相手のかげ。こまっているRHのななめうしろ、近くて安全な場所へ。",
  point:"うばったボールがあぶないときは、近くの1人が1の位置へ。"});
 
 // --- ペア：相手が前に出ているか、もどっているか ---
@@ -3146,7 +3306,7 @@ D({id:"wn07", th:"won", type:"tap", target:"ball", look:3, g:[11,12],
  situ:"DMのきみがまん中でボールをうばった！ 3秒だけ見て、前でフリーの味方をさがそう。",
  q:"どこへパスを出す？",
  scene:{f:"2-1-2-1", me:["DM",25,44], ball:[25,44], mates:M("2-1-2-1",{DM:null,OH:[25,30],CF:[24,18],LH:[8,30],RH:[42,26],CB1:[17,52],CB2:[33,52]}),
-  opps:[[25,27],[23,15],[11,28],[32,16],[22,47],[28.5,37]]},
+  opps:[[25,27],[23,15],[11,28],[32,16],[20,46],[28.5,37]]},
  zones:[
   {c:[42,24], rad:4.5, r:2, why:"RHのまわりには相手がいなかった。前を向いて、すぐ相手ゴールへせめられる。"},
   {c:[17,52], rad:3, r:1, why:"うばわれないのは大事。でも前にフリーの味方がいたのに、チャンスを使えていない。"}],
@@ -3387,10 +3547,10 @@ D({id:"ex15", th:"break", ex:true, g:[11,12],
 D({id:"ua01", th:"goal", g:[9,12],
  situ:"ゴールの近くでボールを持った。前に相手はいない。GKはゴールのまん中に立っている。",
  q:"どこにシュートする？",
- scene:{f:"3-3-1", me:["RH",30,13], ball:[30,13], mates:M("3-3-1",{RH:null,CF:[19,15],CH:[25,26],LH:[8,24]}), opps:[[17,10],[34,18]]},
+ scene:{f:"3-3-1", me:["RH",29,11], ball:[29,11], mates:M("3-3-1",{RH:null,CF:[19,13],CH:[25,24],LH:[8,22]}), opps:[[17,8],[34,16]]},
  opts:[
-  {t:"GKからとおい、左のすみ", at:[22,0], r:2, why:"GKの手がとどきにくい。外れても、左にいるCFがつめられる。"},
-  {t:"近いほうの、右のすみ", at:[28.5,0], r:1, why:"入ることもある。でもゴールのはばがせまく見えて、外れやすい。"},
+  {t:"GKからとおい、左のすみ", at:[23.2,0], r:2, why:"GKの手がとどきにくい。外れても、左にいるCFがつめられる。"},
+  {t:"近いほうの、右のすみ", at:[26.8,0], r:1, why:"入ることもある。でもゴールのはばがせまく見えて、外れやすい。"},
   {t:"GKのいる、まん中", at:[25,0], r:0, why:"GKの正面。強くけっても、とられやすい。"}],
  point:"シュートは、GKからとおいところへ。"});
 
@@ -3434,7 +3594,7 @@ D({id:"ua05", th:"goal", g:[9,10],
  q:"どうする？",
  scene:{f:"3-3-1", me:["CF",27,9], ball:[27,9], mates:M("3-3-1",{CF:null,LH:[10,18],CH:[25,24],RH:[40,18]}), opps:[[20,11],[33,13]]},
  opts:[
-  {t:"すぐにシュートする", at:[28,0], r:2, why:"ゴールが目の前で、GKはまだたおれている。1秒でもおそいと、相手がもどってくる。"},
+  {t:"すぐにシュートする", at:[26.5,0], r:2, why:"ゴールが目の前で、GKはまだたおれている。1秒でもおそいと、相手がもどってくる。"},
   {t:"ボールを止めて、まわりを見てからうつ", r:0, why:"止めているあいだに、GKがおきて、相手もよってくる。チャンスがなくなる。"}],
  point:"ゴール前のこぼれだまは、すぐシュート。"});
 
@@ -4003,7 +4163,7 @@ D({id:"ub27", th:"won", g:[9,10],
   opps:[[18,25],[32,27]]},
  opts:[
   {t:"ゴールの方へ運んで、近くからシュート", go:[25,11], r:2, why:"前にはGKだけ。相手がもどる前に、ゴールに近づいてうつ。"},
-  {t:"すぐその場からシュート", at:[25,0], r:1, why:"入るかもしれない。でも遠いので、GKにとられやすい。もっと近づける時間がある。"},
+  {t:"すぐその場からシュート", at:[25,0], r:0, why:"ここからだとゴールまで遠すぎる。小学生のシュートは、遠いと弱くなってGKにとられやすい。前にはGKしかいないのだから、近づく時間がある。"},
   {t:"うしろのCHにもどす", at:[25,38], r:0, why:"大チャンスなのに、相手にもどる時間をあげてしまう。"}],
  point:"うばったら、相手がもどる前に前へ。"});
 
@@ -4108,7 +4268,7 @@ D({id:"tn07", th:"lane", type:"tap", target:"me", g:[10,12],
   arrows:[{f:[42,27],t:[44,30],k:"opp"}]},
  zones:[
   {c:[36,38], rad:4, r:2, why:"RHのななめうしろ、内がわ。RHとちがうレーンなので、パスのコースを消されない。ここで受ければ、前も中も見える。"},
-  {c:[38,25], rad:3.5, r:1, why:"相手のSBのわき（内がわ）へ走る。うまくいけばうらへ出られる。でも、こまっているRHが、まずパスを出せる場所が先。"}],
+  {c:[36.5,30.5], rad:3, r:1, why:"相手のSBのわき（内がわ）へ走る。うまくいけばうらへ出られる。でも、こまっているRHが、まずパスを出せる場所が先。"}],
  miss:"RHのまうしろだと、せまってくる相手にパスのコースを消されやすい。ちがうレーンで、ななめの場所に動こう。",
  point:"味方のまうしろはダメ。ななめにずれる。"});
 
@@ -4130,7 +4290,7 @@ D({id:"tn09", th:"lane", type:"tap", target:"ball", look:3, g:[10,12],
  q:"どの味方にパスを出す？ タップ！",
  scene:{f:"3-2-2", me:["LB",10,50], ball:[10,50], mates:M("3-2-2",{LB:null, CM1:[18,36], CM2:[31,42], FW1:[10,24], FW2:[30,22]}),
   opps:[[10,36],[26,34],[18,50],[14,16],[26,14],[36,16],[36,32]],
-  arrows:[{f:[18,50],t:[14,50],k:"opp"}]},
+  arrows:[{f:[18,50],t:[15,48],k:"opp"}]},
  zones:[
   {c:[18,36], rad:3.5, r:2, why:"CMは相手と相手のあいだ（わき）にいた。きみとちがうレーンなので、パスが通り、前を向ける。"},
   {c:[25,54], rad:3, r:1, why:"CBにはとどく。でも、前に進まない。"}],
@@ -4497,10 +4657,10 @@ D({id:"tn36", th:"won", type:"tap", target:"ball", look:3, g:[10,12],
 D({id:"te01", th:"goal", pair:"te01", g:[11,12],
  situ:"RHのきみが右からPAに入った。CFはゴール前のまん中にいる。相手GKが、きみの方へいきおいよく飛び出してきた。",
  q:"どうする？",
- scene:{f:"2-4-1", me:["RH",36,9], ball:[36,9],
+ scene:{f:"2-4-1", me:["RH",35.5,8.5], ball:[35.5,8.5],
   mates:M("2-4-1",{RH:null, CF:[22,7], LH:[8,18], CM1:[18,22], CM2:[30,20], CB1:[17,40], CB2:[33,40]}),
   opps:[[32,14],[17,11],[24,17],[40,22],[12,26]],
-  arrows:[{f:[25,4],t:[32,7],k:"opp"},{f:[32,14],t:[34,11.5],k:"opp"}]},
+  arrows:[{f:[25,4],t:[31.5,4.8],k:"opp"},{f:[32,14],t:[34,11.5],k:"opp"}]},
  opts:[
   {t:"ゴール前のCFへ、横にパス", at:[22,7], r:2, why:"GKがきみの方へ出てきて、ゴールの前があいた。CFにわたせば、ほとんどだれもいないゴールにうてる。"},
   {t:"近いポストの方へ、強くシュート", at:[27,1], r:0, why:"GKがすぐ前まで来ていて、うてるコースがほとんどない。GKに当たりやすい。"},
@@ -4509,14 +4669,14 @@ D({id:"te01", th:"goal", pair:"te01", g:[11,12],
 D({id:"te02", th:"goal", pair:"te01", g:[11,12],
  situ:"RHのきみが右からPAに入った。こんどは相手GKはゴールの前で待っている。相手DFが、CFへのパスのコースに入ってきた。",
  q:"どうする？",
- scene:{f:"2-4-1", me:["RH",36,9], ball:[36,9],
+ scene:{f:"2-4-1", me:["RH",35.5,8.5], ball:[35.5,8.5],
   mates:M("2-4-1",{RH:null, CF:[22,7], LH:[8,18], CM1:[18,22], CM2:[30,20], CB1:[17,40], CB2:[33,40]}),
   opps:[[32,14],[27,11],[24,17.5],[40,22],[12,26]],
   arrows:[{f:[27,11],t:[29,9],k:"opp"},{f:[32,14],t:[34,11.5],k:"opp"}]},
  opts:[
   {t:"ファー（遠いポスト）のひくいところへシュート", at:[23,0], r:2, why:"CFへのパスはふさがれた。ファーのひくいところならGKの手がとどきにくいし、GKがはじいてもCFがつめられる。"},
   {t:"CFへ横パス", at:[22,7], r:0, why:"相手DFがパスのコースに入っている。カットされると、そのままカウンターになる。"},
-  {t:"もう少し中へ運んで、角度をつくってからうつ", go:[32,8], r:1, why:"角度は広がる。でも相手DFがすぐよってきて、うつ前にとられることもある。"}],
+  {t:"もう少し中へ運んで、角度をつくってからうつ", go:[31.5,7.5], r:1, why:"角度は広がる。でも相手DFがすぐよってきて、うつ前にとられることもある。"}],
  point:"パスのコースがふさがれたら、自分でゴールをねらう。"});
 
 D({id:"te03", th:"goal", type:"tap", target:"me", g:[11,11],
@@ -5160,7 +5320,7 @@ D({id:"tw16", th:"carry", g:[12,12],
   arrows:[{f:[38,10],t:[41,9],k:"opp"}]},
  opts:[
   {t:"あわてずに、ななめうしろのRHへパス。パスをつないでボールを持ちつづける（むりなたてパスはしない）", at:[40,22], r:2, why:"相手はボールをとりに来るしかない。パスをつなげば時間が進み、とられても自分のゴールから遠い。"},
-  {t:"ゴールに向かって運び、シュートで終わる", at:[27,0], r:1, why:"せめて終わるのもあり。決まればもう1点。でも外れたら相手のボールになり、時間ものこる。"},
+  {t:"ゴールに向かって運び、シュートで終わる", go:[31,7], r:1, why:"せめて終わるのもあり。決まればもう1点。でも外れたら相手のボールになり、時間ものこる。"},
   {t:"ゴール前へ大きくける", at:[20,4], r:0, why:"ゴール前には味方がいない。すぐ相手のボールになって、また攻められる。"}],
  point:"勝っているときは、ボールを大事にパスでつなぐ。"});
 D({id:"tw17", th:"carry", g:[12,12],
@@ -5426,27 +5586,27 @@ D({id:"tw36", th:"won", g:[12,12],
 D({id:"xe01", th:"goal", ex:true, g:[11,12], pair:"xe01",
  situ:"カウンターで、FWのきみがボールを持ってゴールに向かっている。右にもう1人のFW。相手DFは1人だけで、そのDFがきみの方へよってきた。GKはゴールの前にいる。",
  q:"どうする？",
- scene:{f:"2-3-2", me:["FW",20,18], ball:[20,18],
-  mates:M("2-3-2",{FW1:null, FW2:[32,17], CH:[25,34], LH:[8,30], RH:[42,30], CB1:[18,48], CB2:[32,48]}),
-  opps:[[26,13],[22,26],[34,26]],
-  arrows:[{f:[26,13],t:[22,15],k:"opp"}]},
+ scene:{f:"2-3-2", me:["FW",20,13], ball:[20,13],
+  mates:M("2-3-2",{FW1:null, FW2:[32,12], CH:[25,29], LH:[8,25], RH:[42,25], CB1:[18,43], CB2:[32,43]}),
+  opps:[[26,8],[22,21],[34,21]],
+  arrows:[{f:[26,8],t:[22,10],k:"opp"}]},
  opts:[
-  {t:"右のFWへ横パス", at:[31,15], r:2, why:"相手DFがきみに来たぶん、右のFWがフリー。GKは横に動かされ、FWはあいたゴールへうてる。"},
+  {t:"右のFWへ横パス", at:[31,10], r:2, why:"相手DFがきみに来たぶん、右のFWがフリー。GKは横に動かされ、FWはあいたゴールへうてる。"},
   {t:"そのままシュート", at:[24,0.5], r:1, why:"うてなくはない。でもよってきたDFにブロックされやすい。もっとたしかな方法がある。"},
-  {t:"DFをドリブルでぬきにいく", go:[24,12], r:0, why:"相手がよってきたのに1人で勝負すると、2対1の意味がなくなる。"}],
+  {t:"DFをドリブルでぬきにいく", go:[24,7], r:0, why:"相手がよってきたのに1人で勝負すると、2対1の意味がなくなる。"}],
  point:"相手が自分に来たら、フリーの味方へ。"});
 
 D({id:"xe02", th:"goal", ex:true, g:[11,12], pair:"xe01",
  situ:"カウンターで、FWのきみがボールを持ってゴールに向かっている。右にもう1人のFW。こんどは相手DFは右のFWとのあいだにいて、パスを消している。GKがきみの方へとびだしてきた。",
  q:"どうする？",
- scene:{f:"2-3-2", me:["FW",20,18], ball:[20,18],
-  mates:M("2-3-2",{FW1:null, FW2:[32,17], CH:[25,34], LH:[8,30], RH:[42,30], CB1:[18,48], CB2:[32,48]}),
-  opps:[[28,13],[22,26],[34,26]],
-  arrows:[{f:[28,13],t:[29,14],k:"opp"},{f:[25,4],t:[21,10],k:"opp"}]},
+ scene:{f:"2-3-2", me:["FW",20,13], ball:[20,13],
+  mates:M("2-3-2",{FW1:null, FW2:[32,12], CH:[25,29], LH:[8,25], RH:[42,25], CB1:[18,43], CB2:[32,43]}),
+  opps:[[28,8],[22,21],[34,21]],
+  arrows:[{f:[28,8],t:[29,9],k:"opp"},{f:[25,4],t:[21.5,8],k:"opp"}]},
  opts:[
   {t:"GKが近づききる前に、すぐにゴールのあいた方へうつ", at:[26,0.5], r:2, why:"DFは右のFWを消している。GKが前に出てきて、そのうしろのゴールがあいている。近づかれる前にうつのがいちばん早い。"},
-  {t:"GKをドリブルでかわしてからうつ", go:[24,10], r:1, why:"決まればいい形。でもかわすあいだに、GKとDFが近づく時間をあげてしまう。"},
-  {t:"右のFWへ横パス", at:[31,15], r:0, why:"DFがFWとのあいだにいて、カットされる。"}],
+  {t:"GKをドリブルでかわしてからうつ", go:[24,6.5], r:1, why:"決まればいい形。でもかわすあいだに、GKとDFが近づく時間をあげてしまう。"},
+  {t:"右のFWへ横パス", at:[31,10], r:0, why:"DFがFWとのあいだにいて、カットされる。"}],
  point:"2人の相手の動きを見て、あいた方を使う。"});
 
 D({id:"xe03", th:"pos123", ex:true, g:[11,12], type:"tap", target:"ball", look:3,
@@ -5625,23 +5785,23 @@ D({id:"uc01", th:"goal", type:"tap", target:"ball", g:[9,10],
 D({id:"uc02", th:"goal", pair:"uc02", g:[9,10],
  situ:"FWのきみが、左からペナルティエリアに入った。ゴールの前の相手が、もう1人のFWからはなれて、きみのほうへ来た。",
  q:"どうする？",
- scene:{f:"2-3-2", me:["FW",17,14], ball:[17,14], mates:M("2-3-2",{FW1:null,FW2:[29,9],CH:[25,30],LH:[7,26],RH:[42,26]}),
-  opps:[[23,16],[38,16],[12,20]],
-  arrows:[{f:[23,16],t:[19.5,15.5],k:"opp"}]},
+ scene:{f:"2-3-2", me:["FW",19.5,10.2], ball:[19.5,10.2], mates:M("2-3-2",{FW1:null,FW2:[31.5,5.2],CH:[27.5,26.2],LH:[9.5,22.2],RH:[44.5,22.2]}),
+  opps:[[25.5,12.2],[40.5,12.2],[14.5,16.2]],
+  arrows:[{f:[25.5,12.2],t:[22,11.7],k:"opp"}]},
  opts:[
-  {t:"ゴールの前のFWにパスする", at:[29,9], r:2, why:"相手がきみに来たので、ゴールの前のFWがフリーになった。ゴールに近い味方がうてば、入りやすい。"},
+  {t:"ゴールの前のFWにパスする", at:[31.5,5.2], r:2, why:"相手がきみに来たので、ゴールの前のFWがフリーになった。ゴールに近い味方がうてば、入りやすい。"},
   {t:"そのままシュートする", at:[23,0], r:1, why:"うてるのはいい。でも相手が前に来て、コースがせまい。もっと入りやすいチャンスがある。"},
-  {t:"外へドリブルして、相手からはなれる", go:[10,10], r:0, why:"相手からはにげられる。でもゴールからはなれて、シュートの角度がなくなる。"}],
+  {t:"外へドリブルして、相手からはなれる", go:[12.5,6.4], r:0, why:"相手からはにげられる。でもゴールからはなれて、シュートの角度がなくなる。"}],
  point:"相手がきみに来たら、ゴール前のフリーの味方へ。"});
 D({id:"uc03", th:"goal", pair:"uc02", g:[9,10],
  situ:"FWのきみが、左からペナルティエリアに入った。こんどは、ゴールの前の相手は、もう1人のFWについたままで、きみには来ない。",
  q:"どうする？",
- scene:{f:"2-3-2", me:["FW",17,14], ball:[17,14], mates:M("2-3-2",{FW1:null,FW2:[29,9],CH:[25,30],LH:[7,26],RH:[42,26]}),
-  opps:[[27,7],[38,16],[12,20]]},
+ scene:{f:"2-3-2", me:["FW",19.5,10.2], ball:[19.5,10.2], mates:M("2-3-2",{FW1:null,FW2:[31.5,5.2],CH:[27.5,26.2],LH:[9.5,22.2],RH:[44.5,22.2]}),
+  opps:[[29.5,3.2],[40.5,12.2],[14.5,16.2]]},
  opts:[
   {t:"ゴールへシュートする", at:[23,0], r:2, why:"だれもきみに来ない。ゴールが見えているなら、いちばんのチャンスはシュート。"},
-  {t:"もう少しドリブルで近づいてからうつ", go:[20,10], r:1, why:"近づけば入りやすい。でも、そのあいだに相手がよってくるかもしれない。"},
-  {t:"ゴールの前のFWにパスする", at:[29,9], r:0, why:"FWには相手がぴったりついている。パスはカットされやすい。"}],
+  {t:"もう少しドリブルで近づいてからうつ", go:[22.5,6.4], r:1, why:"近づけば入りやすい。でも、そのあいだに相手がよってくるかもしれない。"},
+  {t:"ゴールの前のFWにパスする", at:[31.5,5.2], r:0, why:"FWには相手がぴったりついている。パスはカットされやすい。"}],
  point:"だれも来なければ、自分でシュート。"});
 
 // --- 見る：ゴールの近くでフリーの味方（ルック） ---
@@ -7032,13 +7192,13 @@ D({id:"tc17", th:"cover", type:"tap", target:"me", g:[12,12],
 D({id:"tc18", th:"goal", g:[12,12],
  situ:"FWのきみが、相手のうしろへぬけてボールを持った。相手GKが、きみの方へいきおいよく飛び出してきた。うしろから相手DFが追いかけてくる。",
  q:"どうする？",
- scene:{f:"2-3-2", me:["FW",24,17], ball:[24,17],
-  mates:M("2-3-2",{FW1:null, FW2:[34,21], CH:[25,32], LH:[6,26], RH:[44,26], CB1:[18,46], CB2:[32,46]}),
-  opps:[[27,21],[38,14],[14,18]],
-  arrows:[{f:[25,4],t:[25,10],k:"opp"},{f:[27,21],t:[25.5,19],k:"opp"}]},
+ scene:{f:"2-3-2", me:["FW",24,14], ball:[24,14],
+  mates:M("2-3-2",{FW1:null, FW2:[34,18], CH:[25,32], LH:[6,26], RH:[44,26], CB1:[18,46], CB2:[32,46]}),
+  opps:[[27,18],[38,11],[14,15]],
+  arrows:[{f:[25,4],t:[25,8.5],k:"opp"},{f:[27,18],t:[25.5,16],k:"opp"}]},
  opts:[
   {t:"GKのあたまの上をこえる、ふわりとしたシュート", at:[25,1], r:2, why:"GKが前に出てきて、ゴールの前があいた。上をこえれば、だれもいないゴールに入る。"},
-  {t:"GKをドリブルでかわしてからうつ", go:[31,10], r:1, why:"かわせればほぼゴール。でもうしろからDFが追いつくし、ゴールへの角度もなくなる。"},
+  {t:"GKをドリブルでかわしてからうつ", go:[31,8], r:1, why:"かわせればほぼゴール。でもうしろからDFが追いつくし、ゴールへの角度もなくなる。"},
   {t:"思いきり強く、まっすぐうつ", at:[25,2], r:0, why:"GKがすぐ前まで来ていて、体に当たりやすい。強さより、GKのいないところをねらう。"}],
  point:"GKが前に出てきたら、GKのいないところ（上や横）をねらう。"});
 
@@ -7058,39 +7218,39 @@ D({id:"tc19", th:"goal", type:"tap", target:"me", g:[11,12],
 D({id:"tc20", th:"goal", pair:"tc20", g:[11,11],
  situ:"CFのきみがPAの少し前でボールを持った。前の相手DFが、シュートを止めようと、いきおいよく足を出してとびこんできた。",
  q:"どうする？",
- scene:{f:"2-4-1", me:["CF",24,15], ball:[24,15],
-  mates:M("2-4-1",{CF:null, LH:[10,15], RH:[40,18], CM1:[19,28], CM2:[31,28], CB1:[17,44], CB2:[33,44]}),
-  opps:[[24,10],[14,11],[34,12],[30,22]],
-  arrows:[{f:[24,10],t:[24,13],k:"opp"}]},
+ scene:{f:"2-4-1", me:["CF",24,13.5], ball:[24,13.5],
+  mates:M("2-4-1",{CF:null, LH:[10,13.5], RH:[40,16.5], CM1:[19,26.5], CM2:[31,26.5], CB1:[17,42.5], CB2:[33,42.5]}),
+  opps:[[24,8.5],[14,9.5],[34,10.5],[30,20.5]],
+  arrows:[{f:[24,8.5],t:[24,11.5],k:"opp"}]},
  opts:[
-  {t:"切りかえして、相手がとびこんだ方と反対からうつ", go:[19,14], r:2, why:"相手はとびこんで体重が前にかかり、すぐには向きを変えられない。切りかえせば、ゴールの前が大きくあく。"},
+  {t:"切りかえして、相手がとびこんだ方と反対からうつ", go:[19,12.5], r:2, why:"相手はとびこんで体重が前にかかり、すぐには向きを変えられない。切りかえせば、ゴールの前が大きくあく。"},
   {t:"そのまま、相手めがけて強くうつ", at:[24,0], r:0, why:"相手の足がシュートのコースに出てきている。当たってはね返されやすい。"},
-  {t:"左のLHへパス", at:[10,15], r:1, why:"LHはフリーでいい場所。でも相手がとびこんだ今は、きみがうつ大チャンス。"}],
+  {t:"左のLHへパス", at:[10,13.5], r:1, why:"LHはフリーでいい場所。でも相手がとびこんだ今は、きみがうつ大チャンス。"}],
  point:"相手がとびこんできたら、切りかえしてからうつ。"});
 D({id:"tc21", th:"goal", pair:"tc20", g:[11,11],
  situ:"CFのきみがPAの少し前でボールを持った。こんどは前の相手DFは、少し下がって待っている。シュートのコースは見えている。",
  q:"どうする？",
- scene:{f:"2-4-1", me:["CF",24,15], ball:[24,15],
-  mates:M("2-4-1",{CF:null, LH:[10,15], RH:[40,18], CM1:[19,28], CM2:[31,28], CB1:[17,44], CB2:[33,44]}),
-  opps:[[24,10],[14,11],[34,12],[30,22]],
-  arrows:[{f:[24,10],t:[24,8.5],k:"opp"}]},
+ scene:{f:"2-4-1", me:["CF",24,13.5], ball:[24,13.5],
+  mates:M("2-4-1",{CF:null, LH:[10,13.5], RH:[40,16.5], CM1:[19,26.5], CM2:[31,26.5], CB1:[17,42.5], CB2:[33,42.5]}),
+  opps:[[24,8.5],[14,9.5],[34,10.5],[30,20.5]],
+  arrows:[{f:[24,8.5],t:[24,7],k:"opp"}]},
  opts:[
-  {t:"すぐにシュート", at:[22,0], r:2, why:"相手は下がっていて、足がとどかない。コースが見えているうちにうてば、GKも準備できない。"},
-  {t:"切りかえして、角度を変えてからうつ", go:[19,14], r:0, why:"相手はとびこんでいないので、切りかえしても体勢はくずれない。そのあいだにほかの相手もよってくる。"},
-  {t:"左のLHへパス", at:[10,15], r:1, why:"LHもいい場所。でもきみがうてるなら、まずシュート。"}],
+  {t:"すぐにシュート", at:[27,0.5], r:2, why:"相手は下がっていて、足がとどかない。コースが見えているうちにうてば、GKも準備できない。"},
+  {t:"切りかえして、角度を変えてからうつ", go:[19,12.5], r:0, why:"相手はとびこんでいないので、切りかえしても体勢はくずれない。そのあいだにほかの相手もよってくる。"},
+  {t:"左のLHへパス", at:[10,13.5], r:1, why:"LHもいい場所。でもきみがうてるなら、まずシュート。"}],
  point:"相手が待っていてコースが見えたら、すぐうつ。相手の動きで答えはかわる。"});
 
 D({id:"tc22", th:"goal", g:[11,12],
  situ:"RHがゴールラインの近くから、PAの前のCHのきみへボールをもどした。左から相手が、いきおいよくせまってくる。",
  q:"ボールが来た。どうする？",
- scene:{f:"2-3-2", me:["CH",26,16], ball:[26,16],
-  mates:M("2-3-2",{CH:null, RH:[40,8], FW1:[24,7], FW2:[35,9], LH:[8,18], CB1:[18,42], CB2:[32,42]}),
-  opps:[[21,6],[28,6.5],[21,13],[38,4.5],[30,22]],
-  arrows:[{f:[40,8],t:[26,16],k:"pass"},{f:[21,13],t:[24,15],k:"opp"}]},
+ scene:{f:"2-3-2", me:["CH",26,13.5], ball:[26,13.5],
+  mates:M("2-3-2",{CH:null, RH:[40,5.5], FW1:[23.5,6.5], FW2:[35,6.5], LH:[8,18], CB1:[18,39.5], CB2:[32,39.5]}),
+  opps:[[21,3.5],[28,4],[21,10.5],[38,2],[30,19.5]],
+  arrows:[{f:[40,5.5],t:[26,13.5],k:"pass"},{f:[21,10.5],t:[24,12.5],k:"opp"}]},
  opts:[
   {t:"トラップせずに、そのままダイレクトでシュート", at:[23,0], r:2, why:"相手がすぐそこまで来ている。ボールが来たしゅんかんにうてば、相手もGKも間に合わない。"},
   {t:"1回止めて、ねらいを決めてからうつ", at:[24,0], r:1, why:"落ちついてうてる。でも止めたあいだに、相手がシュートのコースに入ってくる。"},
-  {t:"ゴール前のFWへ、ダイレクトでパス", at:[24,7], r:0, why:"FWのまわりには相手が2人。うてるのに、相手の多いところへ出してしまう。"}],
+  {t:"ゴール前のFWへ、ダイレクトでパス", at:[23.5,6.5], r:0, why:"FWのまわりには相手が2人。うてるのに、相手の多いところへ出してしまう。"}],
  point:"相手がせまってきたら、ダイレクトでうつ。"});
 
 // ---------- 3つの突破 ----------
@@ -9054,7 +9214,7 @@ D({id:"tz08", th:"won", type:"tap", target:"me", g:[12,12],
  zones:[
   {c:[36,50], rad:3.5, r:2, why:"RBのななめうしろ、中よりの1の位置。相手2人のうしろなので、パスがとどく。受けたら前があいていて、逆サイドへも運べる。"},
   {c:[34,45], rad:3, r:1, why:"RBのよこ、中がわ。とどくけど、中からせまる相手に近くて、受けたらすぐせまられる。"}],
- miss:"そこは相手2人のむこうがわか、遠すぎる。せまられている味方のななめうしろで、相手にじゃまされない場所をさがそう。",
+ miss:"そこは相手2人のむこうがわ。RBからのパスは、相手にじゃまされてとどかない。せまられている味方のななめうしろで、相手にじゃまされない場所をさがそう。",
  point:"うばった味方がこまっていたら、ななめうしろの1の位置へ。"});
 
 // ---------- U-12：ゴールをめざす ----------
@@ -9079,22 +9239,22 @@ D({id:"tz10", th:"goal", g:[12,12],
   opps:[[23,13],[33,12],[20,22],[30,22]],
   arrows:[{f:[25,4],t:[22,5],k:"opp"}]},
  opts:[
-  {t:"ファー（遠いポスト）へ、ゴロでうつ", at:[29,0.5], r:2, why:"GKはニアへ体重をかけて動いた。反対のファーへは、すぐにはもどれない。ゴロならとりにくい。"},
+  {t:"ファー（遠いポスト）へ、ゴロでうつ", at:[26.8,0.5], r:2, why:"GKはニアへ体重をかけて動いた。反対のファーへは、すぐにはもどれない。ゴロならとりにくい。"},
   {t:"もう1人のFWへ横パス", at:[30,8], r:1, why:"FWがうてればいい形。でも相手DFが近くにいて、カットされることもある。うてる角度があるなら自分で。"},
-  {t:"ニアへ、強くうつ", at:[21,0.5], r:0, why:"GKが体重をかけた方へうっている。強くても、GKの正面になりやすい。"}],
+  {t:"ニアへ、強くうつ", at:[23.2,0.5], r:0, why:"GKが体重をかけた方へうっている。強くても、GKの正面になりやすい。"}],
  point:"GKが体重をかけた方と反対へうつ。"});
 
 D({id:"tz11", th:"goal", g:[12,12],
  situ:"PAのすぐ前、まん中でCFのきみが前を向いた。目の前の相手DFが、シュートをブロックしようと足をのばしてとびこんできた。",
  q:"どうする？",
- scene:{f:"2-4-1", me:["CF",25,17], ball:[25,17],
-  mates:M("2-4-1",{CF:null, CM1:[19,30], CM2:[31,28], LH:[7,22], RH:[42,16], CB1:[17,46], CB2:[33,46]}),
-  opps:[[25,13],[17,11],[34,10],[39,14],[24,26]],
-  arrows:[{f:[25,13],t:[25,15],k:"opp"}]},
+ scene:{f:"2-4-1", me:["CF",25,14], ball:[25,14],
+  mates:M("2-4-1",{CF:null, CM1:[19,27], CM2:[31,25], LH:[7,19], RH:[42,13], CB1:[17,43], CB2:[33,43]}),
+  opps:[[25,10],[17,8],[34,7],[39,11],[24,23]],
+  arrows:[{f:[25,10],t:[25,12],k:"opp"}]},
  opts:[
-  {t:"うつふりをして切りかえし、相手がとびこんだ反対からうつ", go:[21,15], r:2, why:"相手はブロックに体重をかけてとびこんだ。すぐには反対へ動けない。1つずらせば、ゴールが見える。"},
+  {t:"うつふりをして切りかえし、相手がとびこんだ反対からうつ", go:[21,12], r:2, why:"相手はブロックに体重をかけてとびこんだ。すぐには反対へ動けない。1つずらせば、ゴールが見える。"},
   {t:"そのまま、すぐにうつ", at:[27,0.5], r:1, why:"うつ気持ちはいい。でも相手がコースに入ってきていて、ブロックされやすい。"},
-  {t:"右のRHへパスする", at:[42,16], r:0, why:"RHのすぐ近くに相手がいて、コースもふさがれている。ゴール前でボールを失う。"}],
+  {t:"右のRHへパスする", at:[42,13], r:0, why:"RHのすぐ近くに相手がいて、コースもふさがれている。ゴール前でボールを失う。"}],
  point:"相手がとびこんできたら、その反対へずらしてうつ。"});
 
 // ---------- U-12：3つの突破 ----------
@@ -9120,7 +9280,7 @@ D({id:"tz13", th:"break", g:[12,12],
   arrows:[{f:[42,30],t:[45,15],k:"run"},{f:[40,14],t:[37,16],k:"opp"}]},
  opts:[
   {t:"外を追いこしたRBへパス", at:[45,15], r:2, why:"相手のSBは、きみについて中へ入った。外はがらあき。RBはそのままゴール前へクロスやシュートができる。"},
-  {t:"少し遠いけど、そのままシュート", at:[24,0.5], r:1, why:"うてる場所ではある。でも相手がコースにいて、もっといいチャンスがある。"},
+  {t:"少し遠いけど、そのままシュート", at:[24,0.5], r:0, why:"ゴールまで約20mあって遠い。相手もコースにいて、入りにくい。外を追いこしたRBを使えば、もっと近くからねらえる。"},
   {t:"そのまま中へドリブルを続ける", go:[28,17], r:0, why:"中には相手CBとMFが待っている。相手が人数をかけている方へ入っていく。"}],
  point:"相手がついてきたら、外を追いこす味方があく。"});
 
@@ -9572,7 +9732,7 @@ D({id:"na14", th:"carry", g:[10,11],
   arrows:[{f:[20,33],t:[22,31],k:"opp"}]},
  opts:[
   {t:"前へ運んで、ペナルティエリアの近くからシュートかパス", go:[24,19], r:2, why:"前があいているなら運んで、ゴールに近づく。相手DFがよってきたら、CFやLHがあく。"},
-  {t:"ここからすぐシュートをうつ", at:[25,0], r:1, why:"うつ気持ちはいい。でもゴールまで遠くて、GKにとられやすい。もう少し近づけば、入りやすくなる。"},
+  {t:"ここからすぐシュートをうつ", at:[25,0], r:0, why:"ここからだとゴールまで遠すぎる。小学生のシュートは、遠いと弱くなってGKにとられやすい。前が広くあいているなら、運んで近づいてからうとう。"},
   {t:"うしろのDMにもどして、やり直す", at:[25,44], r:0, why:"うしろから相手MFが追ってきていて、パスがひっかかりやすい。前があいているのに、チャンスをすててしまう。"}],
  point:"前があいていたら運んで、ゴールに近づいてからうつ。"});
 
@@ -9687,30 +9847,30 @@ D({id:"na22", th:"goal", type:"tap", target:"ball", g:[9,10],
 
 // --- DFでも、ゴールが見えたらうつ（RB 3-3-1） ---
 D({id:"na23", th:"goal", g:[9,10],
- situ:"RHのクロスを、相手がはね返した。ボールが、うしろから上がってきたRBのきみの前にころがってきた。ペナルティエリアのすぐ前で、ゴールが見えている。",
+ situ:"RHのクロスを、相手がはね返した。ボールが、うしろから上がってきたRBのきみの前にころがってきた。ペナルティエリアの中で、ゴールが見えている。",
  q:"RBのきみは、どうする？",
- scene:{f:"3-3-1", me:["RB",33,16], ball:[33,16],
-  mates:M("3-3-1",{RB:null, CF:[21,6], LH:[12,13], CH:[26,26], RH:[44,14], CB:[25,44], LB:[12,46]}),
-  opps:[[18,9],[24,10],[38,10],[28,21]],
-  arrows:[{f:[28,21],t:[31,18.5],k:"opp"}]},
+ scene:{f:"3-3-1", me:["RB",30,10.5], ball:[30,10.5],
+  mates:M("3-3-1",{RB:null, CF:[21,6], LH:[12,13], CH:[26,23], RH:[44,14], CB:[25,44], LB:[12,46]}),
+  opps:[[18,7],[23,9],[38,8],[28,18]],
+  arrows:[{f:[28,18],t:[30,14],k:"opp"}]},
  opts:[
   {t:"すぐシュートをうつ", at:[27,0], r:2, why:"前があいていて、ゴールが見えている。DFでも、うてるときはうつ。こうげきの目的はゴール。"},
-  {t:"1回ボールを止めて、ねらいをつけてからうつ", go:[32,14], r:1, why:"止めればねらいやすい。でも、そのあいだに相手がよってきて、コースをとじられる。"},
-  {t:"うしろのCHにもどして、やり直す", at:[26,26], r:0, why:"DFだから、うしろへもどしたくなる。でもいまはゴールの目の前。いちばんのチャンスをすててしまう。"}],
+  {t:"1回ボールを止めて、ねらいをつけてからうつ", go:[29.5,9.5], r:1, why:"止めればねらいやすい。でも、そのあいだに相手がよってきて、コースをとじられる。"},
+  {t:"うしろのCHにもどして、やり直す", at:[26,23], r:0, why:"DFだから、うしろへもどしたくなる。でもいまはゴールの目の前。いちばんのチャンスをすててしまう。"}],
  point:"DFでも、ゴールが見えたらうつ。"});
 
 // --- 追いつかれる前にうつ（LH 2-3-2） ---
 D({id:"na24", th:"goal", g:[10,11],
  situ:"カウンター！ LHのきみが、左からペナルティエリアに入った。前にはGKだけ。うしろから相手DFが追いかけてくる。",
  q:"LHのきみは、どうする？",
- scene:{f:"2-3-2", me:["LH",13,11], ball:[13,11],
-  mates:M("2-3-2",{LH:null, FW1:[22,20], FW2:[34,18], CH:[25,36], RH:[43,30]}),
-  opps:[[18,16],[31,12],[27,25]],
-  arrows:[{f:[18,16],t:[16,13.5],k:"opp"}]},
+ scene:{f:"2-3-2", me:["LH",17.5,8.8], ball:[17.5,8.8],
+  mates:M("2-3-2",{LH:null, FW1:[22,17], FW2:[34,18], CH:[25,36], RH:[43,30]}),
+  opps:[[19,14],[31,12],[27,25]],
+  arrows:[{f:[19,14],t:[18,11.5],k:"opp"}]},
  opts:[
   {t:"すぐに、遠い方のゴールのすみへシュート", at:[27,0.5], r:2, why:"追いつかれる前にうてば、相手はGKだけ。遠い方のすみは、GKの手がとどきにくい。"},
-  {t:"もう1回ゴールの方へ運んでからうつ", go:[16,8], r:1, why:"近づけばうちやすい。でも、そのあいだにうしろの相手が追いついて、シュートをブロックされるかもしれない。"},
-  {t:"スピードを落として、うしろから来るFWを待ってパス", at:[22,20], r:0, why:"1人でうてる場面なのに、待っているあいだに相手がもどってきて、チャンスがなくなる。"}],
+  {t:"もう1回ゴールの方へ運んでからうつ", go:[19.5,6.5], r:1, why:"近づけばうちやすい。でも、そのあいだにうしろの相手が追いついて、シュートをブロックされるかもしれない。"},
+  {t:"スピードを落として、うしろから来るFWを待ってパス", at:[22,17], r:0, why:"1人でうてる場面なのに、待っているあいだに相手がもどってきて、チャンスがなくなる。"}],
  point:"追いつかれる前に、うてるときにうつ。"});
 
 // ===== 3人目・4人目の動き（third）: th01〜th19 =====
@@ -10240,7 +10400,7 @@ D({id:"uk15", th:"unmark", g:[9,12],
  opts:[
   {t:"もう1人のFWからはなれて、右のCBの外がわに立つ", at:[34,22], r:2,
    why:"2人がはなれると、相手のCBも1人ずつつかないといけない。CBどうしのあいだも広がって、パスを通すスペースができる。"},
-  {t:"もう1人のFWのうしろ（少し下がった所）に立つ", at:[25,30], r:1,
+  {t:"もう1人のFWのうしろ（少し下がった所）に立つ", at:[28,29.5], r:1,
    why:"受けられる。でも相手CBの1人が、2人のFWをまとめて見られる。"},
   {t:"もう1人のFWのすぐ横にくっついて立つ", at:[24.5,23], r:0,
    why:"2人がくっつくと、相手CB1人で2人とも見られる。"}],
@@ -10756,7 +10916,7 @@ D({id:"nc17", th:"won", g:[12,12],
  q:"つぎのプレーは？",
  scene:{f:"3-3-1", me:["RH",42,14], ball:[42,14], mates:M("3-3-1",{RH:null, LB:[12,40], CB:[25,44], RB:[38,40], LH:[10,20], CH:[28,26], CF:[28,13]}),
   opps:[[44,20],[35.5,10.8],[25,8],[14,10],[22,22],[32,24]],
-  arrows:[{f:[35.5,10.8],t:[40,12],k:"opp"},{f:[28,13],t:[32,6],k:"run"}]},
+  arrows:[{f:[35.5,10.8],t:[39.5,15],k:"opp"},{f:[28,13],t:[32,6],k:"run"}]},
  opts:[
   {t:"よってきたDFのうしろ、〔ニアゾーン|相手のCBとSBのあいだ〕に走るCFへパス", at:[32,6], r:2, why:"相手はまだととのっていない。DFがきみによってきたので、そのうしろがあいた。CFが前を向いてゴールに向かっていける。"},
   {t:"自分でゴールラインの近くまで運んで、ゴール前へ低いボールを入れる", go:[45,6], r:1, why:"せめる形としてはいい。でもDFがよってきているので、とられるかもしれない。CFがあいたいまパスする方がはやい。"},
@@ -11538,6 +11698,16 @@ function answersOf(pid, src=store){ return src.answers.filter(a=>a.pid===pid); }
 // latest answer per question for one player
 function latestBy(pid, src=store){ const m={}; for(const a of answersOf(pid, src)){ if(!(a.qid in m)) m[a.qid]=a; } return m; }
 const pts = arr => arr.reduce((t,a)=>t+(a.r??(a.ok?2:0)),0);
+// ---------- MAESTRO NIGHT: XP and ranks ----------
+// XP from every answer ever saved for this player (◎ 100, ○ 40, ✕ 10: trying always counts); a guest keeps it for this visit only
+const XP_GAIN = {2:100, 1:40, 0:10};
+const RANKS = [{xp:0, name:"ルーキー", en:"ROOKIE", mark:"R"}, {xp:300, name:"レギュラー", en:"REGULAR", mark:"RG"}, {xp:1000, name:"エース", en:"ACE", mark:"A"},
+  {xp:2500, name:"キャプテン", en:"CAPTAIN", mark:"C"}, {xp:5000, name:"マエストロ", en:"MAESTRO", mark:"M"}];
+function rankOf(xp){ let i=0; while(i+1<RANKS.length && xp>=RANKS[i+1].xp) i++; const cur=RANKS[i], next=RANKS[i+1];
+  return {i, cur, next, pct: next ? (xp-cur.xp)/(next.xp-cur.xp)*100 : 100}; }
+const storedXP = () => !S.player || S.player.guest ? (S.guestXP||0) : answersOf(S.player.id).reduce((t,a)=>t+XP_GAIN[a.r??(a.ok?2:0)],0);
+const nowXP = () => (S.xp0||0) + S.results.reduce((t,a)=>t+XP_GAIN[a.r],0);
+const comboNow = () => { let c=0; for(let k=S.results.length-1;k>=0&&S.results[k].r===2;k--) c++; return c; };
 const pctOf = arr => arr.length ? Math.round(50*pts(arr)/arr.length) : null;   // 2 points per question = 100%
 
 // ---------- Which questions a player sees ----------
@@ -11582,16 +11752,18 @@ function pitchSVG(q, reveal){
       <path d="M0,${gy+d} A1,1 0 0,${d>0?0:1} 1,${gy}"/><path d="M49,${gy} A1,1 0 0,${d>0?0:1} 50,${gy+d}"/>`; }).join("");
   const field = `
     <defs>
-      <radialGradient id="kitM" cx="35%" cy="30%" r="75%"><stop offset="0%" style="stop-color:#ffd2b8"/><stop offset="55%" style="stop-color:var(--mate)"/><stop offset="100%" style="stop-color:var(--mate);stop-opacity:.9"/></radialGradient>
-      <radialGradient id="kitO" cx="35%" cy="30%" r="75%"><stop offset="0%" style="stop-color:#cfe0ff"/><stop offset="55%" style="stop-color:var(--opp)"/><stop offset="100%" style="stop-color:var(--opp);stop-opacity:.9"/></radialGradient>
-      <radialGradient id="kitGM" cx="35%" cy="30%" r="75%"><stop offset="0%" style="stop-color:#fff3b8"/><stop offset="55%" style="stop-color:#f6c71b"/><stop offset="100%" style="stop-color:#f6c71b;stop-opacity:.9"/></radialGradient>
-      <radialGradient id="kitGO" cx="35%" cy="30%" r="75%"><stop offset="0%" style="stop-color:#eadbff"/><stop offset="55%" style="stop-color:#b37bff"/><stop offset="100%" style="stop-color:#b37bff;stop-opacity:.9"/></radialGradient>
-      <filter id="tok" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx=".15" dy=".35" stdDeviation=".35" flood-color="#000" flood-opacity=".55"/></filter>
+      <radialGradient id="kitM" cx="35%" cy="30%" r="75%"><stop offset="0%" style="stop-color:#ffd2b8"/><stop offset="55%" style="stop-color:var(--mate)"/><stop offset="100%" style="stop-color:#b84a17"/></radialGradient>
+      <radialGradient id="kitO" cx="35%" cy="30%" r="75%"><stop offset="0%" style="stop-color:#cfe0ff"/><stop offset="55%" style="stop-color:var(--opp)"/><stop offset="100%" style="stop-color:#1f6aa8"/></radialGradient>
+      <radialGradient id="kitGM" cx="35%" cy="30%" r="75%"><stop offset="0%" style="stop-color:#fff3b8"/><stop offset="55%" style="stop-color:#f6c71b"/><stop offset="100%" style="stop-color:#a9850c"/></radialGradient>
+      <radialGradient id="kitGO" cx="35%" cy="30%" r="75%"><stop offset="0%" style="stop-color:#eadbff"/><stop offset="55%" style="stop-color:#b37bff"/><stop offset="100%" style="stop-color:#7146b8"/></radialGradient>
+      <filter id="tok" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx=".35" dy=".55" stdDeviation=".4" flood-color="#000" flood-opacity=".6"/></filter>
+      <linearGradient id="gloss" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:#c8ffd8;stop-opacity:0"/><stop offset=".2" style="stop-color:#c8ffd8;stop-opacity:.03"/><stop offset=".3" style="stop-color:#c8ffd8;stop-opacity:.13"/><stop offset=".4" style="stop-color:#c8ffd8;stop-opacity:.02"/><stop offset="1" style="stop-color:#000;stop-opacity:.25"/></linearGradient>
       <radialGradient id="vig" cx="50%" cy="50%" r="70%"><stop offset="60%" style="stop-color:#000;stop-opacity:0"/><stop offset="100%" style="stop-color:#000;stop-opacity:.35"/></radialGradient>
       <pattern id="net" width=".6" height=".6" patternUnits="userSpaceOnUse"><path d="M0,0 L.6,.6 M.6,0 L0,.6" stroke="rgba(255,255,255,.55)" stroke-width=".07"/></pattern>
     </defs>
     <rect x="-3" y="-3" width="56" height="74" rx="1.5" style="fill:var(--grass-2)"/>
     ${[0,1,2,3,4,5,6].map(i=>`<rect x="-3" y="${(i*68/7).toFixed(2)}" width="56" height="${(68/14).toFixed(2)}" style="fill:var(--grass)"/>`).join("")}
+    <rect x="-3" y="-3" width="56" height="74" rx="1.5" fill="url(#gloss)" pointer-events="none"/>
     <rect x="-3" y="-3" width="56" height="74" rx="1.5" fill="url(#vig)" pointer-events="none"/>
     <g class="lines" style="stroke:${chalk};fill:none" stroke-width=".22">
       <rect x="0" y="0" width="50" height="68"/>${L(0,34,50,34)}<circle cx="25" cy="34" r="7"/><circle cx="25" cy="34" r=".3" style="fill:${chalk}"/>${arcs}
@@ -11710,6 +11882,7 @@ function startSet(mode){
   else if(mode.startsWith("P:")) pool = visible(g).filter(q=>POS_GROUP(q.pos)===mode.slice(2));
   else if(mode.startsWith("C:")){ const c=catOfMode(mode); pool = c ? visible(g).filter(q=>guidePos(q)===c.pos && GUIDE_CAT_OF[q.id]===c.id) : []; }
   else pool = visible(g).filter(q=>q.th===mode);
+  S.xp0=storedXP();   // (the XP before this round; the round's answers are added on top)
   S.mode=mode; S.set=draw(pool, PER_ROUND); S.i=0; S.results=[]; S.step="quiz"; newQuestion();
 }
 const themeCleared = (pid,th,src=store) => pid==="guest" ? S.guestClears.has(th) : src.clears.some(c=>c.pid===pid && c.th===th);
@@ -11740,7 +11913,10 @@ function startLook(){
 }
 function answer(r){
   const q=S.set[S.i];
-  S.results.push({qid:q.id, r}); saveAnswer(q, r); render();
+  const before=nowXP();
+  S.results.push({qid:q.id, r}); saveAnswer(q, r); if(S.player&&S.player.guest) S.guestXP=nowXP(); render();
+  // MAESTRO NIGHT: a stamp on the pitch, the XP bar fills, and a rank-up when it crosses a line
+  if(typeof NIGHT!=="undefined") NIGHT.reward(r, comboNow(), before, nowXP());
 }
 // where a tap landed on the pitch → rating (best zone that contains it)
 function rateTap(q, p){
@@ -11822,6 +11998,7 @@ const CLIP3D = (() => {
   const COL = {mate:"#ff7a3c", gk:"#f6c71b", opp:"#3fa9ff", ogk:"#b37bff", me:"#ffffff", good:"#4dffa6", warn:"#ffd23d", bad:"#ff4d6a"};
   const RCOL = [COL.bad, COL.warn, COL.good], RMARK = ["✕","○","◎"], RNAME = ["✕ ダメな例","○ それもあり","◎ こうする"];
   const MOVE = 2.6;                     // seconds the players take to move in an answer step (at 1×)
+  const KID_PACE = 6.5;                 // the fastest a primary-school player runs in a clip (m/s); longer runs take longer
   const clamp = v => Math.max(0, Math.min(1, v)), sm = v => { v = clamp(v); return v*v*(3 - 2*v); };
   const lerp = (a, b, k) => [a[0] + (b[0] - a[0])*k, a[1] + (b[1] - a[1])*k];
   const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -11833,8 +12010,14 @@ const CLIP3D = (() => {
   function pitchTexture(grid=false){
     const S2 = 20, c = document.createElement("canvas"); c.width = 56*S2; c.height = 74*S2; const x = c.getContext("2d");
     const P = v => (v + 3)*S2;
-    x.fillStyle = "#2c7d48"; x.fillRect(0,0,c.width,c.height);
-    for (let i=0;i<7;i++){ x.fillStyle = "#348f53"; x.fillRect(0, P(i*68/7), c.width, 68/14*S2); }
+    // MAESTRO NIGHT grass: rich mowing stripes, each catching the light a little differently, and a soft gloss
+    x.fillStyle = "#176a40"; x.fillRect(0,0,c.width,c.height);
+    for (let i=0;i<7;i++){ x.fillStyle = "#1f8150"; x.fillRect(0, P(i*68/7), c.width, 68/14*S2); }
+    for (let i=0;i<14;i++){ const y = P(i*68/14), h = 68/14*S2, g = x.createLinearGradient(0, 0, c.width, 0);
+      g.addColorStop(0, `rgba(200,255,216,${i%2 ? .06 : 0})`); g.addColorStop(1, `rgba(200,255,216,${i%2 ? 0 : .04})`); x.fillStyle = g; x.fillRect(0, y, c.width, h); }
+    { const g = x.createLinearGradient(0, 0, c.width, c.height);
+      g.addColorStop(0, "rgba(200,255,216,0)"); g.addColorStop(.3, "rgba(200,255,216,.1)"); g.addColorStop(.42, "rgba(200,255,216,.02)"); g.addColorStop(1, "rgba(0,0,0,.18)");
+      x.fillStyle = g; x.fillRect(0, 0, c.width, c.height); }
     x.strokeStyle = "rgba(235,255,244,.95)"; x.lineWidth = .22*S2; x.fillStyle = "rgba(235,255,244,.95)";
     const rect = (a,b,w,h) => x.strokeRect(P(a),P(b),w*S2,h*S2), circ = (cx,cy,r,fill) => { x.beginPath(); x.arc(P(cx),P(cy),r*S2,0,Math.PI*2); fill ? x.fill() : x.stroke(); };
     rect(0,0,50,68); x.beginPath(); x.moveTo(P(0),P(34)); x.lineTo(P(50),P(34)); x.stroke(); circ(25,34,7); circ(25,34,.3,1);
@@ -11849,27 +12032,37 @@ const CLIP3D = (() => {
     const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:t, depthTest:false, transparent:true})); sp.scale.set(3,1.5,1); sp.renderOrder = 10; return sp;
   }
-  // a simple player about 1.5 m tall; legs and arms in their own groups so they can swing when running
+  // a primary-school player about 1.45 m tall (a slightly bigger head, like a kid): shirt, shorts, socks in the team
+  // colour, boots and hair, no face. Legs and arms hang from their own groups so they can swing when running and kicking.
   function makePlayer(col, text){
     const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
     const shirt = new THREE.MeshStandardMaterial({color:lin(col), roughness:.45, emissive:lin(col), emissiveIntensity:.15});
-    const dark = new THREE.MeshStandardMaterial({color:0x15181d, roughness:.6}), skin = new THREE.MeshStandardMaterial({color:0xe9eef2, roughness:.5});
-    const stick = (r1, r2, len, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, len, 12), mat); m.position.set(x, y, z); body.add(m); return m; };
-    const ball = (r, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat); m.position.set(x, y, z); body.add(m); return m; };
+    const dark = new THREE.MeshStandardMaterial({color:0x15181d, roughness:.6}), skin = new THREE.MeshStandardMaterial({color:lin("#d9a77f"), roughness:.55});
+    const boot = new THREE.MeshStandardMaterial({color:0x0c0d10, roughness:.35}), hair = new THREE.MeshStandardMaterial({color:0x2a1d14, roughness:.8});
+    const mesh = (geo, mat, parent, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
+    const cyl = (r1, r2, len) => new THREE.CylinderGeometry(r1, r2, len, 12), sph = r => new THREE.SphereGeometry(r, 16, 12);
     const limbs = [];
     for (const sx of [-1, 1]){
-      const leg = new THREE.Group(); leg.position.set(sx*.11, .8, 0); body.add(leg);
-      const lm = new THREE.Mesh(new THREE.CylinderGeometry(.075, .06, .72, 12), skin); lm.position.y = -.38; leg.add(lm);
-      const bt = new THREE.Mesh(new THREE.SphereGeometry(.085, 16, 12), dark); bt.position.set(0, -.74, .06); leg.add(bt);
-      const arm = new THREE.Group(); arm.position.set(sx*.25, 1.25, 0); arm.rotation.z = sx*.28; body.add(arm);
-      const am = new THREE.Mesh(new THREE.CylinderGeometry(.055, .045, .5, 12), skin); am.position.y = -.25; arm.add(am);
-      const hd = new THREE.Mesh(new THREE.SphereGeometry(.05, 12, 10), skin); hd.position.y = -.5; arm.add(hd);
+      const leg = new THREE.Group(); leg.position.set(sx*.1, .7, 0); body.add(leg);
+      mesh(cyl(.085, .075, .26), dark, leg, 0, -.12, 0);                 // shorts
+      mesh(cyl(.06, .05, .2), skin, leg, 0, -.34, 0);                    // knee
+      mesh(cyl(.055, .05, .22), shirt, leg, 0, -.53, 0);                 // sock
+      mesh(new THREE.BoxGeometry(.11, .08, .25), boot, leg, 0, -.66, .05);
+      const arm = new THREE.Group(); arm.position.set(sx*.23, 1.15, 0); arm.rotation.z = sx*.2; body.add(arm);
+      mesh(cyl(.065, .06, .16), shirt, arm, 0, -.08, 0);                 // sleeve
+      mesh(cyl(.048, .04, .32), skin, arm, 0, -.32, 0);
+      mesh(sph(.045), skin, arm, 0, -.5, 0);
       limbs.push({leg, arm, sx}); }
-    stick(.2, .19, .2, dark, 0, .82, 0); stick(.19, .23, .5, shirt, 0, 1.13, 0); ball(.12, shirt, -.24, 1.32, 0); ball(.12, shirt, .24, 1.32, 0); ball(.15, skin, 0, 1.56, 0);
+    mesh(cyl(.17, .17, .13), dark, body, 0, .74, 0);                     // waist of the shorts
+    mesh(cyl(.2, .16, .44), shirt, body, 0, .99, 0);                     // shirt
+    mesh(sph(.1), shirt, body, -.2, 1.16, 0); mesh(sph(.1), shirt, body, .2, 1.16, 0);
+    mesh(cyl(.05, .05, .08), skin, body, 0, 1.24, 0);                    // neck
+    mesh(sph(.17), skin, body, 0, 1.38, 0);                              // head
+    const cap = mesh(new THREE.SphereGeometry(.178, 16, 12, 0, Math.PI*2, 0, Math.PI*.45), hair, body, 0, 1.39, -.01); cap.rotation.x = -.25;
     const ring = new THREE.Mesh(new THREE.RingGeometry(.55,.72,32), new THREE.MeshBasicMaterial({color:lin(col), transparent:true, opacity:.75, side:THREE.DoubleSide})); ring.rotation.x = -Math.PI/2; ring.position.y = .02; g.add(ring);
     const shadow = new THREE.Mesh(new THREE.CircleGeometry(.55,24), new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:.35})); shadow.rotation.x = -Math.PI/2; shadow.position.y = .01; g.add(shadow);
-    let lab = null; if (text){ lab = label(text, col); lab.position.y = 2.2; g.add(lab); }
-    g.userData = {lab, body, ring, limbs, text, col, phase:Math.random()*6, run:0}; return g;
+    let lab = null; if (text){ lab = label(text, col); lab.position.y = 2.05; g.add(lab); }
+    g.userData = {lab, body, ring, limbs, text, col, phase:Math.random()*6, run:0, kick:null}; return g;
   }
   // where a player started an answer's move: a faint 残像 of the player (shown once they have moved away) and a
   // softly pulsing orange ring on the grass
@@ -11898,12 +12091,28 @@ const CLIP3D = (() => {
       const pin = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 1.5, 8), new THREE.MeshBasicMaterial({color:lin(col), transparent:true, opacity:.9})); pin.position.y = .75; g.add(pin); }
     g.position.copy(W(x, y, .06)); g.userData.pulse = m; return g;
   }
-  // a black-and-white football and the glowing ring under it
+  // the MAESTRO NIGHT match ball (our own design: a glossy white ball with four sweeping blades, orange and navy, each with
+  // a bright streak) and the glowing ring under it
+  function ballTexture(){
+    const cv = document.createElement("canvas"); cv.width = 1024; cv.height = 512; const g = cv.getContext("2d");
+    g.fillStyle = "#f4f6fb"; g.fillRect(0, 0, 1024, 512);
+    g.strokeStyle = "rgba(20,24,43,.09)"; g.lineWidth = 2;                // soft panel seams
+    for (let k = 0; k < 4; k++){ g.beginPath();
+      for (let x = 0; x <= 1024; x += 8){ const y = 256 + Math.sin(x/1024*Math.PI*4 + k*1.6)*120*(k%2 ? 1 : -.7); x ? g.lineTo(x, y) : g.moveTo(x, y); }
+      g.stroke(); }
+    // one blade: an S-shaped sweep, fat in the middle and sharp at both ends (drawn three times to wrap round the seam)
+    const blade = (cx, flip, fill, w) => { const top = [], bot = [];
+      for (let i = 0; i <= 40; i++){ const u = i/40, x = cx - 200 + u*400, y = 256 + flip*Math.sin((u - .5)*Math.PI)*190, h = Math.pow(Math.sin(u*Math.PI), 1.6)*w;
+        top.push([x, y - h]); bot.push([x, y + h]); }
+      for (const dx of [-1024, 0, 1024]){ g.beginPath(); top.forEach(([x, y], i) => i ? g.lineTo(x + dx, y) : g.moveTo(x + dx, y));
+        bot.slice().reverse().forEach(([x, y]) => g.lineTo(x + dx, y)); g.closePath(); g.fillStyle = fill; g.fill(); } };
+    [[128, 1, "#ff7a3c", "#ffd23d"], [384, -1, "#14182b", "#7cf5ff"], [640, 1, "#ff7a3c", "#ffd23d"], [896, -1, "#14182b", "#7cf5ff"]]
+      .forEach(([cx, flip, main, streak]) => { blade(cx, flip, "#0b0e1a", 40); blade(cx, flip, main, 33); blade(cx + 18, flip, streak, 7); });
+    const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; return t;
+  }
   function makeBall(){
-    const bc = document.createElement("canvas"); bc.width = 256; bc.height = 128; const bx = bc.getContext("2d"); bx.fillStyle = "#fff"; bx.fillRect(0,0,256,128); bx.fillStyle = "#111";
-    for (let k=0;k<12;k++){ const px = (k%6)*44 + (k>5?22:0) + 10, py = k>5 ? 88 : 34; bx.beginPath(); for (let q=0;q<5;q++){ const a = q/5*Math.PI*2 - Math.PI/2; bx.lineTo(px + Math.cos(a)*12, py + Math.sin(a)*12); } bx.fill(); }
-    const t = new THREE.CanvasTexture(bc); t.encoding = THREE.sRGBEncoding;
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(.34, 28, 20), new THREE.MeshStandardMaterial({map:t, roughness:.4, emissive:0xffffff, emissiveMap:t, emissiveIntensity:.25}));
+    const t = ballTexture();
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(.34, 32, 24), new THREE.MeshPhysicalMaterial({map:t, roughness:.35, clearcoat:1, clearcoatRoughness:.12, emissive:0xffffff, emissiveMap:t, emissiveIntensity:.18}));
     const ring = new THREE.Mesh(new THREE.RingGeometry(.7, .95, 40), new THREE.MeshBasicMaterial({color:0xffd23d, transparent:true, opacity:.9, side:THREE.DoubleSide, depthWrite:false})); ring.rotation.x = -Math.PI/2;
     return {mesh, ring};
   }
@@ -11921,15 +12130,38 @@ const CLIP3D = (() => {
   // move a player from a to b (pitch metres) in dt seconds: face where they go (or `look` when standing), swing arms and legs
   function run(g, a, b, dt, look){
     g.position.copy(W(b[0], b[1]));
-    const v = dt > 0 ? dist(a, b)/dt : 0, u = g.userData;
-    u.run += ((v > .6 ? 1 : 0) - u.run)*Math.min(1, dt*8);
+    const v0 = dt > 0 ? dist(a, b)/dt : 0, u = g.userData;
+    // (the speed is smoothed over a few frames, and the legs swing more the faster the player goes, so starting and
+    // stopping blend in instead of switching on and off)
+    u.v = (u.v || 0) + (v0 - (u.v || 0))*Math.min(1, dt*10); const v = u.v;
+    u.run += (clamp((v - .3)/3) - u.run)*Math.min(1, dt*8);
     const want = v > .6 ? Math.atan2(b[0] - a[0], b[1] - a[1]) : (look && dist(look, b) > .8 ? Math.atan2(look[0] - b[0], look[1] - b[1]) : u.body.rotation.y);
     let d = want - u.body.rotation.y; while (d > Math.PI) d -= 2*Math.PI; while (d < -Math.PI) d += 2*Math.PI;
     u.body.rotation.y += d*Math.min(1, dt*9);
-    u.phase += dt*Math.min(16, 4 + v*1.6);
-    const sw = Math.sin(u.phase)*.75*u.run;
-    if (u.limbs) u.limbs.forEach(l => { l.leg.rotation.x = sw*l.sx; l.arm.rotation.x = -sw*l.sx*.9; l.arm.rotation.z = l.sx*.28; });
+    // (about one stride every 2.2 m, so the feet keep up with the ground; even a jog swings the legs clearly)
+    u.phase += dt*Math.min(20, 4 + v*2.9);
+    const sw = Math.sin(u.phase)*.85*u.run;
+    if (u.limbs) u.limbs.forEach(l => { l.leg.rotation.x = sw*l.sx; l.arm.rotation.x = -sw*l.sx*.9; l.arm.rotation.z = l.sx*.2; });
     u.body.position.y = Math.abs(Math.sin(u.phase))*.07*u.run; u.body.rotation.x = .18*u.run;
+    if (u.kick !== null && u.kick !== undefined) kickPose(g, dt);
+  }
+  // a kick: the right leg winds back, meets the ball at KICK_HIT seconds, follows through and settles; the left arm comes
+  // out for balance. Start one with g.userData.kick = 0 a moment before the ball leaves the foot.
+  const KICK_HIT = .22;
+  function kickSwing(tau){
+    if (tau < -KICK_HIT) return 0;
+    if (tau < -.08) return .95*sm((tau + KICK_HIT)/(KICK_HIT - .08));
+    if (tau < 0) return .95*(1 - sm((tau + .08)/.08));
+    if (tau < .14) return -1.15*sm(tau/.14);
+    return -1.15*(1 - sm((tau - .14)/.28));
+  }
+  function kickPose(g, dt){
+    const u = g.userData; u.kick += dt; const tau = u.kick - KICK_HIT;
+    if (tau > .42){ u.kick = null; return; }
+    const sw = kickSwing(tau), a = Math.abs(sw), [right, left] = u.limbs;
+    right.leg.rotation.x = sw; left.leg.rotation.x = -.15;
+    left.arm.rotation.x = -.6*a; left.arm.rotation.z = left.sx*(.2 + .7*a);
+    u.body.rotation.x = -.12*a; u.body.position.y = 0;
   }
 
   // ---------- one drill question → a clip ----------
@@ -11985,7 +12217,8 @@ const CLIP3D = (() => {
       for (const [who, x, y] of (o.team||[])){
         if (who === "me"){ p.me = [x, y]; if (p.ball) p.oneTwo = /リターン|ワンツー|もどして|かえして/.test(o.t); if (!p.spot) p.spot = [x, y]; }
         else { const i = sc.mates.findIndex(m => m[0] === who); if (i >= 0) p.mates[i] = [x, y]; } }
-      if (!p.spot) p.spot = me0; return passToMe(p, o.r); };
+      if (!p.spot) p.spot = me0; p.lob = /こえ|ふわり/.test(o.t);   // (「かべをこえて」「ふわりとした」: the ball goes over)
+      return passToMe(p, o.r); };
     const planTap = z => { const p = {me:null, ride:false, ball:null, mates:{}, oneTwo:false, spot:z.c, rad:z.rad};
       if (q.target === "ball") p.ball = z.c; else { p.me = z.c; p.ride = hasBall && q.target === "dribble"; } return passToMe(p, z.r); };
     // tap questions: the ✕ step shows a tempting wrong move (q.missAt sets it by hand; otherwise found from the scene):
@@ -12053,7 +12286,15 @@ const CLIP3D = (() => {
       if (!p || !p.me || !(p.recv || p.oneTwo) || p.me[1] >= line - .3 || p.me[1] >= sc.ball[1] || me0[1] < line) return;
       p.kickY = Math.min(me0[1], line + 1.2);                                  // (1.2 m to spare: clearly onside)
       p.kick = (me0[1] - p.kickY)/(me0[1] - p.me[1]); });
-    return {q, sc, me0, mates0, opps0, holder, throwIn, inc, arrowMoves, steps, box:{x0, x1, y0, y1}};
+    const c = {q, sc, me0, mates0, opps0, holder, throwIn, inc, arrowMoves, steps, box:{x0, x1, y0, y1}};
+    // kids' pace: a step whose fastest runner would go faster than KID_PACE takes longer (the whole step slows down
+    // together, so the passes and runs still meet as before); the step's length grows by the same time
+    steps.forEach(s => { const p = s.plan; if (!p || s.still) return;
+      const M = p.move || MOVE, N = 60; let peak = 0, prev = null;
+      for (let i = 0; i <= N; i++){ const st = pose(c, p, i/N), pts = [st.me, ...st.mates, ...st.opps];
+        if (prev) pts.forEach((v, j) => { peak = Math.max(peak, dist(v, prev[j])*N/M); }); prev = pts; }
+      if (peak > KID_PACE){ const M2 = Math.min(M*3, M*peak/KID_PACE); s.dur += M2 - M; p.move = M2; } });
+    return c;
   }
 
   // a run goes round a player (opponent or team-mate) who stands on its line, not through him: by a point 1.9 m to his side
@@ -12067,8 +12308,11 @@ const CLIP3D = (() => {
     if (L < .05){ n = [-(b[1] - a[1]), b[0] - a[0]]; if ((25 - o[0])*n[0] < 0) n = [-n[0], -n[1]]; L = Math.hypot(...n); }   // (dead on: pass on the pitch-centre side)
     return [o[0] + n[0]/L*1.9, o[1] + n[1]/L*1.9];
   }
-  const along = (a, b, via, k) => { if (!via) return lerp(a, b, k); const l1 = dist(a, via), l2 = dist(via, b), t = k*(l1 + l2);
-    return t < l1 ? lerp(a, via, t/(l1 || 1)) : lerp(via, b, (t - l1)/(l2 || 1)); };
+  // (a smooth curve through `via` instead of a sharp corner there: a quadratic curve that passes `via` at the same share of
+  // the way as the corner would)
+  const along = (a, b, via, k) => { if (!via) return lerp(a, b, k); const l1 = dist(a, via), l2 = dist(via, b), s = Math.max(.2, Math.min(.8, l1/((l1 + l2) || 1)));
+    const c = [0, 1].map(j => (via[j] - (1 - s)*(1 - s)*a[j] - s*s*b[j])/(2*(1 - s)*s));
+    return [0, 1].map(j => (1 - k)*(1 - k)*a[j] + 2*(1 - k)*k*c[j] + k*k*b[j]); };
   // the moment p (0–1) at which f(p), a rising curve, reaches v
   const when = (f, v) => { let lo = 0, hi = 1; for (let i = 0; i < 30; i++){ const m = (lo + hi)/2; if (f(m) < v) lo = m; else hi = m; } return lo; };
 
@@ -12115,7 +12359,8 @@ const CLIP3D = (() => {
       const k = sm((p - pk)/(.95 - pk)), to = foot(plan.me, start); s.ball = lerp(start, to, k); const L = dist(start, to); s.bh = L > 14 ? Math.sin(Math.PI*k)*Math.min(4.5, L*.11) : 0; }
     else if (plan && plan.ride){ const dir = plan.me; s.ball = foot(s.me, dist(s.me, dir) > .4 ? dir : [25, 0]); }
     else if (plan && plan.ball){
-      const fly = (a, b, k) => { s.ball = lerp(a, b, k); const L = dist(a, b), shot = b[1] < 2; s.bh = shot ? k*.6 : L > 14 ? Math.sin(Math.PI*k)*Math.min(4.5, L*.11) : 0; };   // long passes lift, shots stay low
+      const fly = (a, b, k) => { s.ball = lerp(a, b, k); const L = dist(a, b), shot = b[1] < 2; s.bh = shot ? k*.6 : L > 14 ? Math.sin(Math.PI*k)*Math.min(4.5, L*.11) : 0;   // long passes lift, shots stay low
+        if (plan.lob) s.bh = Math.sin(Math.PI*k)*Math.max(2.6, Math.min(4.5, L*.11)) + (shot ? k*.6 : 0); };   // a ball played over (a wall, the keeper): high in the middle
       // a throw-in: from over the head, a soft lob that comes down at the receiver's feet
       const toss = (a, b, k) => { s.ball = lerp(a, b, k); s.bh = OVER*(1 - k) + Math.sin(Math.PI*k)*Math.min(2.5, dist(a, b)*.1); s.throwK = k; };
       const st0 = H ? (c.throwIn ? (H.kind === "me" ? c.me0 : at(H.kind, H.i)).slice() : foot(H.kind === "me" ? c.me0 : at(H.kind, H.i), plan.ball)) : c.sc.ball;
@@ -12152,7 +12397,7 @@ const CLIP3D = (() => {
     const root = new THREE.Group(), actors = new THREE.Group(), arrowsG = new THREE.Group(), marks = new THREE.Group(), ball = makeBall();
     root.add(actors, arrowsG, marks, ball.mesh, ball.ring); scene.add(root);
     let C = null, endWait = 0;
-    const P = {root, ballScale:1.5, ringScale:.75, voice:true, get C(){ return C; }};
+    const P = {root, ballScale:.45, ringScale:.75, voice:true, get C(){ return C; }};
     // answersOnly: only ◎ → ○ → ✕ → ポイント (the drill, where じょうきょう and もんだい were just read)
     P.load = (q, answersOnly=false) => {
       while (actors.children.length) actors.remove(actors.children[0]);
@@ -12199,6 +12444,16 @@ const CLIP3D = (() => {
       const target = pose(C, st.plan, p), bl = sm(C.t/.5), mix = (a, b) => lerp(a, b, bl), prev = C.shown;
       C.shown = {me:mix(C.from.me, target.me), mates:target.mates.map((v, i) => mix(C.from.mates[i], v)), opps:target.opps.map((v, i) => mix(C.from.opps[i], v)), ball:mix(C.from.ball, target.ball), bh:(C.from.bh || 0) + (target.bh - (C.from.bh || 0))*bl, throwK:target.throwK};
       const bp = C.shown.ball;
+      // a kick: when the ball is about to leave someone's feet (it will have moved off in KICK_HIT seconds, and it is
+      // still now), the nearest player swings at it. (Not while the step is still blending in from the last one, not in
+      // ポイント, which only shows the end, and not for a dribble: that is touches, not a kick.)
+      if (playing && st.plan && !st.still && !(st.plan.ride && !st.plan.ball) && dt > 0 && C.t > .5 && dist(target.ball, bp) < .05){
+        const fut = pose(C, st.plan, clamp((C.t + KICK_HIT*speed - .5)/(st.plan.move || MOVE))).ball;
+        if (dist(fut, bp) > .35 && dist(prev.ball, bp) < .02*speed){
+          let kg = null, kd = 1.6; [[C.meG, C.shown.me], ...C.matesG.map((g, i) => [g, C.shown.mates[i]]), ...C.oppsG.map((g, i) => [g, C.shown.opps[i]])]
+            .forEach(([g, at]) => { const d = dist(at, bp); if (d < kd){ kd = d; kg = g; } });
+          if (kg && kg.userData.kick == null && !(C.throwIn && C.shown.throwK !== null)) kg.userData.kick = 0;
+        } }
       run(C.meG, prev.me, C.shown.me, dt, bp); C.matesG.forEach((g, i) => run(g, prev.mates[i], C.shown.mates[i], dt, bp)); C.oppsG.forEach((g, i) => run(g, prev.opps[i], C.shown.opps[i], dt, bp));
       if (C.throwIn) throwPose(C, st);
       const bs = P.ballScale; ball.mesh.position.copy(W(bp[0], bp[1], .34*bs + C.shown.bh)); ball.mesh.scale.setScalar(bs);
@@ -12262,18 +12517,7 @@ const V3D = (() => {
   const lin = c => new THREE.Color(c).convertSRGBToLinear();
   const COL = {mate:"#ff7a3c", gk:"#f6c71b", opp:"#3fa9ff", ogk:"#b37bff", me:"#ffffff", pick:"#f2fff8", good:"#4dffa6", warn:"#ffd23d", bad:"#ff4d6a"};
 
-  function pitchTexture(){
-    const S2 = 20, c = document.createElement("canvas"); c.width = 56*S2; c.height = 74*S2; const x = c.getContext("2d");
-    const P = v => (v + 3)*S2;
-    x.fillStyle = "#2c7d48"; x.fillRect(0,0,c.width,c.height);
-    for (let i=0;i<7;i++){ x.fillStyle = "#348f53"; x.fillRect(0, P(i*68/7), c.width, 68/14*S2); }
-    x.strokeStyle = "rgba(235,255,244,.95)"; x.lineWidth = .22*S2; x.fillStyle = "rgba(235,255,244,.95)";
-    const rect = (a,b,w,h) => x.strokeRect(P(a),P(b),w*S2,h*S2), circ = (cx,cy,r,fill) => { x.beginPath(); x.arc(P(cx),P(cy),r*S2,0,Math.PI*2); fill ? x.fill() : x.stroke(); };
-    rect(0,0,50,68); x.beginPath(); x.moveTo(P(0),P(34)); x.lineTo(P(50),P(34)); x.stroke(); circ(25,34,7); circ(25,34,.3,1);
-    for (const [gy,d] of [[0,1],[68,-1]]){ rect(10.5, d>0?0:56, 29, 12); rect(18.5, d>0?0:64, 13, 4); circ(25, gy+d*8, .3, 1); }
-    x.strokeStyle = "rgba(255,255,255,.05)"; x.lineWidth = 1; for (let i=0;i<=50;i+=5){ x.beginPath(); x.moveTo(P(i),P(0)); x.lineTo(P(i),P(68)); x.stroke(); } for (let j=0;j<=68;j+=5){ x.beginPath(); x.moveTo(P(0),P(j)); x.lineTo(P(50),P(j)); x.stroke(); }
-    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; return t;
-  }
+  const pitchTexture = () => CLIP3D.pitchTexture(true);   // the shared MAESTRO NIGHT grass, with the 5 m grid
   function label(text, col, ink="#fff", solid=false){
     const c = document.createElement("canvas"); c.width = 128; c.height = 64; const x = c.getContext("2d");
     x.fillStyle = solid ? col : "rgba(3,10,7,.78)"; x.beginPath(); x.roundRect ? x.roundRect(14,10,100,44,10) : x.rect(14,10,100,44); x.fill();
@@ -12281,19 +12525,7 @@ const V3D = (() => {
     const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:t, depthTest:false, transparent:true})); sp.scale.set(3,1.5,1); sp.renderOrder = 10; return sp;
   }
-  function makePlayer(col, text){
-    const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
-    const shirt = new THREE.MeshStandardMaterial({color:lin(col), roughness:.45, emissive:lin(col), emissiveIntensity:.15});
-    const dark = new THREE.MeshStandardMaterial({color:0x15181d, roughness:.6}), skin = new THREE.MeshStandardMaterial({color:0xe9eef2, roughness:.5});
-    const stick = (r1, r2, len, mat, x, y, z, rz=0) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, len, 12), mat); m.position.set(x, y, z); m.rotation.set(0, 0, rz); body.add(m); };
-    const ball = (r, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat); m.position.set(x, y, z); body.add(m); };
-    for (const sx of [-1, 1]){ stick(.075, .06, .72, skin, sx*.11, .42, 0, sx*.06); ball(.085, dark, sx*.13, .06, .06); stick(.055, .045, .5, skin, sx*.3, 1.0, 0, sx*.28); ball(.05, skin, sx*.37, .76, 0); }
-    stick(.2, .19, .2, dark, 0, .82, 0); stick(.19, .23, .5, shirt, 0, 1.13, 0); ball(.12, shirt, -.24, 1.32, 0); ball(.12, shirt, .24, 1.32, 0); ball(.15, skin, 0, 1.56, 0);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(.55,.72,32), new THREE.MeshBasicMaterial({color:lin(col), transparent:true, opacity:.75, side:THREE.DoubleSide})); ring.rotation.x = -Math.PI/2; ring.position.y = .02; g.add(ring);
-    const shadow = new THREE.Mesh(new THREE.CircleGeometry(.55,24), new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:.35})); shadow.rotation.x = -Math.PI/2; shadow.position.y = .01; g.add(shadow);
-    let lab = null; if (text){ lab = label(text, col); lab.position.y = 2.2; g.add(lab); }
-    g.userData = {lab, body, ring}; return g;
-  }
+  const makePlayer = (col, text) => CLIP3D.makePlayer(col, text);   // the shared kid players
   function fanGeom(RR, H){
     const fg = new THREE.BufferGeometry(), fp = [], N = 32;
     for (let k=0;k<N;k++){ const a1 = -H + 2*H*k/N, a2 = -H + 2*H*(k+1)/N; fp.push(0,0,0, RR*Math.sin(a1),0,RR*Math.cos(a1), RR*Math.sin(a2),0,RR*Math.cos(a2)); }
@@ -12334,21 +12566,17 @@ const V3D = (() => {
         vertexShader:"varying vec2 vP; void main(){ vec4 w = modelMatrix*vec4(position,1.0); vP = w.xz; gl_Position = projectionMatrix*viewMatrix*w; }",
         fragmentShader:`varying vec2 vP;
           float line(vec2 p, float cell, float w){ vec2 g = abs(fract(p/cell - .5) - .5)*cell; vec2 f = fwidth(p); vec2 l = 1.0 - smoothstep(vec2(0.0), f*w, g); return max(l.x, l.y); }
-          void main(){ float d = length(max(abs(vP) - vec2(28.0, 37.0), 0.0)); float a = max(line(vP, 5.0, 1.4)*.85, line(vP, 25.0, 2.2)); gl_FragColor = vec4(.63, 1.0, .82, a*exp(-d/16.0)*.55); }`});
+          void main(){ float d = length(max(abs(vP) - vec2(28.0, 37.0), 0.0)); float a = max(line(vP, 5.0, 1.4)*.85, line(vP, 25.0, 2.2)); gl_FragColor = vec4(.62, .74, 1.0, a*exp(-d/16.0)*.3); }`});
       gm.extensions = {derivatives:true}; const gp = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), gm); gp.rotation.x = -Math.PI/2; gp.position.y = -.25; gp.renderOrder = -1; scene.add(gp);
       const wm = new THREE.ShaderMaterial({transparent:true, depthWrite:false, side:THREE.BackSide,
         vertexShader:"varying vec3 vW; void main(){ vec4 w = modelMatrix*vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }",
-        fragmentShader:`varying vec3 vW; void main(){ vec2 p = vec2(atan(vW.z, vW.x)*90.0, vW.y); vec2 g = abs(fract(p/5.0 - .5) - .5)*5.0, f = fwidth(p)*1.4, l = 1.0 - smoothstep(vec2(0.0), f, g); gl_FragColor = vec4(.63, 1.0, .82, max(l.x, l.y)*exp(-max(vW.y, 0.0)/9.0)*.5); }`});
+        fragmentShader:`varying vec3 vW; void main(){ vec2 p = vec2(atan(vW.z, vW.x)*90.0, vW.y); vec2 g = abs(fract(p/5.0 - .5) - .5)*5.0, f = fwidth(p)*1.4, l = 1.0 - smoothstep(vec2(0.0), f, g); gl_FragColor = vec4(.62, .74, 1.0, max(l.x, l.y)*exp(-max(vW.y, 0.0)/9.0)*.3); }`});
       wm.extensions = {derivatives:true}; eyeWall = new THREE.Mesh(new THREE.CylinderGeometry(90, 90, 60, 96, 1, true), wm); eyeWall.position.y = 29.75; eyeWall.visible = false; scene.add(eyeWall); }
     const white = new THREE.MeshStandardMaterial({color:0xffffff, roughness:.4});
     for (const gy of [0, 68]){ for (const gx of [22.5, 27.5]){ const p = new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,2.15,10), white); p.position.copy(W(gx, gy, 1.07)); scene.add(p); }
       const bar = new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,5,10), white); bar.rotation.z = Math.PI/2; bar.position.copy(W(25, gy, 2.15)); scene.add(bar);
       const net = new THREE.Mesh(new THREE.PlaneGeometry(5, 2.15), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:.12, side:THREE.DoubleSide})); net.position.copy(W(25, gy + (gy ? 1.2 : -1.2), 1.07)); scene.add(net); }
-    const bc = document.createElement("canvas"); bc.width = 256; bc.height = 128; const bx = bc.getContext("2d"); bx.fillStyle = "#fff"; bx.fillRect(0,0,256,128); bx.fillStyle = "#111";
-    for (let k=0;k<12;k++){ const px = (k%6)*44 + (k>5?22:0) + 10, py = k>5 ? 88 : 34; bx.beginPath(); for (let q=0;q<5;q++){ const a = q/5*Math.PI*2 - Math.PI/2; bx.lineTo(px + Math.cos(a)*12, py + Math.sin(a)*12); } bx.fill(); }
-    const btex = new THREE.CanvasTexture(bc); btex.encoding = THREE.sRGBEncoding;
-    ballM = new THREE.Mesh(new THREE.SphereGeometry(.34, 28, 20), new THREE.MeshStandardMaterial({map:btex, roughness:.4, emissive:0xffffff, emissiveMap:btex, emissiveIntensity:.25})); scene.add(ballM);
-    ballRing = new THREE.Mesh(new THREE.RingGeometry(.7, .95, 40), new THREE.MeshBasicMaterial({color:0xffd23d, transparent:true, opacity:.9, side:THREE.DoubleSide, depthWrite:false})); ballRing.rotation.x = -Math.PI/2; scene.add(ballRing);
+    { const b = CLIP3D.makeBall(); ballM = b.mesh; ballRing = b.ring; scene.add(ballM, ballRing); }   // the MAESTRO NIGHT match ball
     actors = new THREE.Group(); scene.add(actors); marks = new THREE.Group(); scene.add(marks);
     fan = makeFan(22); scene.add(fan);   // what きみ (the player the question is about) can see
     wrap = document.createElement("div"); wrap.className = "v3d"; wrap.append(renderer.domElement);
@@ -12508,7 +12736,7 @@ const V3D = (() => {
     // when the answer passes or shoots it, it travels from there to the answer spot
     const gp = g => [g.position.x + 25, g.position.z + 34];
     const H = holder ? (holder.kind === "me" ? meG : holder.kind === "mate" ? mates[holder.i] : opps[holder.i]) : null;
-    const bs = view === "eye" ? .45 : 1.1, reach = .42 + .34*bs;   // (a big ball from above, a real-size ball through the eyes)
+    const bs = view === "eye" ? .33 : .42, reach = .42 + .34*bs;   // (a little bigger than real from above, so it can be seen next to the kids; real size through the eyes)
     const tl = Math.hypot(t.ball[0], t.ball[1]), fly = tl > .01 && !t.ride, f = fly ? Math.min(1, Math.hypot(cur.ball[0], cur.ball[1])/tl) : 0;
     let hAng = null;
     if (H){ const p = gp(H); hAng = Math.atan2(25 - p[0], (holder.kind === "opp" ? 68 : 0) - p[1]);
@@ -12596,7 +12824,7 @@ const V3D = (() => {
   }
   function clipFrame(now){
     const dt = Math.min(.05, (now - (cl.last || now))/1000); cl.last = now;
-    clip.ballScale = view === "eye" ? .45 : 1.3; clip.ringScale = view === "eye" ? .4 : .75;
+    clip.ballScale = view === "eye" ? .33 : .42; clip.ringScale = view === "eye" ? .4 : .75;
     const ev = clip.update(dt, now, cl.playing, 1), C = clip.C;
     if (ev.step) caption();
     if (ev.end) cl.playing = false;
@@ -12746,18 +12974,22 @@ function renderQuiz(){
       ? `<div class="lookbox"><p><b>${q.look}びょう</b>だけ見られるよ。どこにだれがいるか、よく見よう！</p><button class="big" id="lookstart">見る！</button></div>`
       : S.looking ? `<div class="lookbox counting"><span class="count">${S.lookLeft}</span><p>よく見て！</p></div>`
       : `<div class="lookbox gone"><p>きえた！ おぼえているかな？</p></div>`;
-  return `<div class="quiz">
+  const combo=comboNow(), rk=rankOf(nowXP());
+  const bug=`<div class="nt-bug" aria-label="${S.i+1}もんめ / ${S.set.length}もん"><span class="live">LIVE</span><span class="title">MAESTRO<span>&nbsp;<b>DRILL</b></span></span><span class="num"><small>Q</small>${S.i+1}/${S.set.length}</span><span class="num">${GLABEL(S.grade)}</span>${combo>=2?`<span class="combo">COMBO <b>×${combo}</b></span>`:""}</div>`;
+  const me=`<div class="nt-player"><span class="nt-badge" aria-hidden="true">${rk.cur.mark}</span><span class="nt-who"><small>${rk.cur.en}</small>${esc(S.player?S.player.name:"")}<i>${rk.cur.name}</i></span><div class="nt-xp"><div class="bar"><i id="ntBar" style="width:${rk.pct.toFixed(1)}%"></i></div><div class="val"><span id="ntXp">${nowXP()}</span> XP</div></div></div>`;
+  return `<div class="quiz">${bug}
     <div class="pitchwrap${q.look && !S.looking && !S.hide && !done ? " veiled" : ""}"><p class="situ">${esc(K(q.situ))}</p>${typeof V3D!=="undefined"&&V3D?`<div class="viewbar" role="group" aria-label="ピッチの見え方">${[["top","TOP VIEW"],["tv","3D VIEW"],["eye","PLAYER VIEW"]].map(([v,l])=>`<button data-v3="${v}" aria-pressed="${V3D.view===v}">${l}</button>`).join("")}</div>`:""}<div class="pitchbox">${pitchSVG(q,done)}<div class="hud" aria-hidden="true"><div class="grid"></div><div class="scan"></div><i></i><i></i><i></i><i></i><b class="tl">${pitchView(q).part==="all"?"PITCH 68 × 50 M":pitchView(q).part==="front"?"FRONT HALF":"BACK HALF"}</b><b class="tr">${typeof V3D!=="undefined"&&V3D?{top:"TOP VIEW",tv:"3D VIEW",eye:"PLAYER VIEW"}[V3D.view]:"TOP VIEW"}</b><b class="bl">Q ${String(S.i+1).padStart(2,"0")} / ${String(S.set.length).padStart(2,"0")}</b><b class="br">${esc(q.id.toUpperCase())}</b></div></div>
       <div class="legend"><span><i class="dot" style="background:var(--mate)"></i>みかた</span><span><i class="dot" style="background:var(--opp)"></i>あいて</span><span><svg viewBox="-1.3 -1.3 2.6 2.6" width="12" height="12" aria-hidden="true" style="vertical-align:-1px;margin-right:4px">${soccerBall(0,0,1.15)}</svg>ボール</span>${q.type==="pick"?`<span><i class="dot" style="background:var(--pick)"></i>こたえの場所</span>`:`<span><i class="dot" style="background:var(--good)"></i>◎のエリア <i class="dot" style="background:var(--warn);margin-left:6px"></i>○のエリア</span>`}</div>
     </div>
     <section class="card">
+      ${me}
       <div class="qhead"><div class="progress" aria-label="${S.i+1}もんめ / ${S.set.length}もん">${prog}</div></div>
       ${pairNext?`<p class="pairnote">さっきと同じ場面。でも、相手の動きがちがう！</p>`:""}
       <p class="qtext">${esc(K(q.q))}</p>
       ${lookBar}
       ${!done && q.type==="pick" && !waiting?`<p class="taphint">1回タップすると、ピッチで動きが見られるよ。同じこたえをもう1回タップで けってい。</p>`:""}
       ${body}
-      ${done?`<div class="verdict ${RATE[r].cls} pop"><span class="mark">${RATE[r].mark}</span><div><div class="stamp">${RATE[r].stamp}</div><p>${r===2?"いちばん目的に合っている！":r===1?"目的には合っている。でも、もっといい答えがあるよ。":"この場面の目的を思い出そう。"}</p></div></div>
+      ${done?`<div class="verdict ${RATE[r].cls} pop"><span class="mark">${RATE[r].mark}</span><div><div class="stamp">${RATE[r].stamp} <span class="nt-gain">+${XP_GAIN[r]} XP</span></div><p>${r===2?"いちばん目的に合っている！":r===1?"目的には合っている。でも、もっといい答えがあるよ。":"この場面の目的を思い出そう。"}</p></div></div>
       <div class="aim"><small>この場面の目的</small>${esc(K(q.aim||TH[q.th].aim))}</div>
       <div class="point"><small>ポイント</small>${esc(K(q.point))}</div>
       <div class="row">${typeof V3D!=="undefined"&&V3D&&V3D.canClip?`<button class="ghost play3d" id="play3d">▶ 3Dで見る</button>`:""}<button class="big" id="next">${S.i+1<S.set.length?"つぎの問題へ →":"けっかを見る →"}</button></div>`:""}
@@ -12776,6 +13008,7 @@ function renderResult(){
     <div class="board"><div><div class="lbl">SCORE</div><div class="sc"><span class="n">${got}</span><span class="of">/ ${max}</span></div></div>
       <div style="display:grid;gap:6px;min-width:0"><div class="marks" aria-hidden="true">${S.results.map(x=>`<b class="rm r${x.r}">${RATE[x.r].mark}</b>`).join("")}</div><h2 style="margin:0">${esc(msg)}</h2></div></div>
     ${clear}
+    ${(()=>{ const xp=nowXP(), rk=rankOf(xp), got2=xp-(S.xp0||0); return `<div class="nt-player wide"><span class="nt-badge" aria-hidden="true">${rk.cur.mark}</span><span class="nt-who"><small>${rk.cur.en}</small>${esc(S.player.name)}<i>${rk.cur.name}</i></span><div class="nt-xp"><div class="bar"><i style="width:${rk.pct.toFixed(1)}%"></i></div><div class="val">${xp} XP</div></div><p class="nt-earned">このラウンドで <b>+${got2} XP</b>${rk.next?`　つぎの「${rk.next.name}」まで あと ${rk.next.xp-xp} XP`:"　さいこうランク！"}</p></div>`; })()}
     <div class="review">${S.results.map(x=>{const q=QBY[x.qid];return `<div><b class="rm r${x.r}">${RATE[x.r].mark}</b><span><b>${esc(K(TH[q.th].name))}</b>　${esc(K(q.q))}<br><span class="muted">${esc(K(q.point))}</span></span></div>`;}).join("")}</div>
     ${saved?`<p class="muted" style="margin:0;font-size:.85rem">${saved}</p>`:""}
     <div class="row">
@@ -12940,17 +13173,61 @@ view.addEventListener("click", e=>{
 render();
 
 
-// ===== MAESTRO look: English kickers on the tabs, faint code rain far behind (same as MAESTRO BOARD) =====
+// ===== MAESTRO look: English kickers on the tabs =====
+// (MAESTRO NIGHT, 2026-10-27: the green code rain is gone; the stadium sky is in night.css)
 (() => {
   const EN = {"tab-drill":"DRILL", "tab-coach":"RESULTS"};
   for (const id in EN) { const el = document.getElementById(id); if (el) el.dataset.en = EN[id]; }
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const c = document.createElement("canvas"); c.id = "digi-rain"; c.setAttribute("aria-hidden", "true"); document.body.prepend(c);
-  const x = c.getContext("2d"), chars = "0123456789ABCDEF<>/+=-".split(""); let cols = [];
-  const fit = () => { c.width = innerWidth; c.height = innerHeight; cols = Array(Math.ceil(c.width/18)).fill(0).map(() => Math.random()*c.height/18|0); };
-  fit(); addEventListener("resize", fit);
-  setInterval(() => { if (document.hidden) return; x.fillStyle = "rgba(3,10,7,.14)"; x.fillRect(0,0,c.width,c.height); x.fillStyle = "#4dffa6"; x.font = '13px "Chakra Petch", monospace';
-    cols.forEach((y, i) => { x.fillText(chars[Math.random()*chars.length|0], i*18, y*18); cols[i] = y*18 > c.height && Math.random() > .975 ? 0 : y + 1; }); }, 80);
+})();
+
+// ===== MAESTRO NIGHT rewards: after each answer a stamp lands on the pitch (◎ with a flash and confetti, ✕ with a
+// small shake), and a run of ◎ shows a COMBO chip. Called by answer() once the screen shows the verdict. =====
+const NIGHT = (() => {
+  const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const STAMP = {2:["NICE!", "いちばんいい答え"], 1:["GOOD", "それもあり"], 0:["ONE MORE", "もう一回考えよう"]};
+  function confetti(n = 140){
+    if (calm()) return;
+    const cv = document.createElement("canvas"); cv.className = "nt-confetti"; document.body.appendChild(cv);
+    const ctx = cv.getContext("2d"), dpr = devicePixelRatio || 1; cv.width = innerWidth*dpr; cv.height = innerHeight*dpr; ctx.scale(dpr, dpr);
+    const cols = ["#ff7a3c", "#ffc83d", "#3dffa0", "#7cf5ff", "#ffffff"];
+    const ps = Array.from({length:n}, (_, i) => ({x:innerWidth/2 + (Math.random() - .5)*120, y:innerHeight*.38, vx:(Math.random() - .5)*14, vy:-Math.random()*14 - 4,
+      s:4 + Math.random()*5, a:Math.random()*6, va:(Math.random() - .5)*.4, c:cols[i % cols.length]}));
+    const t0 = performance.now();
+    (function step(t){ const k = (t - t0)/1600; ctx.clearRect(0, 0, innerWidth, innerHeight);
+      for (const p of ps){ p.vy += .45; p.vx *= .985; p.x += p.vx; p.y += p.vy; p.a += p.va;
+        ctx.save(); ctx.globalAlpha = Math.max(0, 1 - k); ctx.translate(p.x, p.y); ctx.rotate(p.a); ctx.fillStyle = p.c; ctx.fillRect(-p.s/2, -p.s/4, p.s, p.s/2); ctx.restore(); }
+      k < 1 ? requestAnimationFrame(step) : cv.remove(); })(t0);
+  }
+  // the XP number counts up and the bar fills from where it was; crossing a rank line opens the rank-up screen
+  function countUp(node, from, to, ms = 900){ const t0 = performance.now();
+    (function step(t){ const k = Math.min(1, (t - t0)/ms), e = 1 - Math.pow(1 - k, 3); node.textContent = Math.round(from + (to - from)*e); if (k < 1) requestAnimationFrame(step); })(t0); }
+  function xpFill(before, after){
+    const n = document.getElementById("ntXp"), bar = document.getElementById("ntBar"); if (!n || !bar || typeof rankOf === "undefined") return;
+    const a = rankOf(before), b = rankOf(after);
+    bar.style.transition = "none"; bar.style.width = (b.i > a.i ? 0 : a.pct) + "%"; void bar.offsetWidth; bar.style.transition = "";
+    requestAnimationFrame(() => { bar.style.width = b.pct + "%"; }); countUp(n, before, after);
+    if (b.i > a.i) setTimeout(() => rankUp(b.cur), 1300);
+  }
+  function rankUp(rk){
+    document.querySelectorAll(".nt-rankup").forEach(x => x.remove());
+    const o = document.createElement("div"); o.className = "nt-rankup"; o.setAttribute("role", "dialog"); o.setAttribute("aria-label", "ランクアップ");
+    o.innerHTML = `<div class="box"><div class="k">RANK UP</div><span class="nt-badge">${rk.mark}</span><h2>${rk.en}</h2><p>ランクアップ！ <b>${rk.name}</b>になった</p><button class="big" type="button">やったね！</button></div>`;
+    document.body.appendChild(o); requestAnimationFrame(() => o.classList.add("show")); confetti(200);
+    o.querySelector("button").addEventListener("click", () => o.remove());
+  }
+  // r: 2 ◎ / 1 ○ / 0 ✕; combo: ◎ in a row so far in this set; before / after: the XP
+  function reward(r, combo = 0, before, after){
+    if (before !== undefined) xpFill(before, after);
+    const host = document.querySelector(".pitchbox"); if (!host) return;
+    host.querySelectorAll(".nt-stamp,.nt-flash").forEach(n => n.remove());
+    if (r === 2){ const f = document.createElement("div"); f.className = "nt-flash"; host.appendChild(f); requestAnimationFrame(() => f.classList.add("show")); confetti(); }
+    const s = document.createElement("div"); s.className = `nt-stamp r${r}`; s.setAttribute("aria-hidden", "true");
+    s.innerHTML = `${STAMP[r][0]}<small>${STAMP[r][1]}</small>${r === 2 && combo >= 2 ? `<span class="combo">COMBO ×${combo}</span>` : ""}`;
+    host.appendChild(s); requestAnimationFrame(() => s.classList.add("show"));
+    setTimeout(() => s.remove(), 2100);
+    if (r === 0 && !calm()){ host.classList.remove("nt-shake"); void host.offsetWidth; host.classList.add("nt-shake"); }
+  }
+  return {reward, confetti, rankUp};
 })();
 
 </script>
