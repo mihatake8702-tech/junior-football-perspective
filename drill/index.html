@@ -12127,7 +12127,7 @@ const CLIP3D = (() => {
   }
 
   // ---------- motion ----------
-  // move a player from a to b (pitch metres) in dt seconds: face where they go (or `look` when standing), swing arms and legs
+  // move a player from a to b (pitch metres) in dt seconds: face where they go or the ball (`look`), swing arms and legs
   function run(g, a, b, dt, look){
     g.position.copy(W(b[0], b[1]));
     const v0 = dt > 0 ? dist(a, b)/dt : 0, u = g.userData;
@@ -12135,7 +12135,13 @@ const CLIP3D = (() => {
     // stopping blend in instead of switching on and off)
     u.v = (u.v || 0) + (v0 - (u.v || 0))*Math.min(1, dt*10); const v = u.v;
     u.run += (clamp((v - .3)/3) - u.run)*Math.min(1, dt*8);
-    const want = v > .6 ? Math.atan2(b[0] - a[0], b[1] - a[1]) : (look && dist(look, b) > .8 ? Math.atan2(look[0] - b[0], look[1] - b[1]) : u.body.rotation.y);
+    // (with the ball at their feet: the way they go. Without it: a sprint faces the way they run, a few steps to adjust keep
+    // the eyes on the ball, and in between they are turned part of the way — running and watching)
+    const toL = look && dist(look, b) > .8 ? Math.atan2(look[0] - b[0], look[1] - b[1]) : null, go = Math.atan2(b[0] - a[0], b[1] - a[1]);
+    let want = u.body.rotation.y;
+    if (v > .6 && (toL === null || (look && dist(look, b) < 1.3))) want = go;
+    else if (v > .6){ const w = clamp((v - 1.5)/2.5); want = toL + Math.atan2(Math.sin(go - toL), Math.cos(go - toL))*w; }
+    else if (toL !== null) want = toL;
     let d = want - u.body.rotation.y; while (d > Math.PI) d -= 2*Math.PI; while (d < -Math.PI) d += 2*Math.PI;
     u.body.rotation.y += d*Math.min(1, dt*9);
     // (about one stride every 2.2 m, so the feet keep up with the ground; even a jog swings the legs clearly)
@@ -12397,7 +12403,7 @@ const CLIP3D = (() => {
     const root = new THREE.Group(), actors = new THREE.Group(), arrowsG = new THREE.Group(), marks = new THREE.Group(), ball = makeBall();
     root.add(actors, arrowsG, marks, ball.mesh, ball.ring); scene.add(root);
     let C = null, endWait = 0;
-    const P = {root, ballScale:.45, ringScale:.75, voice:true, get C(){ return C; }};
+    const P = {root, ballScale:.55, ringScale:.75, voice:true, get C(){ return C; }};
     // answersOnly: only ◎ → ○ → ✕ → ポイント (the drill, where じょうきょう and もんだい were just read)
     P.load = (q, answersOnly=false) => {
       while (actors.children.length) actors.remove(actors.children[0]);
@@ -12736,7 +12742,7 @@ const V3D = (() => {
     // when the answer passes or shoots it, it travels from there to the answer spot
     const gp = g => [g.position.x + 25, g.position.z + 34];
     const H = holder ? (holder.kind === "me" ? meG : holder.kind === "mate" ? mates[holder.i] : opps[holder.i]) : null;
-    const bs = view === "eye" ? .33 : .42, reach = .42 + .34*bs;   // (a little bigger than real from above, so it can be seen next to the kids; real size through the eyes)
+    const bs = view === "eye" ? .4 : .52, reach = .42 + .34*bs;   // (a little bigger than real from above, so it can be seen next to the kids; real size through the eyes)
     const tl = Math.hypot(t.ball[0], t.ball[1]), fly = tl > .01 && !t.ride, f = fly ? Math.min(1, Math.hypot(cur.ball[0], cur.ball[1])/tl) : 0;
     let hAng = null;
     if (H){ const p = gp(H); hAng = Math.atan2(25 - p[0], (holder.kind === "opp" ? 68 : 0) - p[1]);
@@ -12824,7 +12830,7 @@ const V3D = (() => {
   }
   function clipFrame(now){
     const dt = Math.min(.05, (now - (cl.last || now))/1000); cl.last = now;
-    clip.ballScale = view === "eye" ? .33 : .42; clip.ringScale = view === "eye" ? .4 : .75;
+    clip.ballScale = view === "eye" ? .4 : .52; clip.ringScale = view === "eye" ? .4 : .75;
     const ev = clip.update(dt, now, cl.playing, 1), C = clip.C;
     if (ev.step) caption();
     if (ev.end) cl.playing = false;

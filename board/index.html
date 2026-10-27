@@ -3506,22 +3506,23 @@ const LESSONS={
      {cap:"相手3人にかこまれた。取られた",ball:"sL",steal:true,mv:{sL:[7.5,50],f:[11,52],L:[6,52]}},
      {cap:"片方がつまったら、逆サイドへ。広いほうで前へ進もう",ball:"sL",wait:900,look:{D:[7.5,50]}}]})]},
 
- "df-escape":{pos:"DF",hidden:true,name:"ワンツーでプレスをはがす",en:"ONE-TWO",desc:"CHに当てて、もどしをもらってFWをぬく",min:"約2分",
+ "df-escape":{pos:"DF",hidden:true,name:"ワンツーでプレスをはがす",en:"ONE-TWO",desc:"CHに当てて、FWの裏で受けなおす。CHは外に開いて次のパスを受ける",min:"約2分",
   chapters:[
-   LCH({t:"ワンツーでプレスをはがす",n:3,
+   LCH({t:"ワンツーでプレスをはがす",n:4,
     who:{D:"m CB",C:"m CH",L:"m LB",R:"m RB",f:"o FW",m:"o CH",sL:"o SH",sR:"o SH"},
     P0:{D:[25,55],C:[31,46],L:[8,52],R:[42,52],f:[24,47],m:[31,42.5],sL:[10.5,50.3],sR:[39.5,50.3]},
     steps:[
      {cap:"CBがボールを持った。相手のFWがまっすぐ寄せてくる",ball:"D",look:{f:[25,55],m:[31,46]}},
      {cap:"SBには、相手のSHがぴったりついている",ball:"D",mv:{f:[24,51.5]},look:{f:[25,55],sL:[8,52],sR:[42,52]}},
-     {space:[[25,43,3]],cap:"CHへ縦パス。出したらすぐ、FWの横を走る",ball:"C",mv:{C:[31,45.5]},look:{C:[25,55],f:[31,46.5],m:[30.5,46.5]}},
-     {space:[[25,43,3]],cap:"CHはワンタッチで、走るCBの前へ落とす",ball:"D",lead:true,mv:{D:[27,49.5]},look:{f:[30.5,46.5],m:[30.5,46.5]}},
-     {cap:"CBは前を向いた。FWは、うしろに置いてきた",ball:"D",mv:{D:[28,46],f:[25.5,51]},look:{f:[27,46]}},
-     {space:[[34,40.5,2.5]],cap:"前へ運ぶ。相手のCHがCBに寄ってきた。CHのマークがはずれた",ball:"D",mv:{D:[25.5,44.5],f:[26.5,49.5],m:[24.5,42.3]},look:{C:[25.5,44.5],m:[25.5,44.5]}},
-     {cap:"前に出たCHへパス。前を向いて受けられる。プレスをはがした",ball:"C",mv:{C:[32.5,41.5]},look:{m:[32.5,41.5]}}],
+     {space:[[25.8,46.4,2.2]],cap:"CHへ縦パス。出した瞬間に、CBはFWの横を走り出す。相手のCHはCHのうしろから寄せる",ball:"C",mv:{C:[31,45.5],m:[31,43.6],D:[26.6,52.2]},look:{C:[25,55],f:[31,45.5],m:[31,45.5]}},
+     {space:[[25.8,46.4,2.2]],cap:"CHはワンタッチで、FWの裏の丸の場所へ出す。CBはFWの横を走りぬける",ball:[25.8,46.4],mv:{D:[26.8,49.2],m:[30.8,44]},look:{C:[25.8,46.4],f:[25.8,46.4],m:[25.8,46.4]}},
+     {space:[[25.8,46.4,2.2]],cap:"CBはFWの裏、CHがいた場所で受けて前を向いた。FWは、うしろに置いてきた",ball:"D",press:false,mv:{D:[25.8,46.6],f:[24.8,51]},look:{D:[25.8,38],f:[25.8,46.6],C:[25.8,46.6],m:[25.8,46.6]}},
+     {space:[[35.5,43.5,2.3]],cap:"相手のCHが前に出て、縦を切ってくる。CHは少し外に開いて、パスコースをつくる",ball:"D",press:false,mv:{m:[25.8,42.4],C:[35.5,43.5],f:[25.3,50.2]},look:{D:[35.5,43.5],C:[25.8,46.4],m:[25.8,46.4]}},
+     {space:[[35.5,43.5,2.3]],cap:"外に開いたCHへパス。前を向いて受けられる。プレスをはがした",ball:"C",look:{C:[30,30],m:[35.5,43.5],D:[35.5,43.5]}}],
     slow:{2:{cap:"①CBは縦パスを出したら、すぐFWの横を走りぬける",wait:900},
-     3:{cap:"②CHはワンタッチで落とす。うしろに相手がいたら、前を向かない",wait:900},
-     4:{cap:"③FWはボールを見て止まる。その横をぬけて、前を向ける",wait:900}},
+     3:{cap:"②CHはワンタッチで、FWの裏の丸の場所へ出す。うしろに相手がいたら、前を向かない",wait:900},
+     4:{cap:"③CBはFWの裏、CHがいた場所で受ける。FWのプレッシャーはもう届かない",wait:900},
+     5:{cap:"④相手のCHが縦を切ってきたら、CHは少し外に開いて受ける",wait:900}},
     bad:[
      {cap:"ダメな例：CHがむりに前を向く",ball:"D",mv:{f:[24,51.5]},look:{f:[25,55]}},
      {cap:"CHへ縦パス",ball:"C",mv:{C:[30.5,46.5]},look:{C:[25,55],m:[30.5,46.5]}},
@@ -6847,12 +6848,15 @@ function demoFrames(sc,tight){
       // the ball is in front of the one who has it: on the way they run, or (standing) towards the goal they attack
       const p=pos[st.ball], q=prev[st.ball]||p, dx=p[0]-q[0], dy=p[1]-q[1], L=Math.hypot(dx,dy);
       const gy=(sc.players[st.ball]||{}).t==="o"?68:0, gx=25-p[0], gd=gy-p[1], G=Math.hypot(gx,gd)||1;
-      ball = L>1 ? [p[0]+dx/L*1.3, p[1]+dy/L*1.3] : [p[0]+gx/G*1.3, p[1]+gd/G*1.3];
+      const lk=st.look&&st.look[st.ball], lx=lk?lk[0]-p[0]:0, ly=lk?lk[1]-p[1]:0, LL=Math.hypot(lx,ly);
+      ball = L>1 ? [p[0]+dx/L*1.3, p[1]+dy/L*1.3] : LL>1 ? [p[0]+lx/LL*1.3, p[1]+ly/LL*1.3] : [p[0]+gx/G*1.3, p[1]+gd/G*1.3];
       pass=holder!==null&&holder!==st.ball&&!st.steal; holder=st.ball; }   // (a steal is not a pass: no pass line)
-    else if(Array.isArray(st.ball)){ ball=[...st.ball]; pass=holder!==null||(prevBall&&Math.hypot(ball[0]-prevBall[0],ball[1]-prevBall[1])>2); holder=null; }
+    else if(Array.isArray(st.ball)){ ball=[...st.ball]; pass=holder!==null||(prevBall&&Math.hypot(ball[0]-prevBall[0],ball[1]-prevBall[1])>2); holder=null;
+      // a shot between the posts: into the net behind the goal line (the scenes put it on the line, 0.5 m out on the pitch)
+      if(pass&&ball[0]>22.6&&ball[0]<27.4&&(ball[1]<=1.5||ball[1]>=66.5)) ball[1]=ball[1]<34?-.9:68.9; }
     prevBall=ball;
     return {cap:st.cap, pos:JSON.parse(JSON.stringify(pos)), ball, pass, lead, hold:typeof st.ball==="string"&&!lead?st.ball:null, look:st.look||null,
-      part:st.part, slow:!!st.slow, view:st.view, eye:st.eye, cut:!!st.cut, wait:st.wait||0, space:st.space||null};
+      part:st.part, slow:!!st.slow, view:st.view, eye:st.eye, cut:!!st.cut, wait:st.wait||0, space:st.space||null, press:st.press!==false};
   });
   return tight?clearLanes(sc,tightenPress(sc,frames)):frames;
 }
@@ -6879,17 +6883,23 @@ function clearLanes(sc,frames){
 // where it would stand in the way of the pass that comes in or goes out
 function tightenPress(sc,frames){
   const sd=(a,b,p)=>{ const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy||1,t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L)); return [Math.hypot(a[0]+dx*t-p[0],a[1]+dy*t-p[1]),t*Math.sqrt(L)]; };
-  frames.forEach((f,i)=>{ if(!i||!f.hold) return;
+  frames.forEach((f,i)=>{ if(!i||!f.hold||!f.press) return;   // (press:false — a scene where the one on the ball has got away)
     const P=sc.players, h=f.pos[f.hold], team=P[f.hold].t; let k=null, bd=6;
     Object.entries(f.pos).forEach(([id,q])=>{ const p=P[id]; if(!p||p.t===team||p.lab==="GK") return; const d=Math.hypot(q[0]-h[0],q[1]-h[1]); if(d<bd){ bd=d; k=id; } });
     if(!k||bd<=1.9) return;
-    const q=f.pos[k], nd=Math.max(1.8,bd*.6), np=[h[0]+(q[0]-h[0])*nd/bd, h[1]+(q[1]-h[1])*nd/bd];
+    const q=f.pos[k]; let nd=Math.max(1.8,bd*.6);
+    // (never onto the ball: the ball is in front of the one who has it, so stop 1.4 m short of it)
+    const at=d=>[h[0]+(q[0]-h[0])*d/bd, h[1]+(q[1]-h[1])*d/bd];
+    if(f.ball) while(nd<bd&&Math.hypot(at(nd)[0]-f.ball[0],at(nd)[1]-f.ball[1])<1.4) nd+=.1;
+    const np=at(nd);
     const lanes=[]; const pf=frames[i-1]; if(pf&&pf.hold&&pf.hold!==f.hold) lanes.push([pf.pos[pf.hold],h]);
     const nf=frames[i+1]; if(nf&&nf.hold&&nf.hold!==f.hold) lanes.push([h,nf.pos[nf.hold]]);
     if(nf&&nf.lead) lanes.push([h,nf.ball]);
     const blocks=lanes.some(([a,b])=>{ const [d,along]=sd(a,b,np), L=Math.hypot(b[0]-a[0],b[1]-a[1]); return d<1.2&&along>1&&along<L-.8; });
     const crowds=Object.entries(f.pos).some(([id,o])=>id!==k&&id!==f.hold&&Math.hypot(o[0]-np[0],o[1]-np[1])<1);
-    if(!blocks&&!crowds) f.pos[k]=np.map(v=>+v.toFixed(2));
+    if(!blocks&&!crowds){ const was=q.join(); f.pos[k]=np.map(v=>+v.toFixed(2));
+      // and they stay there in the next scenes until the script moves them (no stepping back when the ball has gone)
+      for(let j=i+1;j<frames.length&&!frames[j].cut&&frames[j].pos[k]&&frames[j].pos[k].join()===was;j++) frames[j].pos[k]=[...f.pos[k]]; }
   });
   return frames;
 }
@@ -7608,7 +7618,7 @@ const CLIP3D = (() => {
   }
 
   // ---------- motion ----------
-  // move a player from a to b (pitch metres) in dt seconds: face where they go (or `look` when standing), swing arms and legs
+  // move a player from a to b (pitch metres) in dt seconds: face where they go or the ball (`look`), swing arms and legs
   function run(g, a, b, dt, look){
     g.position.copy(W(b[0], b[1]));
     const v0 = dt > 0 ? dist(a, b)/dt : 0, u = g.userData;
@@ -7616,7 +7626,13 @@ const CLIP3D = (() => {
     // stopping blend in instead of switching on and off)
     u.v = (u.v || 0) + (v0 - (u.v || 0))*Math.min(1, dt*10); const v = u.v;
     u.run += (clamp((v - .3)/3) - u.run)*Math.min(1, dt*8);
-    const want = v > .6 ? Math.atan2(b[0] - a[0], b[1] - a[1]) : (look && dist(look, b) > .8 ? Math.atan2(look[0] - b[0], look[1] - b[1]) : u.body.rotation.y);
+    // (with the ball at their feet: the way they go. Without it: a sprint faces the way they run, a few steps to adjust keep
+    // the eyes on the ball, and in between they are turned part of the way — running and watching)
+    const toL = look && dist(look, b) > .8 ? Math.atan2(look[0] - b[0], look[1] - b[1]) : null, go = Math.atan2(b[0] - a[0], b[1] - a[1]);
+    let want = u.body.rotation.y;
+    if (v > .6 && (toL === null || (look && dist(look, b) < 1.3))) want = go;
+    else if (v > .6){ const w = clamp((v - 1.5)/2.5); want = toL + Math.atan2(Math.sin(go - toL), Math.cos(go - toL))*w; }
+    else if (toL !== null) want = toL;
     let d = want - u.body.rotation.y; while (d > Math.PI) d -= 2*Math.PI; while (d < -Math.PI) d += 2*Math.PI;
     u.body.rotation.y += d*Math.min(1, dt*9);
     // (about one stride every 2.2 m, so the feet keep up with the ground; even a jog swings the legs clearly)
@@ -7878,7 +7894,7 @@ const CLIP3D = (() => {
     const root = new THREE.Group(), actors = new THREE.Group(), arrowsG = new THREE.Group(), marks = new THREE.Group(), ball = makeBall();
     root.add(actors, arrowsG, marks, ball.mesh, ball.ring); scene.add(root);
     let C = null, endWait = 0;
-    const P = {root, ballScale:.45, ringScale:.75, voice:true, get C(){ return C; }};
+    const P = {root, ballScale:.55, ringScale:.75, voice:true, get C(){ return C; }};
     // answersOnly: only ◎ → ○ → ✕ → ポイント (the drill, where じょうきょう and もんだい were just read)
     P.load = (q, answersOnly=false) => {
       while (actors.children.length) actors.remove(actors.children[0]);
@@ -8075,9 +8091,9 @@ const B3D = (() => {
         const disc = new THREE.Mesh(new THREE.CircleGeometry(r - .28, 64), new THREE.MeshBasicMaterial({color:0xffe04d, transparent:true, opacity:.2, depthWrite:false, side:THREE.DoubleSide}));
         [ring, disc].forEach(m => { m.rotation.x = -Math.PI/2; m.position.copy(W(x, y, .06)); demoRoot.add(m); demo.space.push(m); }); }); if (DM.frames[DM.i].cut){ demo.list.forEach(g => { const q = DM.frames[DM.i].pos[g.userData.pid]; g.position.copy(W(q[0], q[1])); if (g.userData.vel) g.userData.vel.set(0, 0, 0); }); demo.ball.userData.on = false; } }
     const f = DM.frames[DM.i], next = DM.i < DM.frames.length - 1 ? DM.frames[DM.i + 1] : null,   // (a scene that starts again from the top is not a pass to come)
-      bs = view === "tv" ? 1.1 : .45;   // (next: not the first scene again when it loops)
+      bs = view === "tv" ? .65 : .4;   // (next: not the first scene again when it loops; the ball: a little bigger than real from above, real size through the eyes)
     // who has the ball in this scene: the nearest one, if close
-    let hold = f.hold ? demo.list.find(g => g.userData.pid === f.hold) || null : null, hd = 2.6; if (f.ball && !f.hold && !f.lead) demo.list.forEach(g => { const q = f.pos[g.userData.pid]; const d = Math.hypot(q[0]-f.ball[0], q[1]-f.ball[1]); if (d < hd){ hd = d; hold = g; } });
+    let hold = f.hold ? demo.list.find(g => g.userData.pid === f.hold) || null : null, hd = 2.6; if (f.ball && !f.hold && !f.lead && f.ball[1] > 0 && f.ball[1] < 68) demo.list.forEach(g => { const q = f.pos[g.userData.pid]; const d = Math.hypot(q[0]-f.ball[0], q[1]-f.ball[1]); if (d < hd){ hd = d; hold = g; } });
     const bp = demo.ball.position.clone();
     const dt = frame.dt || 0;
     demo.list.forEach(g => { const q = f.pos[g.userData.pid], t = W(q[0], q[1]), mv = t.clone().sub(g.position);
@@ -8093,6 +8109,16 @@ const B3D = (() => {
       const lk = f.look && f.look[g.userData.pid];
       if (lk) want = Math.atan2(lk[0] - q[0], lk[1] - q[1]);              // the scene says where this player faces
       else if (f.lead && f.lead === g.userData.pid && f.ball) { const bw = W(f.ball[0], f.ball[1]); want = Math.atan2(bw.x - g.position.x, bw.z - g.position.z); }   // onto a pass into space: towards the ball ahead
+      else if (g === hold && demo.ballWith !== hold && demo.ball.userData.on && bp.distanceTo(g.position) > 1.4){
+        // the ball is still on its way to them: open body — mostly to the ball, a third turned to where they will play next
+        const toB = Math.atan2(bp.x - g.position.x, bp.z - g.position.z), gy = g.userData.t === "m" ? 0 : 68;
+        const play = next && !next.cut && next.ball && Math.hypot(next.ball[0]-f.ball[0], next.ball[1]-f.ball[1]) > 2 ? Math.atan2(next.ball[0]-q[0], next.ball[1]-q[1]) : Math.atan2(25 - q[0], gy - q[1]);
+        want = toB + Math.atan2(Math.sin(play - toB), Math.cos(play - toB))*.35; }
+      else if (mv.length() > .4 && !g.userData.own && g !== hold && f.ball){
+        // on the move without the ball: a sprint faces the way they run; a few steps to adjust keep the eyes on the ball
+        // (in between, turned part of the way: running and watching)
+        const sp = g.userData.vel ? g.userData.vel.length() : 0, w = Math.max(0, Math.min(1, (sp - 1.5)/2.5)), toB = Math.atan2(bp.x - g.position.x, bp.z - g.position.z), go = Math.atan2(mv.x, mv.z);
+        want = toB + Math.atan2(Math.sin(go - toB), Math.cos(go - toB))*w; }
       else if (mv.length() > 3 && !g.userData.own && g !== hold) want = Math.atan2(mv.x, mv.z);                 // a long run: the way they go
       else if (g === hold){
         // on the ball: carrying it → the way they go; standing with a pass to come → the team-mate; otherwise the goal they attack
@@ -8104,7 +8130,7 @@ const B3D = (() => {
       else if (f.ball) want = Math.atan2(bp.x - g.position.x, bp.z - g.position.z);          // everyone else: eyes on the ball, wherever it is now
       else if (mv.length() > .4) want = Math.atan2(mv.x, mv.z);
       let d = want - b.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); b.rotation.y += d*(DM.slow ? .13 : .2);
-      if (g.userData.own) g.userData.own.scale.setScalar(view === "tv" ? 1 : .5);
+      if (g.userData.own){ const s = view === "tv" ? .65 : .4; g.userData.own.scale.setScalar(s); g.userData.own.position.set(0, .34*s, .42); }
       g.visible = !(view === "eye" && g === demo.eyeG);
       // the field of vision: in the 3D view for everyone who has a ball; in the player view, for the one whose eyes we use
       const fn = g.userData.fan; fn.visible = view === "tv" ? (g === hold || !!g.userData.own) : g === demo.eyeG;
@@ -8112,11 +8138,16 @@ const B3D = (() => {
     // the ball: at the feet of the one who has it, on the side they face; otherwise where the scene puts it
     let bt = null;
     let close = false;
-    if (f.ball){ if (hold){
+    if (f.ball){ const hq0 = hold && f.pos[hold.userData.pid], tgt0 = hq0 && W(hq0[0], hq0[1]), pf = DM.frames[DM.i - 1], spot = pf && pf.ball && !pf.hold && !f.cut ? W(pf.ball[0], pf.ball[1]) : null;
+      if (hold && spot && demo.ballWith !== hold && hold.position.distanceTo(tgt0) > 1 && spot.distanceTo(tgt0) < 3){
+        // a ball played into space (the scene before) rolls on to that spot and waits there for the runner: it does not
+        // jump back to them before they arrive
+        bt = spot; bt.y = .34*bs; }
+      else if (hold){
         // running with it: just in front, on the way they run (not behind them); standing: where they face
         const hq = f.pos[hold.userData.pid], go = W(hq[0], hq[1]).sub(hold.position); go.y = 0;
         const r = hold.userData.body.rotation.y, dir = go.length() > .08 ? go.normalize() : new THREE.Vector3(Math.sin(r), 0, Math.cos(r));
-        bt = hold.position.clone().add(dir.multiplyScalar(.9)); bt.y = .34*bs;
+        bt = hold.position.clone().add(dir.multiplyScalar(.45)); bt.y = .34*bs;   // (at the feet, a step in front)
         close = demo.ballWith === hold || demo.ball.position.distanceTo(bt) < 1.2; if (close) demo.ballWith = hold; }
       else { bt = W(f.ball[0], f.ball[1], .34*bs); demo.ballWith = null; } }
     // at someone's feet the ball goes with them; a pass travels at its own speed
@@ -8189,10 +8220,17 @@ const B3D = (() => {
       for (const side of ["mine","opp"]) players[side].forEach((g,i) => { if (g.visible){ test(g.position.clone().setY(.8), {side, i}); test(g.position, {side, i}); } });
       return best; };
     const toBoard = e => { aim(e); if (!ray.ray.intersectPlane(groundP, hitP)) return null; return [Math.max(0, Math.min(50, hitP.x + 25)), Math.max(0, Math.min(68, hitP.z + 34))]; };
-    wrap.addEventListener("pointerdown", e => { wrap.setPointerCapture(e.pointerId); const k = demo.id ? null : pick(e);
+    const pts = new Map(); let pinch = null;
+    const pinchD = () => { const [a, b] = [...pts.values()]; return Math.hypot(a[0]-b[0], a[1]-b[1]) || 1; };
+    wrap.addEventListener("pointerdown", e => { wrap.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size === 2 && view === "tv"){ mv = null; dr = null; pinch = {d:pinchD(), z:orbit.zoom}; return; }
+      if (pts.size > 1) return;
+      const k = demo.id ? null : pick(e);
       if (k){ mv = k; wrap.style.cursor = "grabbing"; return; }
       dr = {x:e.clientX, y:e.clientY, yaw:orbit.yaw, pitch:orbit.pitch}; wrap.style.cursor = "grabbing"; });
     wrap.addEventListener("pointermove", e => {
+      if (pts.has(e.pointerId)) pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pinch){ if (pts.size === 2) orbit.zoom = Math.max(.35, Math.min(1.6, pinch.z*pinch.d/pinchD())); return; }
       if (mv){ const b = toBoard(e); if (!b) return;
         if (mv.ball){ S.ball[0] = b[0]; S.ball[1] = b[1]; if (S.gk) S.gk = false; if (typeof scheduleAuto === "function") scheduleAuto(); }
         else { S.pos[mv.side][mv.i] = b; const g = players[mv.side][mv.i]; g.position.copy(W(b[0], b[1])); }
@@ -8200,7 +8238,8 @@ const B3D = (() => {
       if (!dr){ wrap.style.cursor = pick(e) ? "pointer" : "grab"; return; }
       if (view === "tv"){ orbit.yaw = dr.yaw - (e.clientX - dr.x)*.008; orbit.pitch = Math.max(.35, Math.min(1.45, dr.pitch + (e.clientY - dr.y)*.006)); }
       else { orbit.eyeYaw = (dr.eyeYaw ?? (dr.eyeYaw = orbit.eyeYaw || 0)) - (e.clientX - dr.x)*.006; } });
-    const end = () => { if (mv){ if (mv.ball){ if (typeof drawBall === "function") drawBall(); } else if (typeof drawTeam === "function") drawTeam(mv.side); }
+    const end = e => { if (e) pts.delete(e.pointerId); if (pinch){ if (pts.size < 2) pinch = null; dr = null; return; }
+      if (mv){ if (mv.ball){ if (typeof drawBall === "function") drawBall(); } else if (typeof drawTeam === "function") drawTeam(mv.side); }
       mv = null; dr = null; wrap.style.cursor = "grab"; };
     wrap.addEventListener("pointerup", end); wrap.addEventListener("pointercancel", end);
     wrap.addEventListener("wheel", e => { if (view !== "tv") return; e.preventDefault(); orbit.zoom = Math.max(.35, Math.min(1.6, orbit.zoom*(1 + e.deltaY*.001))); }, {passive:false});
@@ -8232,7 +8271,7 @@ const B3D = (() => {
         CLIP3D.run(g, was, to, frame.dt || 0, isH ? [25, goalY] : S.ball); });
     }
     // the ball: drawn bigger than real in the overview so it stands out; real size in the player view
-    const bs = view === "tv" ? .6 : .33; ballM.scale.setScalar(bs);   // (player view: a little bigger than a real ball only)
+    const bs = view === "tv" ? .75 : .4; ballM.scale.setScalar(bs);   // (player view: a little bigger than a real ball only)
     ballM.position.lerp(W(S.ball[0], S.ball[1], .34*bs), .3); ballM.visible = S.showBall;
     ballRing.position.set(ballM.position.x, .05, ballM.position.z); ballRing.visible = S.showBall;
     const pulse = 1 + .18*Math.sin(performance.now()/260); ballRing.scale.setScalar((view === "tv" ? 1.4 : .38)*pulse);
@@ -8318,6 +8357,10 @@ const B3D = (() => {
             tg.add(fwd.clone().multiplyScalar(my*d*.35)).add(side.clone().multiplyScalar(mx*d*.35)); d = fit(); }
           orbit.dfit = d; orbit.dtg = tg.clone(); orbit.dkey = dkey; }
         tg.copy(orbit.dtg); put(orbit.dfit*orbit.zoom*(DM.sc.camZoom||1)); }
+      { const k = Math.max(0, Math.min(1, (1 - orbit.zoom)/.5)), bw = inDemo ? (demo.ball && demo.ball.visible ? demo.ball.position.clone() : null) : (S.showBall ? W(S.ball[0], S.ball[1]) : null);
+        const want = bw ? bw.sub(tg).multiplyScalar(k) : new THREE.Vector3(); want.y = 0;
+        orbit.pan = orbit.pan ? orbit.pan.lerp(want, .12) : want;
+        cam.position.add(orbit.pan); cam.lookAt(tg.clone().add(orbit.pan)); cam.updateMatrixWorld(); }
       players.mine.concat(players.opp).forEach(g => { g.userData.lab.visible = true; g.userData.lab.scale.set(3.6, 1.8, 1); g.userData.lab.position.y = 2.25; });
       demo.list.forEach(g => { g.userData.lab.visible = g.userData.hasTag; g.userData.lab.scale.set(2.2, 1.1, 1); g.userData.lab.position.y = 2.1; });
       setNote(inDemo ? "<b>3D VIEW</b>黄色＝ボールを持つ選手の視野・ドラッグで回す" : "<b>3D VIEW</b>選手とボールはドラッグで動かす・ほかの所で回す"); }
