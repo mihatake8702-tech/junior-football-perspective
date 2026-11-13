@@ -8853,13 +8853,13 @@ D({id:"ko04", th:"ko", type:"tap", target:"ball", look:3, g:[9,10],
 
 // --- 相手：大きいキックオフのこぼれ球（タップ） ---
 D({id:"ko05", th:"ko", type:"tap", target:"me", g:[9,10],
- situ:"相手がキックオフで大きくけってきた。ボールはCBの頭の上に来る。CBがヘディングで前へはね返すよ。",
+ situ:"相手がキックオフで大きくけってきた。ボールはCBの前でバウンドする。CBが先にさわって前へけり返すよ。",
  q:"CHのきみは、どこにいればいい？",
  scene:{f:"2-3-2", me:["CH",28,51], ball:[22,49], mates:M("2-3-2",{CH:null, CB1:[22,52], CB2:[34,55], LH:[8,44], RH:[42,44], FW1:[19,38], FW2:[31,38]}),
   opps:[[25,36],[19,45],[31,44],[10,36],[40,36],[25,28]],
   arrows:[{f:[25,34],t:[22,49],k:"opp"}]},
  zones:[
-  {c:[24,42], rad:4.5, r:2, why:"CBがはね返したボールは、CBの前に落ちる。先にそこにいれば、相手より先にひろえる。"}],
+  {c:[24,42], rad:4.5, r:2, why:"CBがけり返したボールは、CBの前に落ちる。先にそこにいれば、相手より先にひろえる。"}],
  miss:"CBのそばや、うしろにいると、はね返ったボールを相手にひろわれる。ボールが落ちそうな、CBの前でまとう。",
  point:"大きいボールは、はね返ったあとのボールをねらう。"});
 
@@ -11954,7 +11954,7 @@ const VOICE = (() => {
   // position names as a Japanese voice should say them (the same words as MAESTRO BOARD's 練習メニュー voice:
   // letters read one by one were hard to catch, e.g. CH sounded like 新聞紙), and words the voice misreads
   const SAY = [["GK","ゴールキーパー"],["CB","センターバック"],["SB","サイドバック"],["CH","センターハーフ"],["SH","サイドハーフ"],["CF","センターフォワード"],["FW","フォワード"],["DF","ディフェンダー"],["MF","ミッドフィルダー"],["LH","左ハーフ"],["RH","右ハーフ"],["LB","左バック"],["RB","右バック"],["DM","ボランチ"],["CM","センターハーフ"],["OH","トップ下"],["PA","ペナルティエリア"],["同一視野","どういつしや"],["→","、"],["＋","と"]];
-  const SAY2 = [["リターン","\uE000"],["バックパス","後ろへのパス"],["こぼれ球","こぼれだま"],["ターンして","くるっと回って"],["ターン","くるっと回る"],["復帰","戻れる"],["＝","は"]];
+  const SAY2 = [["リターン","\uE000"],["真ん中","まんなか"],["まん中","まんなか"],["バックパス","後ろへのパス"],["こぼれ球","こぼれだま"],["ターンして","くるっと回って"],["ターン","くるっと回る"],["げ場","げば"],["出させ","ださせ"],["ではさ","で、はさ"],["復帰","戻れる"],["＝","は"]];
   const words = t => SAY2.reduce((a,[k,v]) => a.split(k).join(v), SAY.reduce((a,[k,v]) => a.split(k).join(v), t))
     .replace(/人\s*対\s*/g, "人、たい、").replace(/(^|[、。！\s])間/g, "$1すきま").replace(/(?<![時瞬仲])間/g, "あいだ")
     .replace(/(?<![実国交])際/g, "ぎわ").replace(/(?<![以案海国])外(?![すれしさ])/g, "そと")
@@ -11974,7 +11974,7 @@ const VOICE = (() => {
   function speak(text, rate=1){
     if (!ok || !on) return; stop(); const t = say(text); if (!t) return;
     const id = ++sayId, r = Math.max(.7, Math.min(1.4, rate));
-    talking = true; until = performance.now() + 250 + (3 + t.length*.2/r)*1000;
+    talking = true; until = performance.now() + 250 + (4 + t.length*.3/r)*1000;   // (generous: never cut the words)
     const go = () => { timer = 0; if (id !== sayId) return;
       const u = new SpeechSynthesisUtterance(t); u.lang = "ja-JP"; if (voice) u.voice = voice; u.rate = r;
       u.onend = u.onerror = () => { if (id === sayId) talking = false; };
@@ -12493,6 +12493,26 @@ const CLIP3D = (() => {
     const d = Math.max(across/2/(t*cam.aspect), deep*Math.sin(pitch)/2/t)*1.05*zoom + 4;
     cam.position.set(tg.x + Math.sin(yaw)*Math.cos(pitch)*d, Math.sin(pitch)*d, tg.z + Math.cos(yaw)*Math.cos(pitch)*d); cam.lookAt(tg); cam.updateProjectionMatrix();
   }
+  // TV camera (like a broadcast of a match): high on the side of the pitch, about 27° down, about a third of the pitch
+  // across the picture; we attack from left to right. It follows the play smoothly (the ball, and a little of the whole
+  // scene so nobody important drops out). st keeps the smoothed point between frames ({} is fine to start).
+  function tvCam(cam, C, st, dt=1/60, zoom=1){
+    const b = C.box, ball = C.shown.ball, cx = (b.x0 + b.x1)/2, cy = (b.y0 + b.y1)/2;
+    const want = [ball[0]*.55 + cx*.45, ball[1]*.6 + cy*.4];
+    if (!st.f || st.C !== C){ st.f = want.slice(); st.C = C; st.k = null; }
+    const k = Math.min(1, dt*2.2); st.f[0] += (want[0] - st.f[0])*k; st.f[1] += (want[1] - st.f[1])*k;   // (smooth, like a camera operator)
+    cam.fov = 34; const t = Math.tan(cam.fov*Math.PI/360);
+    const across = Math.max(26, (b.y1 - b.y0) + 4), deep = (b.x1 - b.x0) + 4;              // (the attack runs along y: across the screen)
+    const dSide = Math.max(across/2/(t*cam.aspect), deep*Math.sin(.47)/2/t)*zoom + 3;
+    // near a goal (a shot, a cross, the last pass): swing round to a high angle from behind the attack, the goal in the picture
+    const near0 = 1 - sm((st.f[1] - 14)/12), near68 = 1 - sm((54 - st.f[1])/12), gk = Math.max(near0, near68);
+    st.k = st.k == null ? gk : st.k + (gk - st.k)*Math.min(1, dt*1.4);
+    const yaw = Math.PI/2 + (near68 > near0 ? 1 : -1)*Math.PI/2*st.k, pitch = .47 + (.8 - .47)*st.k;
+    const gy = near68 > near0 ? 68 : 0, aim = [st.f[0] + (25 - st.f[0])*.4*st.k, st.f[1] + (gy - st.f[1])*.35*st.k];
+    const dBack = Math.max(30/2/(t*cam.aspect), 26*Math.sin(pitch)/2/t)*zoom + 3, d = dSide + (dBack - dSide)*st.k;
+    const tg = W(aim[0], aim[1]);
+    cam.position.set(tg.x + Math.sin(yaw)*Math.cos(pitch)*d, Math.sin(pitch)*d, tg.z + Math.cos(yaw)*Math.cos(pitch)*d); cam.lookAt(tg); cam.updateProjectionMatrix();
+  }
   // through きみ's eyes in a clip: towards the goal when きみ has the ball, else towards the ball (eyeYaw = the head turned)
   function eyeCam(cam, C, eyeYaw=0){
     const m = C.shown.me, ball = C.shown.ball, onBall = dist(m, ball) < 1.2, tgt = onBall ? [25, 0] : ball;
@@ -12501,7 +12521,7 @@ const CLIP3D = (() => {
   }
 
   return {W, lin, COL, RCOL, RMARK, RNAME, MOVE, clamp, sm, lerp, dist, esc,
-    pitchTexture, label, makePlayer, ghost, startRing, pulseRing, arrow, disc, makeBall, addPitch, run, plan, pose, player, fitBox, eyeCam};
+    pitchTexture, label, makePlayer, ghost, startRing, pulseRing, arrow, disc, makeBall, addPitch, run, plan, pose, player, fitBox, tvCam, eyeCam};
 })();
 
 
@@ -12838,7 +12858,7 @@ const V3D = (() => {
     const dw = cl.dots.querySelector(`[data-step="${C.i}"] .fill`); if (dw) dw.style.width = (100*clip.progress()) + "%";
     if (view === "eye"){ eyeWall.visible = true; C.meG.visible = false; cam.near = .1; cam.clearViewOffset(); CLIP3D.eyeCam(cam, C, orbit.eyeYaw); clip.labels(.7); }
     else { eyeWall.visible = false; C.meG.visible = true; cam.near = .5; cam.fov = 46;
-      CLIP3D.fitBox(cam, C.box, orbit.yaw, Math.max(.3, Math.min(1.45, orbit.pitch - .2)), orbit.zoom); clip.labels(1);
+      CLIP3D.tvCam(cam, C, cl.tv || (cl.tv = {}), dt, orbit.zoom); clip.labels(1);   // (from the side, like a match on TV)
       // the caption covers the bottom of the box: the picture goes up by half its height (the play stays in the free part)
       const w = size.w || 1, h = size.h || 1; cam.setViewOffset(w, h, 0, Math.min(h*.3, cl.ui.offsetHeight/2), w, h); }
     note.innerHTML = "";

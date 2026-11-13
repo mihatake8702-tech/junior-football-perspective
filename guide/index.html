@@ -1906,8 +1906,8 @@ D({id:"sl07", th:"slide", type:"tap", target:"me", g:[11,12],
   opps:[[8,47],[20,43],[28,50],[14,36]],
   arrows:[{f:[8,47],t:[7.5,50],k:"opp"}]},
  zones:[
-  {c:[8,51.5], rad:2.5, r:2, why:"ボールのゴール側で、少しタッチライン寄り。たて（タッチラインぞい）のコースをふさげば、相手は中へ来るしかない。中ではLHとCHが待っていて、2人の間もわられない。"}],
- miss:"中がわに立つと、たてにぬかれて、ゴールの近くの深いところからクロスをあげられる。ボールのゴール側で、少しタッチライン寄りに立とう。",
+  {c:[11,51], rad:3, r:2, why:"相手の正面、ボールとゴールのあいだにまっすぐ立つ。前（たて）には行かせない。外はタッチラインでせまいので、相手は中へ来るしかない。中ではLHとCHが待っていて、はさんでうばえる。"}],
+ miss:"中がわに立ちすぎると、たてにぬかれて、ゴールの近くの深いところからクロスをあげられる。相手より外がわ（タッチラインがわ）にも立たない。相手の正面、ボールとゴールのあいだにまっすぐ立って、前（たて）に行かせないようにしよう。",
  point:"サイドでは〔縦切り|たてを切って〕中へ。中では味方が待っている。"});
 
 D({id:"sl08", th:"slide", type:"tap", target:"me", look:3, g:[11,12],
@@ -4328,7 +4328,7 @@ D({id:"te24", th:"cover", g:[11,12],
  point:"ボールが動いたら、1人目とカバーが入れかわる。"});
 
 // ---------- スライドと追いこみ ----------
-// ペア：うばう味方が中にいるか（相手の立ち位置で、追いこむ方向が変わる）
+// ペア：うばう味方が中にいるか（いれば中へ追いこんではさむ／いなければ正面でかまえてがまん）
 D({id:"te25", th:"slide", pair:"te25", g:[11,12],
  situ:"相手のSB（サイドのDF）が左サイドでボールを持った。LHのきみがよせる。中の相手MFは、CHがすぐ近くでねらっている。タッチラインぞいには、相手が1人上がっている。",
  q:"LHのきみは、どうよせる？",
@@ -4336,22 +4336,22 @@ D({id:"te25", th:"slide", pair:"te25", g:[11,12],
   mates:M("3-3-1",{LH:null, CH:[24,40], RH:[38,40], CF:[24,24], LB:[10,50], CB:[24,52], RB:[38,52]}),
   opps:[[8,30],[26,34],[6,43],[26,46],[36,30]]},
  opts:[
-  {t:"相手の正面にまっすぐ立って、たてには行かせず、中へ追いこむ", at:[8.5,33.5], r:2, why:"中にはCHが待っている。中へ追いこめば、CHとはさんでうばえる。たてに出させると、上がっている相手にわたる。"},
-  {t:"少しはなれて待ち、どっちにも行かせる", at:[10,36], r:1, why:"かんたんにはぬかれない。でも相手は顔を上げて、たての相手にも中にもパスを出せる。"},
+  {t:"近くまでよせて、相手の正面にまっすぐ立つ。たてには行かせず、中へ追いこむ", at:[9,32], r:2, why:"中にはCHが待っている。中へ追いこめば、CHとはさんでうばえる。たてに出させると、上がっている相手にわたる。"},
+  {t:"少しはなれて待ち、どっちにも行かせる", at:[10.7,36], r:1, why:"かんたんにはぬかれない。でも相手は顔を上げて、たての相手にも中にもパスを出せる。"},
   {t:"中を切って、たてへ追いこむ", at:[11,32.5], r:0, why:"たての相手にパスが出て、LBが1対1になる。うばう味方が待っていない方へ追いこんでいる。"}],
  point:"うばう味方が待っている方へ追いこむ。サイドでは、正面に立って中へ。"});
 D({id:"te26", th:"slide", pair:"te25", g:[11,12],
- situ:"相手のSBが左サイドでボールを持った。LHのきみがよせる。こんどは相手MFが、きみのうしろの中がわへ走りこんだ。CHはべつの相手を見ていて、とどかない。タッチラインぞいには、だれもいない。",
+ situ:"相手のSBが左サイドでボールを持った。LHのきみがよせる。こんどは相手MFが、きみのうしろの中がわへ走りこんだ。CHはべつの相手を見ていて、まだとどかない。",
  q:"LHのきみは、どうよせる？",
  scene:{f:"3-3-1", me:["LH",12,36], ball:[8,30],
   mates:M("3-3-1",{LH:null, CH:[24,40], RH:[38,40], CF:[24,24], LB:[10,50], CB:[24,52], RB:[38,52]}),
   opps:[[8,30],[16,43],[28,35],[26,46],[36,30]],
   arrows:[{f:[20,36],t:[16.5,42],k:"opp"}]},
  opts:[
-  {t:"中へのパスコースを切って、たて（タッチラインぞい）へ追いこむ。LBが前に出てうばう", at:[11,32.5], r:2, why:"中には相手がいて、CHはとどかない。中へ追いこむとそこでパスがつながる。たてにはだれもいないので、LBといっしょにタッチラインではさめる。"},
-  {t:"まっすぐよせて、どっちも切らない", at:[10,33.5], r:1, why:"前には進ませない。でも中の相手へのパスが通ってしまうかもしれない。"},
-  {t:"〔縦切り|たてを切って〕、中へ追いこむ", at:[8.5,33.5], r:0, why:"中で待っているのは相手。うばう味方がいないので、中の相手にパスされて、うしろをとられる。"}],
- point:"中に相手がいて味方がいないなら、たてへ。相手を見て追いこむ方を決める。"});
+  {t:"相手の正面にまっすぐ立って、たてには行かせない。とびこまずに、少し間をあけてかまえる", at:[10.2,35], r:2, why:"中にうばう味方がまだいない。とびこむと、かわされて中の相手につながる。正面で前に進ませずにがまんすれば、そのあいだにCHがもどってきて、はさめるようになる。"},
+  {t:"少し下がって、ボールと中の相手の両方が見える所で待つ", at:[12,38], r:1, why:"中へのパスには反応できる。でもはなれすぎていて、相手は楽に前へ運べる。"},
+  {t:"中を切って、たてへ追いこむ", at:[11,32.5], r:0, why:"中へのパスはふせげる。でもたて（タッチラインぞい）にどんどん運ばれて、深いところからクロスをあげられる。うしろのLBは遠くて、はさめない。"}],
+ point:"中に味方がいないときも、正面にまっすぐ立って、たてに行かせない。とびこまずにがまんして、味方が来るのを待つ。"});
 
 D({id:"te27", th:"slide", type:"tap", target:"me", g:[11,12],
  situ:"相手が、うしろのCBへボールをもどした。前の味方5人は前へ出ていく。CB（右）も上がりはじめた。CB（左）のきみは、まだ下にいる。",
@@ -6404,7 +6404,7 @@ D({id:"tc05", th:"slide", g:[12,12],
  point:"ボールの相手がけれないときは、ラインを上げてチームをせまく。"});
 
 D({id:"tc06", th:"slide", g:[11,12],
- situ:"相手のSBが、右サイドでボールを持って前を向いた。RHが〔縦切り|たてを切って〕いる。OHのきみはボールより前（相手ゴールがわ）にいる。",
+ situ:"相手のSBが、右サイドでボールを持って前を向いた。RHは〔縦切り|たてを切る守り方〕をしている。OHのきみはボールより前（相手ゴールがわ）にいる。",
  q:"OHのきみはどうする？",
  scene:{f:"2-1-2-1", me:["OH",31,24], ball:[44,30],
   mates:M("2-1-2-1",{OH:null, RH:[42,35], DM:[31,40], LH:[16,44], CB1:[20,54], CB2:[32,52], CF:[24,16]}),
@@ -10785,7 +10785,7 @@ const VOICE = (() => {
   // position names as a Japanese voice should say them (the same words as MAESTRO BOARD's 練習メニュー voice:
   // letters read one by one were hard to catch, e.g. CH sounded like 新聞紙), and words the voice misreads
   const SAY = [["GK","ゴールキーパー"],["CB","センターバック"],["SB","サイドバック"],["CH","センターハーフ"],["SH","サイドハーフ"],["CF","センターフォワード"],["FW","フォワード"],["DF","ディフェンダー"],["MF","ミッドフィルダー"],["LH","左ハーフ"],["RH","右ハーフ"],["LB","左バック"],["RB","右バック"],["DM","ボランチ"],["CM","センターハーフ"],["OH","トップ下"],["PA","ペナルティエリア"],["同一視野","どういつしや"],["→","、"],["＋","と"]];
-  const SAY2 = [["リターン","\uE000"],["バックパス","後ろへのパス"],["こぼれ球","こぼれだま"],["ターンして","くるっと回って"],["ターン","くるっと回る"],["復帰","戻れる"],["＝","は"]];
+  const SAY2 = [["リターン","\uE000"],["真ん中","まんなか"],["まん中","まんなか"],["バックパス","後ろへのパス"],["こぼれ球","こぼれだま"],["ターンして","くるっと回って"],["ターン","くるっと回る"],["げ場","げば"],["出させ","ださせ"],["ではさ","で、はさ"],["復帰","戻れる"],["＝","は"]];
   const words = t => SAY2.reduce((a,[k,v]) => a.split(k).join(v), SAY.reduce((a,[k,v]) => a.split(k).join(v), t))
     .replace(/人\s*対\s*/g, "人、たい、").replace(/(^|[、。！\s])間/g, "$1すきま").replace(/(?<![時瞬仲])間/g, "あいだ")
     .replace(/(?<![実国交])際/g, "ぎわ").replace(/(?<![以案海国])外(?![すれしさ])/g, "そと")
@@ -10805,7 +10805,7 @@ const VOICE = (() => {
   function speak(text, rate=1){
     if (!ok || !on) return; stop(); const t = say(text); if (!t) return;
     const id = ++sayId, r = Math.max(.7, Math.min(1.4, rate));
-    talking = true; until = performance.now() + 250 + (3 + t.length*.2/r)*1000;
+    talking = true; until = performance.now() + 250 + (4 + t.length*.3/r)*1000;   // (generous: never cut the words)
     const go = () => { timer = 0; if (id !== sayId) return;
       const u = new SpeechSynthesisUtterance(t); u.lang = "ja-JP"; if (voice) u.voice = voice; u.rate = r;
       u.onend = u.onerror = () => { if (id === sayId) talking = false; };
@@ -11324,6 +11324,26 @@ const CLIP3D = (() => {
     const d = Math.max(across/2/(t*cam.aspect), deep*Math.sin(pitch)/2/t)*1.05*zoom + 4;
     cam.position.set(tg.x + Math.sin(yaw)*Math.cos(pitch)*d, Math.sin(pitch)*d, tg.z + Math.cos(yaw)*Math.cos(pitch)*d); cam.lookAt(tg); cam.updateProjectionMatrix();
   }
+  // TV camera (like a broadcast of a match): high on the side of the pitch, about 27° down, about a third of the pitch
+  // across the picture; we attack from left to right. It follows the play smoothly (the ball, and a little of the whole
+  // scene so nobody important drops out). st keeps the smoothed point between frames ({} is fine to start).
+  function tvCam(cam, C, st, dt=1/60, zoom=1){
+    const b = C.box, ball = C.shown.ball, cx = (b.x0 + b.x1)/2, cy = (b.y0 + b.y1)/2;
+    const want = [ball[0]*.55 + cx*.45, ball[1]*.6 + cy*.4];
+    if (!st.f || st.C !== C){ st.f = want.slice(); st.C = C; st.k = null; }
+    const k = Math.min(1, dt*2.2); st.f[0] += (want[0] - st.f[0])*k; st.f[1] += (want[1] - st.f[1])*k;   // (smooth, like a camera operator)
+    cam.fov = 34; const t = Math.tan(cam.fov*Math.PI/360);
+    const across = Math.max(26, (b.y1 - b.y0) + 4), deep = (b.x1 - b.x0) + 4;              // (the attack runs along y: across the screen)
+    const dSide = Math.max(across/2/(t*cam.aspect), deep*Math.sin(.47)/2/t)*zoom + 3;
+    // near a goal (a shot, a cross, the last pass): swing round to a high angle from behind the attack, the goal in the picture
+    const near0 = 1 - sm((st.f[1] - 14)/12), near68 = 1 - sm((54 - st.f[1])/12), gk = Math.max(near0, near68);
+    st.k = st.k == null ? gk : st.k + (gk - st.k)*Math.min(1, dt*1.4);
+    const yaw = Math.PI/2 + (near68 > near0 ? 1 : -1)*Math.PI/2*st.k, pitch = .47 + (.8 - .47)*st.k;
+    const gy = near68 > near0 ? 68 : 0, aim = [st.f[0] + (25 - st.f[0])*.4*st.k, st.f[1] + (gy - st.f[1])*.35*st.k];
+    const dBack = Math.max(30/2/(t*cam.aspect), 26*Math.sin(pitch)/2/t)*zoom + 3, d = dSide + (dBack - dSide)*st.k;
+    const tg = W(aim[0], aim[1]);
+    cam.position.set(tg.x + Math.sin(yaw)*Math.cos(pitch)*d, Math.sin(pitch)*d, tg.z + Math.cos(yaw)*Math.cos(pitch)*d); cam.lookAt(tg); cam.updateProjectionMatrix();
+  }
   // through きみ's eyes in a clip: towards the goal when きみ has the ball, else towards the ball (eyeYaw = the head turned)
   function eyeCam(cam, C, eyeYaw=0){
     const m = C.shown.me, ball = C.shown.ball, onBall = dist(m, ball) < 1.2, tgt = onBall ? [25, 0] : ball;
@@ -11332,7 +11352,7 @@ const CLIP3D = (() => {
   }
 
   return {W, lin, COL, RCOL, RMARK, RNAME, MOVE, clamp, sm, lerp, dist, esc,
-    pitchTexture, label, makePlayer, ghost, startRing, pulseRing, arrow, disc, makeBall, addPitch, run, plan, pose, player, fitBox, eyeCam};
+    pitchTexture, label, makePlayer, ghost, startRing, pulseRing, arrow, disc, makeBall, addPitch, run, plan, pose, player, fitBox, tvCam, eyeCam};
 })();
 
 // ===== MAESTRO NIGHT broadcast parts (2026-10-27): the TV score bug, a stamp over the picture, confetti, and what has been
@@ -11605,8 +11625,8 @@ const X3 = (() => {
   }
 
   // ---------- camera ----------
-  const VIEWS = {back:{yaw:0, pitch:.62, en:"BACK"}, diag:{yaw:.75, pitch:.6, en:"DIAGONAL"}, top:{yaw:0, pitch:1.5, en:"TOP"}, eye:{en:"PLAYER EYE"}};
-  const cv = {view:"back", yaw:0, pitch:.62, zoom:1, dyaw:0, dpitch:0, drag:false, eyeYaw:0, sway:true};
+  const VIEWS = {tv:{en:"TV"}, back:{yaw:0, pitch:.62, en:"BACK"}, diag:{yaw:.75, pitch:.6, en:"DIAGONAL"}, top:{yaw:0, pitch:1.5, en:"TOP"}, eye:{en:"PLAYER EYE"}};
+  const cv = {view:"tv", tv:{}, yaw:0, pitch:.62, zoom:1, dyaw:0, dpitch:0, drag:false, eyeYaw:0, sway:true};
   function camera(now){
     const C = clip.C, r = stage.getBoundingClientRect(), w = Math.max(1, renderer.domElement.clientWidth || r.width), h = Math.max(1, renderer.domElement.clientHeight || r.height);
     if (Math.abs(w - (camera.w||0)) > .5 || Math.abs(h - (camera.h||0)) > .5){ camera.w = w; camera.h = h; renderer.setSize(w, h, false); cam.aspect = w/h; }
@@ -11618,7 +11638,9 @@ const X3 = (() => {
       // (the camera frames a shorter picture, which is then drawn at the top of the free band)
       const top = Math.min(h*.15, 44), bot = Math.min(h*.45, ui.cap.offsetHeight + 14), free = Math.max(h*.4, h - top - bot);
       cam.aspect = w/free; cam.clearViewOffset();
-      CLIP3D.fitBox(cam, C.box, V.yaw + cv.dyaw + sway, Math.max(.25, Math.min(1.52, V.pitch + cv.dpitch)), cv.zoom);
+      if (cv.view === "tv") CLIP3D.tvCam(cam, C, cv.tv, Math.min(.05, (now - (camera.last || now))/1000), cv.zoom);   // (like a TV broadcast)
+      else CLIP3D.fitBox(cam, C.box, V.yaw + cv.dyaw + sway, Math.max(.25, Math.min(1.52, V.pitch + cv.dpitch)), cv.zoom);
+      camera.last = now;
       cam.setViewOffset(w, free, 0, -top, w, h); cam.updateProjectionMatrix();
     }
     clip.labels(cv.view === "eye" ? .7 : 1);
@@ -11638,7 +11660,7 @@ const X3 = (() => {
     stage.addEventListener("wheel", e => { if (cv.view === "eye") return; e.preventDefault(); cv.zoom = Math.max(.4, Math.min(1.8, cv.zoom*(1 + e.deltaY*.001))); }, {passive:false}); }
   function setView(v){ cv.view = v; cv.dyaw = 0; cv.dpitch = 0; cv.zoom = 1; cv.eyeYaw = 0; cv.sway = true;
     document.querySelectorAll("#views button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v)); }
-  document.getElementById("views").innerHTML = Object.entries(VIEWS).map(([k, v]) => `<button data-v="${k}" aria-pressed="${k === "back"}">${v.en}</button>`).join("");
+  document.getElementById("views").innerHTML = Object.entries(VIEWS).map(([k, v]) => `<button data-v="${k}" aria-pressed="${k === cv.view}">${v.en}</button>`).join("");
   document.getElementById("views").addEventListener("click", e => { const b = e.target.closest("[data-v]"); if (b) setView(b.dataset.v); });
 
   ui.play.addEventListener("click", () => { if (!clip.C) return; if (!playing && clip.ended()) goStep(0); setPlaying(!playing); });
